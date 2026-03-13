@@ -1,0 +1,2030 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0a0f1a">
+<title>StageFlow</title>
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg-deep: #0a0f1a;
+  --bg-card: #111827;
+  --bg-card-hover: #1a2236;
+  --bg-surface: #1e293b;
+  --bg-input: #0f172a;
+  --border: rgba(148, 163, 184, 0.12);
+  --border-focus: rgba(99, 179, 237, 0.4);
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-tertiary: #64748b;
+  --accent: #3b82f6;
+  --accent-dim: rgba(59, 130, 246, 0.15);
+  --green: #10b981;
+  --green-dim: rgba(16, 185, 129, 0.12);
+  --green-text: #34d399;
+  --amber: #f59e0b;
+  --amber-dim: rgba(245, 158, 11, 0.12);
+  --amber-text: #fbbf24;
+  --red: #ef4444;
+  --red-dim: rgba(239, 68, 68, 0.12);
+  --red-text: #f87171;
+  --purple: #8b5cf6;
+  --purple-dim: rgba(139, 92, 246, 0.12);
+  --purple-text: #a78bfa;
+  --coral: #f97316;
+  --coral-dim: rgba(249, 115, 22, 0.12);
+  --coral-text: #fb923c;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --font: 'DM Sans', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+html, body, #root {
+  height: 100%;
+  font-family: var(--font);
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+body { position: fixed; width: 100%; }
+
+#root {
+  display: flex;
+  flex-direction: column;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+/* Scrollable content area */
+.page-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: calc(80px + var(--safe-bottom));
+}
+
+.page-scroll::-webkit-scrollbar { display: none; }
+
+/* Tab bar */
+.tab-bar {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  padding: 8px 12px calc(10px + var(--safe-bottom));
+  background: linear-gradient(to top, var(--bg-deep) 70%, transparent);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  z-index: 100;
+}
+
+.tab-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  font-family: var(--font);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  padding: 4px 8px;
+  transition: color 0.2s;
+}
+.tab-item.active { color: var(--accent); }
+.tab-item svg { width: 22px; height: 22px; }
+
+.tab-scan-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 3px solid var(--bg-deep);
+  cursor: pointer;
+  margin-bottom: 4px;
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.tab-scan-btn:active { transform: scale(0.93); }
+.tab-scan-btn svg { width: 24px; height: 24px; color: white; }
+
+/* Cards */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 14px 16px;
+  margin-bottom: 10px;
+}
+
+/* Stat cards */
+.stat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px;
+}
+.stat-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 6px;
+}
+.stat-value {
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.5px;
+}
+.stat-sub {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-top: 4px;
+}
+
+/* Badges / pills */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.badge-green { background: var(--green-dim); color: var(--green-text); }
+.badge-blue { background: var(--accent-dim); color: #60a5fa; }
+.badge-amber { background: var(--amber-dim); color: var(--amber-text); }
+.badge-red { background: var(--red-dim); color: var(--red-text); }
+.badge-purple { background: var(--purple-dim); color: var(--purple-text); }
+.badge-gray { background: rgba(100,116,139,0.15); color: var(--text-secondary); }
+.badge-coral { background: var(--coral-dim); color: var(--coral-text); }
+
+/* Filter chips */
+.chip-row {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  margin-bottom: 12px;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.chip-row::-webkit-scrollbar { display: none; }
+.chip {
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  font-family: var(--font);
+  transition: all 0.15s;
+}
+.chip.active {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+/* List items */
+.list-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+.list-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.list-row:last-child { border-bottom: none; }
+.list-row:active { background: var(--bg-card-hover); }
+
+.item-thumb {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+.list-row-content { flex: 1; min-width: 0; }
+.list-row-title {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.list-row-sub {
+  font-size: 11.5px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.list-row-right {
+  flex-shrink: 0;
+  text-align: right;
+}
+
+/* Inputs */
+.input-field {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-family: var(--font);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.input-field:focus { border-color: var(--border-focus); }
+.input-field::placeholder { color: var(--text-tertiary); }
+
+select.input-field {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2394a3b8'%3E%3Cpath d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+}
+
+textarea.input-field { resize: vertical; min-height: 80px; }
+
+.form-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 18px;
+  border-radius: var(--radius-md);
+  font-family: var(--font);
+  font-size: 13.5px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn:active { transform: scale(0.97); }
+.btn-primary { background: var(--accent); color: white; }
+.btn-primary:hover { background: #2563eb; }
+.btn-outline {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+.btn-danger { background: var(--red-dim); color: var(--red-text); }
+.btn-success { background: var(--green-dim); color: var(--green-text); }
+.btn-full { width: 100%; }
+
+/* Section headers */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.section-title {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+/* Page header */
+.page-header {
+  padding: 16px 18px 12px;
+}
+.page-title {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+}
+.page-subtitle {
+  font-size: 12.5px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+}
+
+/* Back navigation */
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 8px;
+}
+
+/* Progress bar */
+.progress-bar {
+  height: 6px;
+  background: var(--bg-surface);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+
+/* Scanner viewfinder */
+.viewfinder {
+  position: relative;
+  background: var(--bg-surface);
+  height: 240px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 18px 14px;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.viewfinder-frame {
+  width: 180px;
+  height: 180px;
+  border: 2px solid var(--accent);
+  border-radius: 12px;
+  opacity: 0.5;
+  position: relative;
+}
+.viewfinder-line {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 140px;
+  height: 2px;
+  background: var(--accent);
+  opacity: 0.7;
+  animation: scanPulse 2s ease-in-out infinite;
+}
+@keyframes scanPulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.9; }
+}
+.viewfinder-hint {
+  position: absolute;
+  bottom: 10px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 11.5px;
+  color: var(--text-tertiary);
+}
+
+/* Condition buttons */
+.condition-row {
+  display: flex;
+  gap: 8px;
+  margin: 10px 0;
+}
+.condition-btn {
+  flex: 1;
+  padding: 10px;
+  border-radius: var(--radius-md);
+  font-family: var(--font);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+}
+.condition-btn.selected-good { background: var(--green-dim); color: var(--green-text); border-color: var(--green); }
+.condition-btn.selected-damaged { background: var(--amber-dim); color: var(--amber-text); border-color: var(--amber); }
+.condition-btn.selected-dispose { background: var(--red-dim); color: var(--red-text); border-color: var(--red); }
+
+/* Modal overlay */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.modal-sheet {
+  background: var(--bg-card);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  width: 100%;
+  max-width: 480px;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 20px 18px calc(20px + var(--safe-bottom));
+}
+.modal-handle {
+  width: 36px;
+  height: 4px;
+  background: var(--text-tertiary);
+  border-radius: 2px;
+  margin: 0 auto 16px;
+  opacity: 0.4;
+}
+
+/* Animations */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-in { animation: fadeInUp 0.3s ease-out; }
+
+/* Scanner result flash */
+@keyframes scanFlash {
+  0% { background: var(--green-dim); }
+  100% { background: transparent; }
+}
+.scan-flash { animation: scanFlash 0.6s ease-out; }
+
+/* Movement timeline */
+.timeline-item {
+  display: flex;
+  gap: 12px;
+  padding: 8px 0;
+  position: relative;
+}
+.timeline-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+.timeline-line {
+  position: absolute;
+  left: 4px;
+  top: 18px;
+  bottom: -4px;
+  width: 2px;
+  background: var(--border);
+}
+.timeline-item:last-child .timeline-line { display: none; }
+
+/* Toast notification */
+.toast {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 500;
+  z-index: 300;
+  animation: fadeInUp 0.3s ease-out;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.26.9/babel.min.js"></script>
+<script type="text/babel" data-type="module">
+const { useState, useEffect, useCallback, useRef, createContext, useContext } = React;
+
+// ─── Icons (inline SVG) ─────────────────────────────────
+const Icons = {
+  home: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
+  box: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>,
+  scan: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>,
+  briefcase: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>,
+  more: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>,
+  back: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>,
+  plus: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+  search: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>,
+  check: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>,
+  x: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+  layers: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>,
+  clock: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+  mapPin: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>,
+  truck: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>,
+  edit: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>,
+  trash: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>,
+  printer: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>,
+};
+
+// ─── Emoji icons for categories ──────────────────────────
+const categoryEmoji = {
+  sofa: '🛋️', table: '🪑', chair: '🪑', lamp: '💡', lighting: '💡',
+  rug: '🟫', art: '🖼️', decor: '🏺', plant: '🌿', bed: '🛏️',
+  textile: '🧵', mirror: '🪞', shelf: '📚', default: '📦'
+};
+function getEmoji(cat) {
+  if (!cat) return categoryEmoji.default;
+  const key = cat.toLowerCase();
+  for (const [k, v] of Object.entries(categoryEmoji)) {
+    if (key.includes(k)) return v;
+  }
+  return categoryEmoji.default;
+}
+
+// ─── Mock Data ───────────────────────────────────────────
+const INITIAL_SETS = [
+  { id: 'set-1', name: 'Modern Living Room A', description: 'Contemporary neutral tones' },
+  { id: 'set-2', name: 'Farmhouse Dining', description: 'Rustic warm wood tones' },
+  { id: 'set-3', name: 'Coastal Bedroom', description: 'Light blues and whites' },
+  { id: 'set-4', name: 'Mid-Century Office', description: 'Walnut and brass accents' },
+];
+
+const INITIAL_ITEMS = [
+  { id: 'ITM-0001', name: 'Modern gray sofa', category: 'Sofa', setId: 'set-1', status: 'available', condition: 'good', cost: 1200, purchaseDate: '2024-06-15' },
+  { id: 'ITM-0002', name: 'Glass coffee table', category: 'Table', setId: 'set-1', status: 'available', condition: 'good', cost: 450, purchaseDate: '2024-06-15' },
+  { id: 'ITM-0003', name: 'White linen armchair', category: 'Chair', setId: 'set-1', status: 'staged', condition: 'good', cost: 680, purchaseDate: '2024-06-15' },
+  { id: 'ITM-0004', name: 'White linen armchair #2', category: 'Chair', setId: 'set-1', status: 'staged', condition: 'good', cost: 680, purchaseDate: '2024-06-15' },
+  { id: 'ITM-0005', name: 'Abstract canvas art', category: 'Art', setId: 'set-1', status: 'available', condition: 'good', cost: 220, purchaseDate: '2024-06-15' },
+  { id: 'ITM-0006', name: 'Marble side table', category: 'Table', setId: 'set-1', status: 'available', condition: 'good', cost: 380, purchaseDate: '2024-07-01' },
+  { id: 'ITM-0007', name: 'Floor lamp brass', category: 'Lamp', setId: 'set-1', status: 'available', condition: 'good', cost: 290, purchaseDate: '2024-07-01' },
+  { id: 'ITM-0008', name: 'Woven area rug 8x10', category: 'Rug', setId: 'set-1', status: 'staged', condition: 'good', cost: 520, purchaseDate: '2024-07-01' },
+  { id: 'ITM-0010', name: 'Walnut dining table', category: 'Table', setId: 'set-2', status: 'staged', condition: 'good', cost: 1400, purchaseDate: '2024-05-20' },
+  { id: 'ITM-0011', name: 'Farmhouse chair', category: 'Chair', setId: 'set-2', status: 'staged', condition: 'good', cost: 180, purchaseDate: '2024-05-20' },
+  { id: 'ITM-0012', name: 'Farmhouse chair #2', category: 'Chair', setId: 'set-2', status: 'staged', condition: 'good', cost: 180, purchaseDate: '2024-05-20' },
+  { id: 'ITM-0013', name: 'Farmhouse chair #3', category: 'Chair', setId: 'set-2', status: 'available', condition: 'good', cost: 180, purchaseDate: '2024-05-20' },
+  { id: 'ITM-0014', name: 'Rustic centerpiece', category: 'Decor', setId: 'set-2', status: 'staged', condition: 'good', cost: 95, purchaseDate: '2024-05-20' },
+  { id: 'ITM-0015', name: 'Linen table runner', category: 'Textile', setId: 'set-2', status: 'staged', condition: 'fair', cost: 45, purchaseDate: '2024-05-20' },
+  { id: 'ITM-0020', name: 'Queen upholstered bed', category: 'Bed', setId: 'set-3', status: 'available', condition: 'good', cost: 890, purchaseDate: '2024-08-10' },
+  { id: 'ITM-0021', name: 'Coastal nightstand', category: 'Table', setId: 'set-3', status: 'available', condition: 'good', cost: 240, purchaseDate: '2024-08-10' },
+  { id: 'ITM-0022', name: 'Coastal nightstand #2', category: 'Table', setId: 'set-3', status: 'available', condition: 'good', cost: 240, purchaseDate: '2024-08-10' },
+  { id: 'ITM-0023', name: 'Driftwood mirror', category: 'Mirror', setId: 'set-3', status: 'available', condition: 'good', cost: 310, purchaseDate: '2024-08-10' },
+  { id: 'ITM-0024', name: 'Blue throw pillows set', category: 'Textile', setId: 'set-3', status: 'available', condition: 'good', cost: 85, purchaseDate: '2024-08-10' },
+  { id: 'ITM-0025', name: 'Table lamp ceramic', category: 'Lamp', setId: 'set-3', status: 'available', condition: 'damaged', cost: 150, purchaseDate: '2024-08-10' },
+  { id: 'ITM-0030', name: 'Faux fiddle leaf fig', category: 'Plant', setId: null, status: 'staged', condition: 'good', cost: 120, purchaseDate: '2024-04-01' },
+  { id: 'ITM-0031', name: 'Gold geometric vase', category: 'Decor', setId: null, status: 'available', condition: 'good', cost: 65, purchaseDate: '2024-04-01' },
+  { id: 'ITM-0032', name: 'Throw blanket cream', category: 'Textile', setId: null, status: 'available', condition: 'good', cost: 70, purchaseDate: '2024-09-15' },
+  { id: 'ITM-0033', name: 'Bookshelf styling kit', category: 'Decor', setId: null, status: 'available', condition: 'good', cost: 140, purchaseDate: '2024-09-15' },
+];
+
+const INITIAL_JOBS = [
+  {
+    id: 'job-1', address: '4821 Elm Creek Dr', city: 'Pearland', state: 'TX', zip: '77584',
+    clientName: 'Morrison Realty', clientContact: '(281) 555-0142',
+    status: 'active', startDate: '2026-02-10', expectedEndDate: '2026-03-15', actualEndDate: null,
+    notes: 'Luxury listing, 4BR/3BA',
+    itemIds: ['ITM-0003', 'ITM-0004', 'ITM-0008', 'ITM-0010', 'ITM-0011', 'ITM-0012', 'ITM-0014', 'ITM-0015', 'ITM-0030']
+  },
+  {
+    id: 'job-2', address: '710 Bayou Bend Ln', city: 'Pearland', state: 'TX', zip: '77581',
+    clientName: 'Keller Williams', clientContact: '(832) 555-0198',
+    status: 'active', startDate: '2026-01-20', expectedEndDate: '2026-03-22', actualEndDate: null,
+    notes: 'Townhome staging',
+    itemIds: []
+  },
+  {
+    id: 'job-3', address: '1503 Shadow Creek Pkwy', city: 'Pearland', state: 'TX', zip: '77584',
+    clientName: 'RE/MAX Elite', clientContact: '(713) 555-0267',
+    status: 'completed', startDate: '2025-11-05', expectedEndDate: '2026-01-15', actualEndDate: '2026-01-12',
+    notes: 'Sold early',
+    itemIds: []
+  },
+];
+
+const INITIAL_MOVEMENTS = [
+  { id: 'm1', itemId: 'ITM-0003', jobId: 'job-1', from: 'available', to: 'staged', by: 'Sarah', date: '2026-02-10', notes: 'Loaded for Elm Creek' },
+  { id: 'm2', itemId: 'ITM-0010', jobId: 'job-1', from: 'available', to: 'staged', by: 'Sarah', date: '2026-02-10', notes: 'Loaded for Elm Creek' },
+  { id: 'm3', itemId: 'ITM-0030', jobId: 'job-1', from: 'available', to: 'staged', by: 'Mike', date: '2026-02-10', notes: '' },
+];
+
+// ─── App State Context ───────────────────────────────────
+const AppContext = createContext();
+
+function AppProvider({ children }) {
+  const [items, setItems] = useState(INITIAL_ITEMS);
+  const [sets, setSets] = useState(INITIAL_SETS);
+  const [jobs, setJobs] = useState(INITIAL_JOBS);
+  const [movements, setMovements] = useState(INITIAL_MOVEMENTS);
+  const [toast, setToast] = useState(null);
+
+  const showToast = useCallback((msg, color) => {
+    setToast({ msg, color });
+    setTimeout(() => setToast(null), 2500);
+  }, []);
+
+  const addItem = useCallback((item) => {
+    const id = 'ITM-' + String(items.length + 1).padStart(4, '0');
+    setItems(prev => [...prev, { ...item, id, status: 'available', condition: 'good' }]);
+    showToast('Item added', 'var(--green-text)');
+    return id;
+  }, [items.length, showToast]);
+
+  const updateItem = useCallback((id, updates) => {
+    setItems(prev => prev.map(i => i.id === id ? { ...i, ...updates } : i));
+  }, []);
+
+  const addSet = useCallback((set) => {
+    const id = 'set-' + (sets.length + 1);
+    setSets(prev => [...prev, { ...set, id }]);
+    showToast('Set created', 'var(--green-text)');
+    return id;
+  }, [sets.length, showToast]);
+
+  const addJob = useCallback((job) => {
+    const id = 'job-' + (jobs.length + 1);
+    setJobs(prev => [...prev, { ...job, id, status: 'planning', itemIds: [], actualEndDate: null }]);
+    showToast('Job created', 'var(--green-text)');
+    return id;
+  }, [jobs.length, showToast]);
+
+  const updateJob = useCallback((id, updates) => {
+    setJobs(prev => prev.map(j => j.id === id ? { ...j, ...updates } : j));
+    showToast('Job updated', 'var(--accent)');
+  }, [showToast]);
+
+  const assignItemsToJob = useCallback((jobId, itemIds) => {
+    setJobs(prev => prev.map(j => {
+      if (j.id !== jobId) return j;
+      const merged = [...new Set([...j.itemIds, ...itemIds])];
+      return { ...j, itemIds: merged, status: j.status === 'planning' ? 'active' : j.status };
+    }));
+    itemIds.forEach(iid => {
+      updateItem(iid, { status: 'staged' });
+      setMovements(prev => [...prev, {
+        id: 'm' + Date.now() + iid, itemId: iid, jobId, from: 'available', to: 'staged',
+        by: 'You', date: new Date().toISOString().slice(0, 10), notes: 'Scanned out'
+      }]);
+    });
+    showToast(`${itemIds.length} items assigned`, 'var(--green-text)');
+  }, [updateItem, showToast]);
+
+  const returnItem = useCallback((jobId, itemId, condition) => {
+    const newStatus = condition === 'dispose' ? 'disposed' : 'available';
+    const newCondition = condition === 'dispose' ? 'disposed' : condition;
+    updateItem(itemId, { status: newStatus, condition: newCondition });
+    setJobs(prev => prev.map(j => {
+      if (j.id !== jobId) return j;
+      return { ...j, itemIds: j.itemIds.filter(i => i !== itemId) };
+    }));
+    setMovements(prev => [...prev, {
+      id: 'm' + Date.now() + itemId, itemId, jobId, from: 'staged', to: newStatus,
+      by: 'You', date: new Date().toISOString().slice(0, 10), notes: `Returned - ${condition}`
+    }]);
+  }, [updateItem]);
+
+  const getItemsForJob = useCallback((jobId) => {
+    const job = jobs.find(j => j.id === jobId);
+    if (!job) return [];
+    return job.itemIds.map(iid => items.find(i => i.id === iid)).filter(Boolean);
+  }, [jobs, items]);
+
+  const getItemsForSet = useCallback((setId) => {
+    return items.filter(i => i.setId === setId && i.status !== 'disposed');
+  }, [items]);
+
+  const getMovementsForItem = useCallback((itemId) => {
+    return movements.filter(m => m.itemId === itemId).sort((a, b) => b.date.localeCompare(a.date));
+  }, [movements]);
+
+  const stats = {
+    totalItems: items.filter(i => i.status !== 'disposed').length,
+    available: items.filter(i => i.status === 'available').length,
+    staged: items.filter(i => i.status === 'staged').length,
+    flagged: items.filter(i => i.condition === 'damaged' || i.status === 'disposed').length,
+    activeJobs: jobs.filter(j => j.status === 'active').length,
+  };
+
+  return (
+    <AppContext.Provider value={{
+      items, sets, jobs, movements, stats, toast,
+      addItem, updateItem, addSet, addJob, updateJob,
+      assignItemsToJob, returnItem,
+      getItemsForJob, getItemsForSet, getMovementsForItem, showToast
+    }}>
+      {children}
+    </AppContext.Provider>
+  );
+}
+
+// ─── Navigation ──────────────────────────────────────────
+function useNav() {
+  const [stack, setStack] = useState([{ page: 'dashboard' }]);
+  const navigate = useCallback((page, params = {}) => {
+    setStack(prev => [...prev, { page, ...params }]);
+  }, []);
+  const goBack = useCallback(() => {
+    setStack(prev => prev.length > 1 ? prev.slice(0, -1) : prev);
+  }, []);
+  const resetTo = useCallback((page, params = {}) => {
+    setStack([{ page, ...params }]);
+  }, []);
+  const current = stack[stack.length - 1];
+  return { current, navigate, goBack, resetTo, canGoBack: stack.length > 1 };
+}
+
+// ─── Dashboard ───────────────────────────────────────────
+function Dashboard({ nav }) {
+  const { stats, jobs } = useContext(AppContext);
+  const activeJobs = jobs.filter(j => j.status === 'active')
+    .sort((a, b) => a.expectedEndDate.localeCompare(b.expectedEndDate));
+
+  return (
+    <div className="page-scroll animate-in">
+      <div className="page-header">
+        <div style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: 4 }}>Welcome back</div>
+        <div className="page-title">StageFlow</div>
+      </div>
+      <div style={{ padding: '0 18px' }}>
+        <div className="stat-grid">
+          <div className="stat-card" onClick={() => nav.navigate('inventory', { filter: 'available' })} style={{ cursor: 'pointer' }}>
+            <div className="stat-label">Available</div>
+            <div className="stat-value" style={{ color: 'var(--green-text)' }}>{stats.available}</div>
+            <div className="stat-sub">of {stats.totalItems} total</div>
+          </div>
+          <div className="stat-card" onClick={() => nav.navigate('inventory', { filter: 'staged' })} style={{ cursor: 'pointer' }}>
+            <div className="stat-label">Staged out</div>
+            <div className="stat-value" style={{ color: '#60a5fa' }}>{stats.staged}</div>
+            <div className="stat-sub">across {stats.activeJobs} houses</div>
+          </div>
+          <div className="stat-card" onClick={() => nav.navigate('jobs')} style={{ cursor: 'pointer' }}>
+            <div className="stat-label">Active jobs</div>
+            <div className="stat-value">{stats.activeJobs}</div>
+            <div className="stat-sub">{activeJobs.length} with dates</div>
+          </div>
+          <div className="stat-card" onClick={() => nav.navigate('inventory', { filter: 'flagged' })} style={{ cursor: 'pointer' }}>
+            <div className="stat-label">Needs attention</div>
+            <div className="stat-value" style={{ color: 'var(--amber-text)' }}>{stats.flagged}</div>
+            <div className="stat-sub">damaged or missing</div>
+          </div>
+        </div>
+
+        <div className="section-header">
+          <span className="section-title">Upcoming returns</span>
+          <button className="back-btn" onClick={() => nav.navigate('jobs')} style={{ marginBottom: 0 }}>View all</button>
+        </div>
+        <div className="list-card">
+          {activeJobs.length === 0 && (
+            <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>No active jobs</div>
+          )}
+          {activeJobs.map(job => (
+            <div key={job.id} className="list-row" onClick={() => nav.navigate('jobDetail', { jobId: job.id })}>
+              <div style={{ flex: 1 }}>
+                <div className="list-row-title">{job.address}</div>
+                <div className="list-row-sub">{job.itemIds.length} items · {job.clientName}</div>
+              </div>
+              <div className="list-row-right">
+                <span className={`badge ${new Date(job.expectedEndDate) < new Date(Date.now() + 7 * 86400000) ? 'badge-amber' : 'badge-blue'}`}>
+                  {formatDate(job.expectedEndDate)}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function formatDate(d) {
+  if (!d) return '—';
+  const dt = new Date(d + 'T00:00:00');
+  return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+// ─── Inventory ───────────────────────────────────────────
+function Inventory({ nav, initialFilter }) {
+  const { items, sets } = useContext(AppContext);
+  const [filter, setFilter] = useState(initialFilter || 'all');
+  const [search, setSearch] = useState('');
+
+  const liveItems = items.filter(i => i.status !== 'disposed');
+  const filtered = liveItems.filter(i => {
+    if (filter === 'available' && i.status !== 'available') return false;
+    if (filter === 'staged' && i.status !== 'staged') return false;
+    if (filter === 'flagged' && i.condition !== 'damaged') return false;
+    if (search) {
+      const q = search.toLowerCase();
+      return i.name.toLowerCase().includes(q) || i.id.toLowerCase().includes(q) || (i.category || '').toLowerCase().includes(q);
+    }
+    return true;
+  });
+
+  const getSetName = (setId) => {
+    if (!setId) return null;
+    const s = sets.find(s => s.id === setId);
+    return s ? s.name : null;
+  };
+
+  return (
+    <div className="page-scroll animate-in">
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <div className="page-title">Inventory</div>
+          <div className="page-subtitle">{liveItems.length} items total</div>
+        </div>
+        <button className="btn btn-primary" style={{ padding: '8px 14px', fontSize: 12 }} onClick={() => nav.navigate('addItem')}>
+          {Icons.plus} Add
+        </button>
+      </div>
+      <div style={{ padding: '0 18px' }}>
+        <div style={{ position: 'relative', marginBottom: 10 }}>
+          <input className="input-field" placeholder="Search items..." value={search} onChange={e => setSearch(e.target.value)}
+            style={{ paddingLeft: 36 }} />
+          <div style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', width: 18, height: 18, color: 'var(--text-tertiary)' }}>{Icons.search}</div>
+        </div>
+        <div className="chip-row">
+          {[['all', `All (${liveItems.length})`], ['available', `Available (${liveItems.filter(i=>i.status==='available').length})`],
+            ['staged', `Staged (${liveItems.filter(i=>i.status==='staged').length})`],
+            ['flagged', `Flagged (${liveItems.filter(i=>i.condition==='damaged').length})`]
+          ].map(([key, label]) => (
+            <button key={key} className={`chip ${filter === key ? 'active' : ''}`} onClick={() => setFilter(key)}>{label}</button>
+          ))}
+        </div>
+        <div className="list-card">
+          {filtered.length === 0 && (
+            <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>No items found</div>
+          )}
+          {filtered.map(item => (
+            <div key={item.id} className="list-row" onClick={() => nav.navigate('itemDetail', { itemId: item.id })}>
+              <div className="item-thumb">{getEmoji(item.category)}</div>
+              <div className="list-row-content">
+                <div className="list-row-title">{item.name}</div>
+                <div className="list-row-sub">
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, opacity: 0.7 }}>{item.id}</span>
+                  {getSetName(item.setId) && <span> · {getSetName(item.setId)}</span>}
+                </div>
+              </div>
+              <div className="list-row-right">
+                <span className={`badge ${item.status === 'available' ? 'badge-green' : item.condition === 'damaged' ? 'badge-amber' : 'badge-blue'}`}>
+                  {item.condition === 'damaged' ? 'Damaged' : item.status === 'available' ? 'Available' : 'Staged'}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Item Detail ─────────────────────────────────────────
+function ItemDetail({ nav, itemId }) {
+  const { items, sets, jobs, getMovementsForItem } = useContext(AppContext);
+  const item = items.find(i => i.id === itemId);
+  if (!item) return <div className="page-scroll"><div style={{padding:40,textAlign:'center',color:'var(--text-tertiary)'}}>Item not found</div></div>;
+
+  const set = sets.find(s => s.id === item.setId);
+  const mvmts = getMovementsForItem(itemId);
+  const currentJob = item.status === 'staged' ? jobs.find(j => j.itemIds.includes(itemId)) : null;
+
+  return (
+    <div className="page-scroll animate-in">
+      <div className="page-header">
+        <button className="back-btn" onClick={nav.goBack}>{Icons.back} Back</button>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+          <div className="item-thumb" style={{ width: 56, height: 56, fontSize: 28 }}>{getEmoji(item.category)}</div>
+          <div>
+            <div className="page-title" style={{ fontSize: 18 }}>{item.name}</div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>{item.id}</div>
+            <div style={{ marginTop: 6, display: 'flex', gap: 6 }}>
+              <span className={`badge ${item.status === 'available' ? 'badge-green' : item.condition === 'damaged' ? 'badge-amber' : 'badge-blue'}`}>
+                {item.condition === 'damaged' ? 'Damaged' : item.status}
+              </span>
+              {item.condition === 'fair' && <span className="badge badge-amber">Fair condition</span>}
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style={{ padding: '0 18px' }}>
+        <div className="card">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div><div className="stat-label">Category</div><div style={{ fontSize: 13.5, fontWeight: 500 }}>{item.category}</div></div>
+            <div><div className="stat-label">Set</div><div style={{ fontSize: 13.5, fontWeight: 500 }}>{set ? set.name : 'None'}</div></div>
+            <div><div className="stat-label">Cost</div><div style={{ fontSize: 13.5, fontWeight: 500 }}>${item.cost}</div></div>
+            <div><div className="stat-label">Purchased</div><div style={{ fontSize: 13.5, fontWeight: 500 }}>{formatDate(item.purchaseDate)}</div></div>
+          </div>
+        </div>
+
+        {currentJob && (
+          <div className="card" style={{ borderColor: 'rgba(59,130,246,0.3)' }}>
+            <div className="stat-label">Currently staged at</div>
+            <div style={{ fontSize: 14, fontWeight: 500, marginTop: 4, cursor: 'pointer', color: '#60a5fa' }}
+              onClick={() => nav.navigate('jobDetail', { jobId: currentJob.id })}>
+              {currentJob.address} →
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>Since {formatDate(currentJob.startDate)} · {currentJob.clientName}</div>
+          </div>
+        )}
+
+        <div className="section-header" style={{ marginTop: 6 }}>
+          <span className="section-title">Movement history</span>
+        </div>
+        {mvmts.length === 0 ? (
+          <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>No movements recorded yet</div>
+        ) : (
+          <div style={{ paddingLeft: 4, marginBottom: 20 }}>
+            {mvmts.map((m, i) => (
+              <div key={m.id} className="timeline-item">
+                <div>
+                  <div className="timeline-dot" style={{ background: m.to === 'staged' ? 'var(--accent)' : m.to === 'available' ? 'var(--green)' : 'var(--red)' }} />
+                  {i < mvmts.length - 1 && <div className="timeline-line" />}
+                </div>
+                <div style={{ paddingBottom: 4 }}>
+                  <div style={{ fontSize: 13, fontWeight: 500 }}>{m.from} → {m.to}</div>
+                  <div style={{ fontSize: 11.5, color: 'var(--text-tertiary)', marginTop: 1 }}>
+                    {formatDate(m.date)} · by {m.by}
+                  </div>
+                  {m.notes && <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 2 }}>{m.notes}</div>}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Add Item ────────────────────────────────────────────
+function AddItem({ nav }) {
+  const { sets, addItem } = useContext(AppContext);
+  const [form, setForm] = useState({ name: '', category: 'Sofa', setId: '', cost: '', purchaseDate: new Date().toISOString().slice(0,10), notes: '' });
+
+  const handleSubmit = () => {
+    if (!form.name.trim()) return;
+    addItem({ ...form, cost: parseFloat(form.cost) || 0, setId: form.setId || null });
+    nav.goBack();
+  };
+
+  return (
+    <div className="page-scroll animate-in">
+      <div className="page-header">
+        <button className="back-btn" onClick={nav.goBack}>{Icons.back} Cancel</button>
+        <div className="page-title">Add item</div>
+      </div>
+      <div style={{ padding: '0 18px' }}>
+        <div style={{ marginBottom: 16 }}>
+          <label className="form-label">Name</label>
+          <input className="input-field" placeholder="e.g. Modern gray sofa" value={form.name} onChange={e => setForm(f=>({...f, name: e.target.value}))} />
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+          <div>
+            <label className="form-label">Category</label>
+            <select className="input-field" value={form.category} onChange={e => setForm(f=>({...f, category: e.target.value}))}>
+              {['Sofa','Chair','Table','Lamp','Bed','Rug','Art','Decor','Plant','Textile','Mirror','Shelf','Other'].map(c =>
+                <option key={c} value={c}>{c}</option>
+              )}
+            </select>
+          </div>
+          <div>
+            <label className="form-label">Set (optional)</label>
+            <select className="input-field" value={form.setId} onChange={e => setForm(f=>({...f, setId: e.target.value}))}>
+              <option value="">No set</option>
+              {sets.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+          <div>
+            <label className="form-label">Cost ($)</label>
+            <input className="input-field" type="number" placeholder="0.00" value={form.cost} onChange={e => setForm(f=>({...f, cost: e.target.value}))} />
+          </div>
+          <div>
+            <label className="form-label">Purchase date</label>
+            <input className="input-field" type="date" value={form.purchaseDate} onChange={e => setForm(f=>({...f, purchaseDate: e.target.value}))} />
+          </div>
+        </div>
+        <div style={{ marginBottom: 20 }}>
+          <label className="form-label">Notes</label>
+          <textarea className="input-field" placeholder="Optional notes..." value={form.notes} onChange={e => setForm(f=>({...f, notes: e.target.value}))} />
+        </div>
+        <button className="btn btn-primary btn-full" onClick={handleSubmit} style={{ marginBottom: 20 }}>Add item</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Sets ────────────────────────────────────────────────
+function Sets({ nav }) {
+  const { sets, getItemsForSet } = useContext(AppContext);
+  const [showCreate, setShowCreate] = useState(false);
+
+  return (
+    <div className="page-scroll animate-in">
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <div className="page-title">Sets</div>
+          <div className="page-subtitle">{sets.length} furniture sets</div>
+        </div>
+        <button className="btn btn-primary" style={{ padding: '8px 14px', fontSize: 12 }} onClick={() => setShowCreate(true)}>
+          {Icons.plus} New set
+        </button>
+      </div>
+      <div style={{ padding: '0 18px' }}>
+        {sets.map(set => {
+          const setItems = getItemsForSet(set.id);
+          const available = setItems.filter(i => i.status === 'available').length;
+          return (
+            <div key={set.id} className="card" style={{ cursor: 'pointer' }} onClick={() => nav.navigate('setDetail', { setId: set.id })}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 500 }}>{set.name}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>{set.description}</div>
+                </div>
+                <div style={{ width: 16, height: 16, color: 'var(--text-tertiary)' }}>{Icons.back}</div>
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                <span className="badge badge-gray">{setItems.length} items</span>
+                <span className={`badge ${available === setItems.length ? 'badge-green' : available > 0 ? 'badge-amber' : 'badge-red'}`}>
+                  {available} available
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {showCreate && <CreateSetModal onClose={() => setShowCreate(false)} />}
+    </div>
+  );
+}
+
+function CreateSetModal({ onClose }) {
+  const { addSet } = useContext(AppContext);
+  const [name, setName] = useState('');
+  const [desc, setDesc] = useState('');
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-sheet" onClick={e => e.stopPropagation()}>
+        <div className="modal-handle" />
+        <div style={{ fontSize: 17, fontWeight: 500, marginBottom: 16 }}>Create new set</div>
+        <div style={{ marginBottom: 14 }}>
+          <label className="form-label">Set name</label>
+          <input className="input-field" placeholder="e.g. Boho Master Bedroom" value={name} onChange={e => setName(e.target.value)} />
+        </div>
+        <div style={{ marginBottom: 20 }}>
+          <label className="form-label">Description</label>
+          <input className="input-field" placeholder="Short description..." value={desc} onChange={e => setDesc(e.target.value)} />
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn-outline" style={{ flex: 1 }} onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => { if (name.trim()) { addSet({ name, description: desc }); onClose(); } }}>Create</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SetDetail({ nav, setId }) {
+  const { sets, getItemsForSet } = useContext(AppContext);
+  const set = sets.find(s => s.id === setId);
+  if (!set) return null;
+  const setItems = getItemsForSet(setId);
+
+  return (
+    <div className="page-scroll animate-in">
+      <div className="page-header">
+        <button className="back-btn" onClick={nav.goBack}>{Icons.back} Sets</button>
+        <div className="page-title" style={{ fontSize: 18 }}>{set.name}</div>
+        <div className="page-subtitle">{set.description}</div>
+      </div>
+      <div style={{ padding: '0 18px' }}>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+          <span className="badge badge-gray">{setItems.length} items</span>
+          <span className="badge badge-green">{setItems.filter(i => i.status === 'available').length} available</span>
+          <span className="badge badge-blue">{setItems.filter(i => i.status === 'staged').length} staged</span>
+        </div>
+        <div className="list-card">
+          {setItems.map(item => (
+            <div key={item.id} className="list-row" onClick={() => nav.navigate('itemDetail', { itemId: item.id })}>
+              <div className="item-thumb">{getEmoji(item.category)}</div>
+              <div className="list-row-content">
+                <div className="list-row-title">{item.name}</div>
+                <div className="list-row-sub">{item.id} · {item.category}</div>
+              </div>
+              <span className={`badge ${item.status === 'available' ? 'badge-green' : 'badge-blue'}`}>{item.status}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Jobs ────────────────────────────────────────────────
+function Jobs({ nav }) {
+  const { jobs } = useContext(AppContext);
+  const [tab, setTab] = useState('active');
+  const filtered = jobs.filter(j => {
+    if (tab === 'active') return j.status === 'active' || j.status === 'planning';
+    if (tab === 'completed') return j.status === 'completed' || j.status === 'cancelled';
+    return true;
+  });
+
+  return (
+    <div className="page-scroll animate-in">
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <div className="page-title">Jobs</div>
+          <div className="page-subtitle">{jobs.length} total</div>
+        </div>
+        <button className="btn btn-primary" style={{ padding: '8px 14px', fontSize: 12 }} onClick={() => nav.navigate('createJob')}>
+          {Icons.plus} New job
+        </button>
+      </div>
+      <div style={{ padding: '0 18px' }}>
+        <div className="chip-row">
+          {[['active', 'Active'], ['completed', 'Completed']].map(([key, label]) => (
+            <button key={key} className={`chip ${tab === key ? 'active' : ''}`} onClick={() => setTab(key)}>{label}</button>
+          ))}
+        </div>
+        {filtered.length === 0 && (
+          <div style={{ padding: 30, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>No {tab} jobs</div>
+        )}
+        {filtered.map(job => (
+          <div key={job.id} className="card" style={{ cursor: 'pointer' }} onClick={() => nav.navigate('jobDetail', { jobId: job.id })}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 500 }}>{job.address}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>
+                  {job.city}, {job.state} · {job.clientName}
+                </div>
+              </div>
+              <span className={`badge ${job.status === 'active' ? 'badge-green' : job.status === 'planning' ? 'badge-blue' : 'badge-gray'}`}>
+                {job.status}
+              </span>
+            </div>
+            <div style={{ display: 'flex', gap: 12, marginTop: 10, fontSize: 12, color: 'var(--text-secondary)' }}>
+              <span>{job.itemIds.length} items</span>
+              <span>·</span>
+              <span>{formatDate(job.startDate)} — {formatDate(job.expectedEndDate)}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Job Detail ──────────────────────────────────────────
+function JobDetail({ nav, jobId }) {
+  const { jobs, sets, getItemsForJob, items } = useContext(AppContext);
+  const [showEdit, setShowEdit] = useState(false);
+  const [showAssign, setShowAssign] = useState(false);
+  const job = jobs.find(j => j.id === jobId);
+  if (!job) return null;
+
+  const jobItems = getItemsForJob(jobId);
+  const bySet = {};
+  const standalone = [];
+  jobItems.forEach(item => {
+    if (item.setId) {
+      if (!bySet[item.setId]) bySet[item.setId] = [];
+      bySet[item.setId].push(item);
+    } else {
+      standalone.push(item);
+    }
+  });
+
+  return (
+    <div className="page-scroll animate-in">
+      <div className="page-header">
+        <button className="back-btn" onClick={nav.goBack}>{Icons.back} Jobs</button>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div>
+            <div className="page-title" style={{ fontSize: 18 }}>{job.address}</div>
+            <div className="page-subtitle">{job.city}, {job.state} {job.zip}</div>
+          </div>
+          <span className={`badge ${job.status === 'active' ? 'badge-green' : job.status === 'planning' ? 'badge-blue' : 'badge-gray'}`}>
+            {job.status}
+          </span>
+        </div>
+      </div>
+      <div style={{ padding: '0 18px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
+          <div className="stat-card" style={{ padding: 10 }}>
+            <div className="stat-label">Client</div>
+            <div style={{ fontSize: 13, fontWeight: 500, marginTop: 2 }}>{job.clientName}</div>
+          </div>
+          <div className="stat-card" style={{ padding: 10 }}>
+            <div className="stat-label">Contact</div>
+            <div style={{ fontSize: 13, fontWeight: 500, marginTop: 2 }}>{job.clientContact}</div>
+          </div>
+          <div className="stat-card" style={{ padding: 10 }}>
+            <div className="stat-label">Started</div>
+            <div style={{ fontSize: 13, fontWeight: 500, marginTop: 2 }}>{formatDate(job.startDate)}</div>
+          </div>
+          <div className="stat-card" style={{ padding: 10 }}>
+            <div className="stat-label">Expected close</div>
+            <div style={{ fontSize: 13, fontWeight: 500, marginTop: 2, color: 'var(--amber-text)' }}>{formatDate(job.expectedEndDate)}</div>
+          </div>
+        </div>
+
+        {job.status === 'active' && (
+          <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+            <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => nav.navigate('scanReturn', { jobId })}>
+              {Icons.scan} Scan return
+            </button>
+            <button className="btn btn-outline" onClick={() => setShowEdit(true)}>{Icons.edit}</button>
+          </div>
+        )}
+        {(job.status === 'active' || job.status === 'planning') && (
+          <button className="btn btn-outline btn-full" style={{ marginBottom: 14 }} onClick={() => setShowAssign(true)}>
+            {Icons.plus} Assign items
+          </button>
+        )}
+
+        <div className="section-header">
+          <span className="section-title">Items on this job</span>
+          <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{jobItems.length} pieces</span>
+        </div>
+
+        {Object.entries(bySet).map(([setId, setItems]) => {
+          const set = sets.find(s => s.id === setId);
+          const totalInSet = items.filter(i => i.setId === setId && i.status !== 'disposed').length;
+          return (
+            <div key={setId} style={{ marginBottom: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <span className="badge badge-purple">Set</span>
+                <span style={{ fontSize: 13, fontWeight: 500 }}>{set?.name}</span>
+                <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>· {setItems.length} of {totalInSet}</span>
+              </div>
+              <div className="list-card">
+                {setItems.map(item => (
+                  <div key={item.id} className="list-row" onClick={() => nav.navigate('itemDetail', { itemId: item.id })}>
+                    <div className="item-thumb" style={{ width: 32, height: 32, fontSize: 14 }}>{getEmoji(item.category)}</div>
+                    <div className="list-row-content">
+                      <div className="list-row-title" style={{ fontSize: 13 }}>{item.name}</div>
+                    </div>
+                    <span className="badge badge-green" style={{ fontSize: 10 }}>Staged</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+
+        {standalone.length > 0 && (
+          <div style={{ marginBottom: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <span className="badge badge-gray">Individual</span>
+              <span style={{ fontSize: 13, fontWeight: 500 }}>{standalone.length} pieces</span>
+            </div>
+            <div className="list-card">
+              {standalone.map(item => (
+                <div key={item.id} className="list-row" onClick={() => nav.navigate('itemDetail', { itemId: item.id })}>
+                  <div className="item-thumb" style={{ width: 32, height: 32, fontSize: 14 }}>{getEmoji(item.category)}</div>
+                  <div className="list-row-content">
+                    <div className="list-row-title" style={{ fontSize: 13 }}>{item.name}</div>
+                  </div>
+                  <span className="badge badge-green" style={{ fontSize: 10 }}>Staged</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {jobItems.length === 0 && (
+          <div style={{ padding: 30, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
+            No items assigned yet. Tap "Assign items" to get started.
+          </div>
+        )}
+      </div>
+      {showEdit && <EditJobModal job={job} onClose={() => setShowEdit(false)} />}
+      {showAssign && <AssignItemsModal jobId={jobId} onClose={() => setShowAssign(false)} nav={nav} />}
+    </div>
+  );
+}
+
+// ─── Edit Job Modal ──────────────────────────────────────
+function EditJobModal({ job, onClose }) {
+  const { updateJob } = useContext(AppContext);
+  const [form, setForm] = useState({
+    address: job.address, city: job.city, state: job.state, zip: job.zip,
+    clientName: job.clientName, clientContact: job.clientContact,
+    expectedEndDate: job.expectedEndDate, notes: job.notes || '',
+    status: job.status,
+  });
+  const handleSave = () => {
+    updateJob(job.id, form);
+    onClose();
+  };
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-sheet" onClick={e => e.stopPropagation()}>
+        <div className="modal-handle" />
+        <div style={{ fontSize: 17, fontWeight: 500, marginBottom: 16 }}>Edit job</div>
+        <div style={{ marginBottom: 14 }}>
+          <label className="form-label">Address</label>
+          <input className="input-field" value={form.address} onChange={e => setForm(f=>({...f, address: e.target.value}))} />
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 8, marginBottom: 14 }}>
+          <div><label className="form-label">City</label><input className="input-field" value={form.city} onChange={e => setForm(f=>({...f, city: e.target.value}))} /></div>
+          <div><label className="form-label">State</label><input className="input-field" value={form.state} onChange={e => setForm(f=>({...f, state: e.target.value}))} /></div>
+          <div><label className="form-label">Zip</label><input className="input-field" value={form.zip} onChange={e => setForm(f=>({...f, zip: e.target.value}))} /></div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
+          <div><label className="form-label">Client</label><input className="input-field" value={form.clientName} onChange={e => setForm(f=>({...f, clientName: e.target.value}))} /></div>
+          <div><label className="form-label">Contact</label><input className="input-field" value={form.clientContact} onChange={e => setForm(f=>({...f, clientContact: e.target.value}))} /></div>
+        </div>
+        <div style={{ marginBottom: 14 }}>
+          <label className="form-label">Expected close date</label>
+          <input className="input-field" type="date" value={form.expectedEndDate} onChange={e => setForm(f=>({...f, expectedEndDate: e.target.value}))} />
+        </div>
+        <div style={{ marginBottom: 14 }}>
+          <label className="form-label">Status</label>
+          <select className="input-field" value={form.status} onChange={e => setForm(f=>({...f, status: e.target.value}))}>
+            <option value="planning">Planning</option>
+            <option value="active">Active</option>
+            <option value="completed">Completed</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+        <div style={{ marginBottom: 20 }}>
+          <label className="form-label">Notes</label>
+          <textarea className="input-field" value={form.notes} onChange={e => setForm(f=>({...f, notes: e.target.value}))} />
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn-outline" style={{ flex: 1 }} onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleSave}>Save changes</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Assign Items Modal ──────────────────────────────────
+function AssignItemsModal({ jobId, onClose }) {
+  const { items, sets, getItemsForSet, assignItemsToJob } = useContext(AppContext);
+  const [selected, setSelected] = useState(new Set());
+  const [mode, setMode] = useState('sets');
+
+  const availableItems = items.filter(i => i.status === 'available');
+
+  const toggleItem = (id) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSet = (setId) => {
+    const setItems = getItemsForSet(setId).filter(i => i.status === 'available');
+    const allSelected = setItems.every(i => selected.has(i.id));
+    setSelected(prev => {
+      const next = new Set(prev);
+      setItems.forEach(i => { allSelected ? next.delete(i.id) : next.add(i.id); });
+      return next;
+    });
+  };
+
+  const handleAssign = () => {
+    if (selected.size === 0) return;
+    assignItemsToJob(jobId, [...selected]);
+    onClose();
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-sheet" onClick={e => e.stopPropagation()} style={{ maxHeight: '90vh' }}>
+        <div className="modal-handle" />
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <div style={{ fontSize: 17, fontWeight: 500 }}>Assign items</div>
+          <span className="badge badge-blue">{selected.size} selected</span>
+        </div>
+        <div className="chip-row" style={{ marginBottom: 10 }}>
+          <button className={`chip ${mode === 'sets' ? 'active' : ''}`} onClick={() => setMode('sets')}>By set</button>
+          <button className={`chip ${mode === 'items' ? 'active' : ''}`} onClick={() => setMode('items')}>Individual</button>
+        </div>
+
+        {mode === 'sets' ? (
+          <div>
+            {sets.map(set => {
+              const avail = getItemsForSet(set.id).filter(i => i.status === 'available');
+              if (avail.length === 0) return null;
+              const allSel = avail.every(i => selected.has(i.id));
+              const someSel = avail.some(i => selected.has(i.id));
+              return (
+                <div key={set.id} style={{ marginBottom: 10 }}>
+                  <div className="card" style={{ cursor: 'pointer', borderColor: someSel ? 'rgba(59,130,246,0.4)' : undefined }}
+                    onClick={() => toggleSet(set.id)}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ width: 22, height: 22, borderRadius: 4, border: `2px solid ${allSel ? 'var(--accent)' : 'var(--text-tertiary)'}`,
+                        background: allSel ? 'var(--accent)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        {allSel && <div style={{ width: 14, height: 14, color: 'white' }}>{Icons.check}</div>}
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 500 }}>{set.name}</div>
+                        <div style={{ fontSize: 11.5, color: 'var(--text-tertiary)' }}>{avail.length} items available</div>
+                      </div>
+                    </div>
+                  </div>
+                  {someSel && (
+                    <div style={{ paddingLeft: 14 }}>
+                      {avail.map(item => (
+                        <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', cursor: 'pointer', fontSize: 12.5 }}
+                          onClick={(e) => { e.stopPropagation(); toggleItem(item.id); }}>
+                          <div style={{ width: 18, height: 18, borderRadius: 3, border: `1.5px solid ${selected.has(item.id) ? 'var(--accent)' : 'var(--text-tertiary)'}`,
+                            background: selected.has(item.id) ? 'var(--accent)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            {selected.has(item.id) && <div style={{ width: 12, height: 12, color: 'white' }}>{Icons.check}</div>}
+                          </div>
+                          <span style={{ color: selected.has(item.id) ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{item.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="list-card" style={{ maxHeight: 350, overflowY: 'auto' }}>
+            {availableItems.map(item => (
+              <div key={item.id} className="list-row" onClick={() => toggleItem(item.id)}>
+                <div style={{ width: 22, height: 22, borderRadius: 4, border: `2px solid ${selected.has(item.id) ? 'var(--accent)' : 'var(--text-tertiary)'}`,
+                  background: selected.has(item.id) ? 'var(--accent)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  {selected.has(item.id) && <div style={{ width: 14, height: 14, color: 'white' }}>{Icons.check}</div>}
+                </div>
+                <div className="item-thumb" style={{ width: 32, height: 32, fontSize: 14 }}>{getEmoji(item.category)}</div>
+                <div className="list-row-content">
+                  <div className="list-row-title" style={{ fontSize: 13 }}>{item.name}</div>
+                  <div className="list-row-sub">{item.id}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+          <button className="btn btn-outline" style={{ flex: 1 }} onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleAssign} disabled={selected.size === 0}>
+            Assign {selected.size} items
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Create Job ──────────────────────────────────────────
+function CreateJob({ nav }) {
+  const { addJob } = useContext(AppContext);
+  const [form, setForm] = useState({
+    address: '', city: 'Pearland', state: 'TX', zip: '',
+    clientName: '', clientContact: '',
+    startDate: new Date().toISOString().slice(0, 10), expectedEndDate: '', notes: ''
+  });
+  const handleSubmit = () => {
+    if (!form.address.trim() || !form.clientName.trim()) return;
+    const id = addJob(form);
+    nav.goBack();
+  };
+  return (
+    <div className="page-scroll animate-in">
+      <div className="page-header">
+        <button className="back-btn" onClick={nav.goBack}>{Icons.back} Cancel</button>
+        <div className="page-title">Create job</div>
+      </div>
+      <div style={{ padding: '0 18px' }}>
+        <div style={{ marginBottom: 14 }}>
+          <label className="form-label">Street address</label>
+          <input className="input-field" placeholder="e.g. 4821 Elm Creek Dr" value={form.address} onChange={e => setForm(f=>({...f, address: e.target.value}))} />
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 8, marginBottom: 14 }}>
+          <div><label className="form-label">City</label><input className="input-field" value={form.city} onChange={e => setForm(f=>({...f, city: e.target.value}))} /></div>
+          <div><label className="form-label">State</label><input className="input-field" value={form.state} onChange={e => setForm(f=>({...f, state: e.target.value}))} /></div>
+          <div><label className="form-label">Zip</label><input className="input-field" placeholder="77584" value={form.zip} onChange={e => setForm(f=>({...f, zip: e.target.value}))} /></div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
+          <div><label className="form-label">Client / Realtor</label><input className="input-field" placeholder="Company name" value={form.clientName} onChange={e => setForm(f=>({...f, clientName: e.target.value}))} /></div>
+          <div><label className="form-label">Contact</label><input className="input-field" placeholder="Phone or email" value={form.clientContact} onChange={e => setForm(f=>({...f, clientContact: e.target.value}))} /></div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
+          <div><label className="form-label">Start date</label><input className="input-field" type="date" value={form.startDate} onChange={e => setForm(f=>({...f, startDate: e.target.value}))} /></div>
+          <div><label className="form-label">Expected close</label><input className="input-field" type="date" value={form.expectedEndDate} onChange={e => setForm(f=>({...f, expectedEndDate: e.target.value}))} /></div>
+        </div>
+        <div style={{ marginBottom: 20 }}>
+          <label className="form-label">Notes</label>
+          <textarea className="input-field" placeholder="Listing details, special instructions..." value={form.notes} onChange={e => setForm(f=>({...f, notes: e.target.value}))} />
+        </div>
+        <button className="btn btn-primary btn-full" onClick={handleSubmit} style={{ marginBottom: 20 }}>Create job</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Scanner ─────────────────────────────────────────────
+function Scanner({ nav }) {
+  const { jobs } = useContext(AppContext);
+  const activeJobs = jobs.filter(j => j.status === 'active');
+
+  return (
+    <div className="page-scroll animate-in">
+      <div className="page-header">
+        <div className="page-title">Scanner</div>
+        <div className="page-subtitle">Choose a scan mode</div>
+      </div>
+      <div style={{ padding: '0 18px' }}>
+        <div className="card" style={{ cursor: 'pointer', borderColor: 'rgba(59,130,246,0.3)' }} onClick={() => nav.navigate('quickScan')}>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            <div style={{ width: 44, height: 44, borderRadius: 10, background: 'var(--accent-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: 22, height: 22, color: '#60a5fa' }}>{Icons.scan}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 500 }}>Quick scan</div>
+              <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>Look up any item instantly</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="section-header" style={{ marginTop: 6 }}>
+          <span className="section-title">Scan for a job</span>
+        </div>
+
+        {activeJobs.map(job => (
+          <div key={job.id} className="card" style={{ cursor: 'pointer' }}>
+            <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 4 }}>{job.address}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 10 }}>{job.itemIds.length} items · {job.clientName}</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="btn btn-outline" style={{ flex: 1, fontSize: 12, padding: 8 }}
+                onClick={() => nav.navigate('scanOut', { jobId: job.id })}>
+                {Icons.truck} Scan out
+              </button>
+              <button className="btn btn-primary" style={{ flex: 1, fontSize: 12, padding: 8 }}
+                onClick={() => nav.navigate('scanReturn', { jobId: job.id })}>
+                {Icons.scan} Scan return
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Quick Scan ──────────────────────────────────────────
+function QuickScan({ nav }) {
+  const { items, sets, jobs } = useContext(AppContext);
+  const [input, setInput] = useState('');
+  const [found, setFound] = useState(null);
+
+  const handleScan = () => {
+    const q = input.trim().toUpperCase();
+    const item = items.find(i => i.id.toUpperCase() === q || i.id.toUpperCase().replace(/-/g, '') === q.replace(/-/g, ''));
+    setFound(item || 'not_found');
+  };
+
+  return (
+    <div className="page-scroll animate-in">
+      <div className="page-header">
+        <button className="back-btn" onClick={nav.goBack}>{Icons.back} Scanner</button>
+        <div className="page-title">Quick scan</div>
+      </div>
+      <div className="viewfinder">
+        <div className="viewfinder-frame">
+          <div className="viewfinder-line" />
+        </div>
+        <div className="viewfinder-hint">Camera scan coming soon — use manual entry below</div>
+      </div>
+      <div style={{ padding: '0 18px' }}>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+          <input className="input-field" placeholder="Enter item ID (e.g. ITM-0001)" value={input}
+            onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleScan()}
+            style={{ fontFamily: 'var(--font-mono)', flex: 1 }} />
+          <button className="btn btn-primary" onClick={handleScan}>Look up</button>
+        </div>
+
+        {found === 'not_found' && (
+          <div className="card" style={{ borderColor: 'rgba(239,68,68,0.3)', textAlign: 'center' }}>
+            <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--red-text)' }}>Item not found</div>
+            <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4 }}>Check the ID and try again</div>
+          </div>
+        )}
+
+        {found && found !== 'not_found' && (
+          <div className="card scan-flash" style={{ cursor: 'pointer' }} onClick={() => nav.navigate('itemDetail', { itemId: found.id })}>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+              <div className="item-thumb" style={{ width: 48, height: 48, fontSize: 24 }}>{getEmoji(found.category)}</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 15, fontWeight: 500 }}>{found.name}</div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>{found.id}</div>
+                <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                  <span className={`badge ${found.status === 'available' ? 'badge-green' : 'badge-blue'}`}>{found.status}</span>
+                  {found.setId && <span className="badge badge-purple">{sets.find(s=>s.id===found.setId)?.name}</span>}
+                </div>
+              </div>
+            </div>
+            {found.status === 'staged' && (() => {
+              const job = jobs.find(j => j.itemIds.includes(found.id));
+              return job ? (
+                <div style={{ marginTop: 10, padding: '8px 10px', background: 'var(--bg-surface)', borderRadius: 'var(--radius-sm)', fontSize: 12, color: 'var(--text-secondary)' }}>
+                  Currently at: <span style={{ fontWeight: 500, color: '#60a5fa' }}>{job.address}</span> · {job.clientName}
+                </div>
+              ) : null;
+            })()}
+            <div style={{ fontSize: 11.5, color: 'var(--accent)', marginTop: 8, textAlign: 'center' }}>Tap for full details →</div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Scan Return ─────────────────────────────────────────
+function ScanReturn({ nav, jobId }) {
+  const { jobs, getItemsForJob, returnItem, showToast, updateJob } = useContext(AppContext);
+  const job = jobs.find(j => j.id === jobId);
+  const [input, setInput] = useState('');
+  const [returned, setReturned] = useState({}); // { itemId: condition }
+  const [lastScanned, setLastScanned] = useState(null);
+  const [pendingCondition, setPendingCondition] = useState(null);
+
+  if (!job) return null;
+  const jobItems = getItemsForJob(jobId);
+  const totalExpected = jobItems.length + Object.keys(returned).length;
+  const returnedCount = Object.keys(returned).length;
+
+  const handleScan = () => {
+    const q = input.trim().toUpperCase();
+    const item = jobItems.find(i => i.id.toUpperCase() === q || i.id.toUpperCase().replace(/-/g, '') === q.replace(/-/g, ''));
+    if (!item) {
+      showToast('Item not on this job', 'var(--red-text)');
+      setInput('');
+      return;
+    }
+    setLastScanned(item);
+    setPendingCondition(null);
+    setInput('');
+  };
+
+  const confirmCondition = (condition) => {
+    if (!lastScanned) return;
+    setPendingCondition(condition);
+    returnItem(jobId, lastScanned.id, condition);
+    setReturned(prev => ({ ...prev, [lastScanned.id]: condition }));
+    showToast(`${lastScanned.name} returned`, 'var(--green-text)');
+
+    // Check if all items returned
+    const newReturnedCount = Object.keys(returned).length + 1;
+    if (newReturnedCount >= totalExpected) {
+      updateJob(jobId, { status: 'completed', actualEndDate: new Date().toISOString().slice(0, 10) });
+    }
+    setTimeout(() => { setLastScanned(null); setPendingCondition(null); }, 800);
+  };
+
+  return (
+    <div className="page-scroll animate-in">
+      <div className="page-header">
+        <button className="back-btn" onClick={nav.goBack}>{Icons.back} Back</button>
+        <div className="page-title">Scan return</div>
+      </div>
+      <div style={{ padding: '0 18px', marginBottom: 10 }}>
+        <div style={{ background: 'var(--bg-surface)', borderRadius: 'var(--radius-md)', padding: '8px 12px', marginBottom: 12 }}>
+          <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Returning items from</div>
+          <div style={{ fontSize: 14, fontWeight: 500, marginTop: 2 }}>{job.address} · {totalExpected} items expected</div>
+        </div>
+      </div>
+
+      <div className="viewfinder">
+        <div className="viewfinder-frame">
+          <div className="viewfinder-line" />
+        </div>
+        <div className="viewfinder-hint">Camera scan coming soon — use manual entry</div>
+      </div>
+
+      <div style={{ padding: '0 18px' }}>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+          <input className="input-field" placeholder="Scan or enter item ID" value={input}
+            onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleScan()}
+            style={{ fontFamily: 'var(--font-mono)', flex: 1 }} />
+          <button className="btn btn-primary" onClick={handleScan}>Scan</button>
+        </div>
+
+        {lastScanned && !pendingCondition && (
+          <div className="card scan-flash" style={{ borderColor: 'rgba(16,185,129,0.4)' }}>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 10 }}>
+              <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--green)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <div style={{ width: 16, height: 16, color: 'white' }}>{Icons.check}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--green-text)' }}>{lastScanned.name} scanned</div>
+                <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{lastScanned.id}</div>
+              </div>
+            </div>
+            <div style={{ fontSize: 12.5, fontWeight: 500, marginBottom: 6, color: 'var(--text-secondary)' }}>Condition check</div>
+            <div className="condition-row">
+              <button className="condition-btn" onClick={() => confirmCondition('good')}
+                style={{ background: 'var(--green-dim)', color: 'var(--green-text)', borderColor: 'var(--green)' }}>Good</button>
+              <button className="condition-btn" onClick={() => confirmCondition('damaged')}
+                style={{ background: 'var(--amber-dim)', color: 'var(--amber-text)', borderColor: 'var(--amber)' }}>Damaged</button>
+              <button className="condition-btn" onClick={() => confirmCondition('dispose')}
+                style={{ background: 'var(--red-dim)', color: 'var(--red-text)', borderColor: 'var(--red)' }}>Dispose</button>
+            </div>
+          </div>
+        )}
+
+        <div className="card">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <span style={{ fontSize: 13, fontWeight: 500 }}>Return progress</span>
+            <span style={{ fontSize: 13, fontWeight: 500 }}>{returnedCount} / {totalExpected}</span>
+          </div>
+          <div className="progress-bar">
+            <div className="progress-fill" style={{ width: `${totalExpected ? (returnedCount / totalExpected * 100) : 0}%`, background: 'var(--green)' }} />
+          </div>
+          {Object.entries(returned).length > 0 && (
+            <div style={{ marginTop: 10 }}>
+              {Object.entries(returned).map(([itemId, cond]) => (
+                <div key={itemId} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 12 }}>
+                  <span style={{ color: 'var(--text-secondary)' }}>{itemId}</span>
+                  <span style={{ color: cond === 'good' ? 'var(--green-text)' : cond === 'damaged' ? 'var(--amber-text)' : 'var(--red-text)' }}>
+                    {cond.charAt(0).toUpperCase() + cond.slice(1)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {jobItems.length > 0 && (
+          <div style={{ fontSize: 12, color: 'var(--text-tertiary)', textAlign: 'center', padding: '8px 0' }}>
+            {jobItems.length} items remaining
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Scan Out ────────────────────────────────────────────
+function ScanOut({ nav, jobId }) {
+  const { jobs, items, showToast, assignItemsToJob } = useContext(AppContext);
+  const job = jobs.find(j => j.id === jobId);
+  const [input, setInput] = useState('');
+  const [scannedIds, setScannedIds] = useState([]);
+
+  if (!job) return null;
+
+  const handleScan = () => {
+    const q = input.trim().toUpperCase();
+    const item = items.find(i => (i.id.toUpperCase() === q || i.id.toUpperCase().replace(/-/g, '') === q.replace(/-/g, '')) && i.status === 'available');
+    if (!item) {
+      showToast('Item not found or not available', 'var(--red-text)');
+      setInput('');
+      return;
+    }
+    if (scannedIds.includes(item.id)) {
+      showToast('Already scanned', 'var(--amber-text)');
+      setInput('');
+      return;
+    }
+    setScannedIds(prev => [...prev, item.id]);
+    showToast(`${item.name} added`, 'var(--green-text)');
+    setInput('');
+  };
+
+  const handleConfirm = () => {
+    if (scannedIds.length === 0) return;
+    assignItemsToJob(jobId, scannedIds);
+    nav.goBack();
+  };
+
+  return (
+    <div className="page-scroll animate-in">
+      <div className="page-header">
+        <button className="back-btn" onClick={nav.goBack}>{Icons.back} Back</button>
+        <div className="page-title">Scan out</div>
+      </div>
+      <div style={{ padding: '0 18px', marginBottom: 10 }}>
+        <div style={{ background: 'var(--bg-surface)', borderRadius: 'var(--radius-md)', padding: '8px 12px', marginBottom: 12 }}>
+          <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Loading items for</div>
+          <div style={{ fontSize: 14, fontWeight: 500, marginTop: 2 }}>{job.address}</div>
+        </div>
+      </div>
+
+      <div className="viewfinder">
+        <div className="viewfinder-frame"><div className="viewfinder-line" /></div>
+        <div className="viewfinder-hint">Camera scan coming soon — use manual entry</div>
+      </div>
+
+      <div style={{ padding: '0 18px' }}>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+          <input className="input-field" placeholder="Scan item to load" value={input}
+            onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleScan()}
+            style={{ fontFamily: 'var(--font-mono)', flex: 1 }} />
+          <button className="btn btn-primary" onClick={handleScan}>Add</button>
+        </div>
+
+        <div className="card">
+          <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 8 }}>Scanned items ({scannedIds.length})</div>
+          {scannedIds.length === 0 ? (
+            <div style={{ fontSize: 12, color: 'var(--text-tertiary)', textAlign: 'center', padding: 12 }}>Scan items to add them to this job</div>
+          ) : (
+            scannedIds.map(id => {
+              const item = items.find(i => i.id === id);
+              return (
+                <div key={id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', fontSize: 12.5 }}>
+                  <span>{item?.name || id}</span>
+                  <span className="badge badge-green" style={{ fontSize: 10 }}>Ready</span>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {scannedIds.length > 0 && (
+          <button className="btn btn-success btn-full" style={{ marginTop: 10, marginBottom: 20 }} onClick={handleConfirm}>
+            Confirm & assign {scannedIds.length} items
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── More (Settings/Reports placeholder) ─────────────────
+function More({ nav }) {
+  const { stats, items } = useContext(AppContext);
+  const totalCost = items.filter(i => i.status !== 'disposed').reduce((s, i) => s + (i.cost || 0), 0);
+  const utilization = stats.totalItems > 0 ? Math.round((stats.staged / stats.totalItems) * 100) : 0;
+
+  return (
+    <div className="page-scroll animate-in">
+      <div className="page-header">
+        <div className="page-title">More</div>
+      </div>
+      <div style={{ padding: '0 18px' }}>
+        <div className="section-header"><span className="section-title">Quick stats</span></div>
+        <div className="stat-grid">
+          <div className="stat-card">
+            <div className="stat-label">Utilization</div>
+            <div className="stat-value" style={{ color: 'var(--accent)' }}>{utilization}%</div>
+            <div className="stat-sub">items currently staged</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-label">Inventory value</div>
+            <div className="stat-value" style={{ fontSize: 22 }}>${totalCost.toLocaleString()}</div>
+            <div className="stat-sub">{stats.totalItems} active items</div>
+          </div>
+        </div>
+
+        <div className="section-header"><span className="section-title">Manage</span></div>
+        <div className="card" style={{ cursor: 'pointer' }} onClick={() => nav.navigate('sets')}>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            <div style={{ width: 36, height: 36, borderRadius: 8, background: 'var(--purple-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: 18, height: 18, color: 'var(--purple-text)' }}>{Icons.layers}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 500 }}>Furniture sets</div>
+              <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Manage item groupings</div>
+            </div>
+          </div>
+        </div>
+        <div className="card">
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            <div style={{ width: 36, height: 36, borderRadius: 8, background: 'var(--coral-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: 18, height: 18, color: 'var(--coral-text)' }}>{Icons.printer}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 500 }}>Print QR labels</div>
+              <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Generate label sheets</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── App Shell ───────────────────────────────────────────
+function App() {
+  const nav = useNav();
+  const ctx = useContext(AppContext);
+  const { current } = nav;
+
+  const renderPage = () => {
+    switch (current.page) {
+      case 'dashboard': return <Dashboard nav={nav} />;
+      case 'inventory': return <Inventory nav={nav} initialFilter={current.filter} />;
+      case 'itemDetail': return <ItemDetail nav={nav} itemId={current.itemId} />;
+      case 'addItem': return <AddItem nav={nav} />;
+      case 'sets': return <Sets nav={nav} />;
+      case 'setDetail': return <SetDetail nav={nav} setId={current.setId} />;
+      case 'jobs': return <Jobs nav={nav} />;
+      case 'jobDetail': return <JobDetail nav={nav} jobId={current.jobId} />;
+      case 'createJob': return <CreateJob nav={nav} />;
+      case 'scanner': return <Scanner nav={nav} />;
+      case 'quickScan': return <QuickScan nav={nav} />;
+      case 'scanReturn': return <ScanReturn nav={nav} jobId={current.jobId} />;
+      case 'scanOut': return <ScanOut nav={nav} jobId={current.jobId} />;
+      case 'more': return <More nav={nav} />;
+      default: return <Dashboard nav={nav} />;
+    }
+  };
+
+  const tabs = [
+    { page: 'dashboard', icon: Icons.home, label: 'Home' },
+    { page: 'inventory', icon: Icons.box, label: 'Inventory' },
+    { page: 'scanner', icon: Icons.scan, label: 'Scan', isScan: true },
+    { page: 'jobs', icon: Icons.briefcase, label: 'Jobs' },
+    { page: 'more', icon: Icons.more, label: 'More' },
+  ];
+
+  const isTabPage = ['dashboard', 'inventory', 'scanner', 'jobs', 'more'].includes(current.page);
+
+  return (
+    <>
+      {renderPage()}
+      <nav className="tab-bar">
+        {tabs.map(tab => tab.isScan ? (
+          <button key={tab.page} className="tab-scan-btn" onClick={() => nav.resetTo(tab.page)}>
+            {tab.icon}
+          </button>
+        ) : (
+          <button key={tab.page} className={`tab-item ${current.page === tab.page ? 'active' : ''}`}
+            onClick={() => nav.resetTo(tab.page)}>
+            {tab.icon}
+            <span>{tab.label}</span>
+          </button>
+        ))}
+      </nav>
+      {ctx.toast && (
+        <div className="toast" style={{ color: ctx.toast.color || 'var(--text-primary)' }}>
+          {ctx.toast.msg}
+        </div>
+      )}
+    </>
+  );
+}
+
+// ─── Mount ───────────────────────────────────────────────
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <AppProvider><App /></AppProvider>
+);
+</script>
+</body>
+</html>

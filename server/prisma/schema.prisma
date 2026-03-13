@@ -1,0 +1,152 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum Role {
+  staff
+  manager
+}
+
+enum ItemStatus {
+  available
+  staged
+  disposed
+}
+
+enum ItemCondition {
+  good
+  fair
+  damaged
+}
+
+enum JobStatus {
+  planning
+  active
+  completed
+  cancelled
+}
+
+enum JobItemStatus {
+  assigned
+  loaded
+  delivered
+  picked_up
+  returned
+}
+
+enum ReturnCondition {
+  good
+  damaged
+  dispose
+}
+
+// ─── Models ──────────────────────────────────────────────────────────────────
+
+model User {
+  id            String   @id @default(uuid())
+  name          String
+  email         String   @unique
+  password_hash String
+  role          Role     @default(staff)
+  created_at    DateTime @default(now())
+
+  jobs_created  Job[]       @relation("JobCreatedBy")
+  movements     Movement[]  @relation("MovementPerformedBy")
+
+  @@map("users")
+}
+
+model Set {
+  id          String   @id @default(uuid())
+  name        String
+  description String   @default("")
+  created_at  DateTime @default(now())
+
+  items       Item[]
+
+  @@map("sets")
+}
+
+model Item {
+  id            String        @id @default(uuid())
+  sku           String        @unique
+  name          String
+  category      String
+  set_id        String?
+  status        ItemStatus    @default(available)
+  condition     ItemCondition @default(good)
+  photo_url     String?
+  purchase_cost Decimal       @db.Decimal(10, 2)
+  purchase_date DateTime      @db.Date
+  notes         String?
+  created_at    DateTime      @default(now())
+
+  set           Set?          @relation(fields: [set_id], references: [id])
+  job_items     JobItem[]
+  movements     Movement[]
+
+  @@map("items")
+}
+
+model Job {
+  id                String    @id @default(uuid())
+  address           String
+  city              String
+  state             String
+  zip               String
+  client_name       String
+  client_contact    String
+  status            JobStatus @default(planning)
+  start_date        DateTime  @db.Date
+  expected_end_date DateTime  @db.Date
+  actual_end_date   DateTime? @db.Date
+  created_by        String
+  notes             String?
+  created_at        DateTime  @default(now())
+
+  creator           User      @relation("JobCreatedBy", fields: [created_by], references: [id])
+  job_items         JobItem[]
+  movements         Movement[]
+
+  @@map("jobs")
+}
+
+model JobItem {
+  id               String          @id @default(uuid())
+  job_id           String
+  item_id          String
+  status           JobItemStatus   @default(assigned)
+  return_condition ReturnCondition?
+  return_notes     String?
+  assigned_at      DateTime        @default(now())
+  returned_at      DateTime?
+
+  job              Job             @relation(fields: [job_id], references: [id])
+  item             Item            @relation(fields: [item_id], references: [id])
+
+  @@map("job_items")
+}
+
+model Movement {
+  id           String   @id @default(uuid())
+  item_id      String
+  job_id       String?
+  from_status  String
+  to_status    String
+  performed_by String
+  notes        String?
+  created_at   DateTime @default(now())
+
+  item         Item     @relation(fields: [item_id], references: [id])
+  job          Job?     @relation(fields: [job_id], references: [id])
+  performer    User     @relation("MovementPerformedBy", fields: [performed_by], references: [id])
+
+  @@map("movements")
+}
