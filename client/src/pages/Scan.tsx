@@ -37,7 +37,7 @@ export function Scan() {
   const activeJobs = allJobs.filter((j) => j.status === "active" || j.status === "planning");
 
   return (
-    <div>
+    <div className="animate-in">
       <div className="page-header">
         <h1 className="page-title">Scan</h1>
         <p className="page-subtitle">Quick scan or job scan</p>

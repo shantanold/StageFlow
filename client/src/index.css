@@ -303,3 +303,16 @@ body {
   transition: all 0.15s;
 }
 .chip.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+/* ─── Toast animation ─────────────────────────────────────────────── */
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Page transitions ────────────────────────────────────────────── */
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-in { animation: fadeSlideIn 0.2s ease; }

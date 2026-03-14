@@ -127,6 +127,27 @@ export function useUpdateSet(id: string) {
   });
 }
 
+// ─── Stats ────────────────────────────────────────────────────────────────────
+
+export interface DashboardStats {
+  available_count: number;
+  staged_count: number;
+  total_items: number;
+  active_jobs_count: number;
+  needs_attention: number;
+  utilization_pct: number;
+  total_inventory_value: number;
+  upcoming_jobs: import("../types").Job[];
+}
+
+export function useDashboard() {
+  return useQuery({
+    queryKey: ["stats", "dashboard"],
+    queryFn: () => api.get<DashboardStats>("/stats/dashboard"),
+    refetchInterval: 30_000, // refresh every 30s
+  });
+}
+
 // ─── Jobs ────────────────────────────────────────────────────────────────────
 
 interface JobFilters {

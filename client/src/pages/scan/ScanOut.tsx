@@ -4,6 +4,7 @@ import { useJob } from "../../lib/queries";
 import { useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "../../lib/api";
 import { getCategoryEmoji } from "../../lib/utils";
+import { useToast } from "../../contexts/ToastContext";
 import { QrScannerView } from "./QrScannerView";
 import type { Item } from "../../types";
 
@@ -24,6 +25,7 @@ interface ScanEntry {
 export function ScanOut() {
   const { jobId = "" } = useParams<{ jobId: string }>();
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const qc = useQueryClient();
   const { data: job } = useJob(jobId);
 
@@ -95,10 +97,10 @@ export function ScanOut() {
       await api.post(`/jobs/${jobId}/assign`, { itemIds: validIds });
       qc.invalidateQueries({ queryKey: ["jobs"] });
       qc.invalidateQueries({ queryKey: ["items"] });
+      showToast(`${validIds.length} item${validIds.length !== 1 ? "s" : ""} assigned`, "success");
       navigate(`/jobs/${jobId}`);
     } catch (err) {
-      const msg = err instanceof ApiError ? err.message : "Assignment failed";
-      alert(msg);
+      showToast(err instanceof ApiError ? err.message : "Assignment failed", "error");
     } finally {
       setAssigning(false);
     }
@@ -107,7 +109,7 @@ export function ScanOut() {
   const validCount = entries.filter((e) => e.status === "ok").length;
 
   return (
-    <div>
+    <div className="animate-in">
       <div className="page-header">
         <button className="back-btn" onClick={() => navigate(`/jobs/${jobId}`)} style={{ marginBottom: 8 }}>
           <BackIcon /> Job

@@ -4,6 +4,7 @@ import { useJob, useJobItems } from "../../lib/queries";
 import { useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "../../lib/api";
 import { getCategoryEmoji } from "../../lib/utils";
+import { useToast } from "../../contexts/ToastContext";
 import { QrScannerView } from "./QrScannerView";
 import type { Item } from "../../types";
 
@@ -30,6 +31,7 @@ interface PendingItem {
 export function ScanReturn() {
   const { jobId = "" } = useParams<{ jobId: string }>();
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const qc = useQueryClient();
 
   const { data: job } = useJob(jobId);
@@ -109,6 +111,7 @@ export function ScanReturn() {
       qc.invalidateQueries({ queryKey: ["jobs", jobId] });
       qc.invalidateQueries({ queryKey: ["jobs", jobId, "items"] });
       qc.invalidateQueries({ queryKey: ["items"] });
+      showToast(`${item.name} returned`, "success");
       if (res.job_completed) setJobDone(true);
     } catch (err) {
       const msg = err instanceof ApiError ? err.message : "Return failed";
@@ -139,7 +142,7 @@ export function ScanReturn() {
   }
 
   return (
-    <div>
+    <div className="animate-in">
       <div className="page-header">
         <button className="back-btn" onClick={() => navigate(`/jobs/${jobId}`)} style={{ marginBottom: 8 }}>
           <BackIcon /> Job

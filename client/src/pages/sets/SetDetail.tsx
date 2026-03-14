@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useSet, useSetItems } from "../../lib/queries";
 import { downloadLabels } from "../../lib/labels";
 import { getCategoryEmoji, statusBadgeClass, statusLabel } from "../../lib/utils";
+import { useToast } from "../../contexts/ToastContext";
 import type { Item } from "../../types";
 
 function BackIcon() {
@@ -26,6 +27,7 @@ function PrinterIcon() {
 export function SetDetail() {
   const { id = "" } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const [printing, setPrinting] = useState(false);
 
   const { data: set, isLoading: setLoading } = useSet(id);
@@ -36,8 +38,9 @@ export function SetDetail() {
     setPrinting(true);
     try {
       await downloadLabels(items.map((i) => i.id));
+      showToast("Label PDF downloaded", "success");
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Download failed");
+      showToast(err instanceof Error ? err.message : "Download failed", "error");
     } finally {
       setPrinting(false);
     }

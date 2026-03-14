@@ -1,7 +1,9 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
+import { ToastProvider } from "./contexts/ToastContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AppShell } from "./components/AppShell";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 
 // Auth pages
 import { Login }    from "./pages/Login";
@@ -36,7 +38,9 @@ import { ScanReturn } from "./pages/scan/ScanReturn";
 
 export default function App() {
   return (
+    <ErrorBoundary>
     <BrowserRouter>
+      <ToastProvider>
       <AuthProvider>
         <Routes>
           {/* Public */}
@@ -68,6 +72,8 @@ export default function App() {
           <Route path="*"  element={<Navigate to="/home"  replace />} />
         </Routes>
       </AuthProvider>
+      </ToastProvider>
     </BrowserRouter>
+    </ErrorBoundary>
   );
 }

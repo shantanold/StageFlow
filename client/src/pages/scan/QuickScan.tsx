@@ -54,7 +54,7 @@ export function QuickScan() {
   }
 
   return (
-    <div>
+    <div className="animate-in">
       <div className="page-header">
         <button className="back-btn" onClick={() => navigate("/scan")} style={{ marginBottom: 8 }}>
           <BackIcon /> Scan

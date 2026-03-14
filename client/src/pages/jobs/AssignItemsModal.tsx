@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useSets, useItems, useAssignItems } from "../../lib/queries";
 import { getCategoryEmoji } from "../../lib/utils";
+import { useToast } from "../../contexts/ToastContext";
 import type { Item } from "../../types";
 
 function CheckIcon() {
@@ -18,6 +19,7 @@ interface AssignItemsModalProps {
 
 export function AssignItemsModal({ jobId, onClose }: AssignItemsModalProps) {
   const assignItems = useAssignItems(jobId);
+  const { showToast } = useToast();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [mode, setMode] = useState<"sets" | "individual">("sets");
 
@@ -47,9 +49,10 @@ export function AssignItemsModal({ jobId, onClose }: AssignItemsModalProps) {
     if (selected.size === 0) return;
     try {
       await assignItems.mutateAsync([...selected]);
+      showToast(`${selected.size} item${selected.size !== 1 ? "s" : ""} assigned`, "success");
       onClose();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Assign failed");
+      showToast(err instanceof Error ? err.message : "Assign failed", "error");
     }
   };
 

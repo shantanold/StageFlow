@@ -4,6 +4,7 @@ import { useItems } from "../../lib/queries";
 import { useDebounce } from "../../hooks/useDebounce";
 import { downloadLabels } from "../../lib/labels";
 import { getCategoryEmoji, statusBadgeClass, statusLabel } from "../../lib/utils";
+import { useToast } from "../../contexts/ToastContext";
 
 function BackIcon() {
   return (
@@ -41,6 +42,7 @@ function CheckIcon() {
 
 export function PrintLabels() {
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const [search, setSearch]           = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [downloading, setDownloading] = useState(false);
@@ -85,15 +87,16 @@ export function PrintLabels() {
     setDownloading(true);
     try {
       await downloadLabels([...selectedIds]);
+      showToast("Label PDF downloaded", "success");
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Download failed");
+      showToast(err instanceof Error ? err.message : "Download failed", "error");
     } finally {
       setDownloading(false);
     }
   }
 
   return (
-    <div>
+    <div className="animate-in">
       {/* Header */}
       <div className="page-header">
         <button className="back-btn" onClick={() => navigate("/more")} style={{ marginBottom: 8 }}>

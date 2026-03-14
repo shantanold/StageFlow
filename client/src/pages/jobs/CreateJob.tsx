@@ -2,6 +2,7 @@ import { useState, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCreateJob } from "../../lib/queries";
 import { ApiError } from "../../lib/api";
+import { useToast } from "../../contexts/ToastContext";
 
 function BackIcon() {
   return (
@@ -13,6 +14,7 @@ function BackIcon() {
 
 export function CreateJob() {
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const createJob = useCreateJob();
   const [form, setForm] = useState({
     address: "",
@@ -58,6 +60,7 @@ export function CreateJob() {
         expected_end_date: form.expected_end_date,
         notes: form.notes.trim() || undefined,
       });
+      showToast("Job created", "success");
       navigate("/jobs");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong");

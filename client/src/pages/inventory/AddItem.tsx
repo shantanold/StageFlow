@@ -4,6 +4,7 @@ import { useCreateItem } from "../../lib/queries";
 import { useSets } from "../../lib/queries";
 import { CATEGORIES } from "../../lib/utils";
 import { ApiError } from "../../lib/api";
+import { useToast } from "../../contexts/ToastContext";
 
 function BackIcon() {
   return (
@@ -17,6 +18,7 @@ const SelectArrow = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/200
 
 export function AddItem() {
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const createItem = useCreateItem();
   const { data: sets = [] } = useSets();
 
@@ -50,6 +52,7 @@ export function AddItem() {
         purchase_date: form.purchase_date,
         notes: form.notes.trim() || undefined,
       });
+      showToast("Item added", "success");
       navigate(-1);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong");

@@ -4,6 +4,7 @@ import { useItems } from "../lib/queries";
 import { useDebounce } from "../hooks/useDebounce";
 import { downloadLabels } from "../lib/labels";
 import { getCategoryEmoji, statusBadgeClass, statusLabel } from "../lib/utils";
+import { useToast } from "../contexts/ToastContext";
 import type { Item } from "../types";
 
 type FilterKey = "all" | "available" | "staged" | "flagged";
@@ -48,6 +49,7 @@ function CheckIcon() {
 
 export function Inventory() {
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialFilter = (searchParams.get("filter") as FilterKey) ?? "all";
 
@@ -100,8 +102,9 @@ export function Inventory() {
     setDownloading(true);
     try {
       await downloadLabels([...selectedIds]);
+      showToast("Label PDF downloaded", "success");
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Download failed");
+      showToast(err instanceof Error ? err.message : "Download failed", "error");
     } finally {
       setDownloading(false);
     }
@@ -115,7 +118,7 @@ export function Inventory() {
   ];
 
   return (
-    <div>
+    <div className="animate-in">
       {/* Header */}
       <div
         className="page-header"

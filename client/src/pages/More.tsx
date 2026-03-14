@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import { useDashboard } from "../lib/queries";
 
 function ChevronRightIcon() {
   return (
@@ -21,6 +22,7 @@ interface MenuItem {
 export function More() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const { data: stats } = useDashboard();
 
   const menuItems: MenuItem[] = [
     {
@@ -42,7 +44,7 @@ export function More() {
   ];
 
   return (
-    <div>
+    <div className="animate-in">
       <div className="page-header">
         <h1 className="page-title">More</h1>
       </div>
@@ -68,6 +70,36 @@ export function More() {
           <span className={`badge ${user?.role === "manager" ? "badge-blue" : "badge-gray"}`}>
             {user?.role}
           </span>
+        </div>
+
+        {/* Quick stats */}
+        <p
+          style={{
+            fontSize: 11, fontWeight: 500, color: "var(--text-tertiary)",
+            textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 8,
+          }}
+        >
+          Quick stats
+        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 16 }}>
+          <div className="card" style={{ padding: 14 }}>
+            <p style={{ fontSize: 11, color: "var(--text-tertiary)", marginBottom: 4 }}>Utilization</p>
+            <p style={{ fontSize: 24, fontWeight: 700, color: "var(--accent)", letterSpacing: "-0.5px", marginBottom: 2 }}>
+              {stats ? `${stats.utilization_pct}%` : "—"}
+            </p>
+            <p style={{ fontSize: 11, color: "var(--text-tertiary)" }}>items staged</p>
+          </div>
+          <div className="card" style={{ padding: 14 }}>
+            <p style={{ fontSize: 11, color: "var(--text-tertiary)", marginBottom: 4 }}>Inventory value</p>
+            <p style={{ fontSize: 20, fontWeight: 700, letterSpacing: "-0.5px", marginBottom: 2 }}>
+              {stats
+                ? `$${Math.round(stats.total_inventory_value).toLocaleString()}`
+                : "—"}
+            </p>
+            <p style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
+              {stats ? `${stats.total_items} active items` : ""}
+            </p>
+          </div>
         </div>
 
         {/* Navigation */}
