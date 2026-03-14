@@ -16,6 +16,9 @@ import statsRouter from "./routes/stats";
 const app = express();
 const PORT = process.env.PORT ?? 3001;
 
+// Trust Railway's reverse proxy so rate limiter reads the correct client IP
+app.set("trust proxy", 1);
+
 // ─── Middleware ───────────────────────────────────────────────────────────────
 
 app.use(helmet());
