@@ -49,7 +49,7 @@ export function Home() {
 
   return (
     <div className="animate-in">
-      <div className="page-header" style={{ paddingTop: 20 }}>
+      <div className="page-header" style={{ paddingTop: "calc(20px + var(--safe-top))" }}>
         <p style={{ fontSize: 13, color: "var(--text-tertiary)", marginBottom: 2 }}>{greeting()},</p>
         <h1 className="page-title">{user?.name}</h1>
       </div>
