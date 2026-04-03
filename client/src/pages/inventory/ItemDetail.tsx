@@ -390,99 +390,111 @@ function EditItemModal({ item, onClose }: { item: ItemDetailType; onClose: () =>
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-sheet animate-in" style={{ maxHeight: "92vh" }} onClick={(e) => e.stopPropagation()}>
-        <div className="modal-handle" />
-        <p style={{ fontSize: 17, fontWeight: 500, marginBottom: 16 }}>Edit item</p>
-
-        {error && (
-          <div style={{ padding: "9px 12px", borderRadius: "var(--radius-md)", background: "var(--red-dim)", color: "var(--red-text)", fontSize: 12.5, marginBottom: 12 }}>
-            {error}
-          </div>
-        )}
-
-        {/* Name */}
-        <div style={{ marginBottom: 12 }}>
-          <label className="form-label">Name</label>
-          <input className="input-field" value={form.name} onChange={(e) => set("name", e.target.value)} />
-        </div>
-
-        {/* Category + Condition */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
-          <div>
-            <label className="form-label">Category</label>
-            <select className="input-field" style={selectStyle} value={form.category} onChange={(e) => set("category", e.target.value)}>
-              {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="form-label">Condition</label>
-            <select className="input-field" style={selectStyle} value={form.condition} onChange={(e) => set("condition", e.target.value)}>
-              <option value="good">Good</option>
-              <option value="fair">Fair</option>
-              <option value="damaged">Damaged</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Set */}
-        <div style={{ marginBottom: 12 }}>
-          <label className="form-label">Set</label>
-          <select className="input-field" style={selectStyle} value={form.set_id} onChange={(e) => set("set_id", e.target.value)}>
-            <option value="">No set</option>
-            {sets.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
-        </div>
-
-        {/* Cost + Date */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
-          <div>
-            <label className="form-label">Cost ($)</label>
-            <input type="number" min="0" step="0.01" className="input-field" value={form.purchase_cost} onChange={(e) => set("purchase_cost", e.target.value)} />
-          </div>
-          <div>
-            <label className="form-label">Purchase date</label>
-            <input type="date" className="input-field" value={form.purchase_date} onChange={(e) => set("purchase_date", e.target.value)} />
-          </div>
-        </div>
-
-        {/* Photo */}
-        <div style={{ marginBottom: 12 }}>
-          <label className="form-label">Photo</label>
-          <input ref={fileInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handlePhotoChange} />
-          {!photoPreview ? (
-            <button type="button" onClick={() => fileInputRef.current?.click()} style={{ width: "100%", height: 80, border: "1.5px dashed var(--border)", borderRadius: "var(--radius-md)", background: "var(--bg-surface)", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5, color: "var(--text-tertiary)" }}>
-              <CameraIcon />
-              <span style={{ fontSize: 12 }}>Add photo</span>
-            </button>
-          ) : (
-            <div style={{ position: "relative", borderRadius: "var(--radius-md)", overflow: "hidden" }}>
-              <img src={photoPreview} alt="Preview" style={{ width: "100%", height: 130, objectFit: "cover", display: "block" }} />
-              {uploadProgress !== null && (
-                <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                  <div style={{ width: "60%", height: 4, background: "rgba(255,255,255,0.3)", borderRadius: 2 }}>
-                    <div style={{ width: `${uploadProgress}%`, height: "100%", background: "white", borderRadius: 2, transition: "width 0.1s" }} />
-                  </div>
-                  <span style={{ fontSize: 12, color: "white" }}>Uploading {uploadProgress}%</span>
-                </div>
-              )}
-              {uploadProgress === null && (
-                <button type="button" onClick={removePhoto} style={{ position: "absolute", top: 8, right: 8, background: "rgba(0,0,0,0.6)", border: "none", borderRadius: "50%", width: 28, height: 28, color: "white", cursor: "pointer", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
-              )}
+      <div
+        className="modal-sheet animate-in"
+        style={{ maxHeight: "90vh", padding: 0, display: "flex", flexDirection: "column" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Fixed header */}
+        <div style={{ padding: "20px 18px 0", flexShrink: 0 }}>
+          <div className="modal-handle" style={{ margin: "0 auto 16px" }} />
+          <p style={{ fontSize: 17, fontWeight: 500, marginBottom: 16 }}>Edit item</p>
+          {error && (
+            <div style={{ padding: "9px 12px", borderRadius: "var(--radius-md)", background: "var(--red-dim)", color: "var(--red-text)", fontSize: 12.5, marginBottom: 12 }}>
+              {error}
             </div>
           )}
         </div>
 
-        {/* Notes */}
-        <div style={{ marginBottom: 18 }}>
-          <label className="form-label">Notes</label>
-          <textarea className="input-field" style={{ resize: "vertical", minHeight: 70 }} value={form.notes} onChange={(e) => set("notes", e.target.value)} />
+        {/* Scrollable form body */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "0 18px 8px" }}>
+          {/* Name */}
+          <div style={{ marginBottom: 12 }}>
+            <label className="form-label">Name</label>
+            <input className="input-field" value={form.name} onChange={(e) => set("name", e.target.value)} />
+          </div>
+
+          {/* Category + Condition */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
+            <div>
+              <label className="form-label">Category</label>
+              <select className="input-field" style={selectStyle} value={form.category} onChange={(e) => set("category", e.target.value)}>
+                {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="form-label">Condition</label>
+              <select className="input-field" style={selectStyle} value={form.condition} onChange={(e) => set("condition", e.target.value)}>
+                <option value="good">Good</option>
+                <option value="fair">Fair</option>
+                <option value="damaged">Damaged</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Set */}
+          <div style={{ marginBottom: 12 }}>
+            <label className="form-label">Set</label>
+            <select className="input-field" style={selectStyle} value={form.set_id} onChange={(e) => set("set_id", e.target.value)}>
+              <option value="">No set</option>
+              {sets.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </div>
+
+          {/* Cost + Date */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
+            <div>
+              <label className="form-label">Cost ($)</label>
+              <input type="number" min="0" step="0.01" className="input-field" value={form.purchase_cost} onChange={(e) => set("purchase_cost", e.target.value)} />
+            </div>
+            <div>
+              <label className="form-label">Purchase date</label>
+              <input type="date" className="input-field" value={form.purchase_date} onChange={(e) => set("purchase_date", e.target.value)} />
+            </div>
+          </div>
+
+          {/* Photo */}
+          <div style={{ marginBottom: 12 }}>
+            <label className="form-label">Photo</label>
+            <input ref={fileInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handlePhotoChange} />
+            {!photoPreview ? (
+              <button type="button" onClick={() => fileInputRef.current?.click()} style={{ width: "100%", height: 80, border: "1.5px dashed var(--border)", borderRadius: "var(--radius-md)", background: "var(--bg-surface)", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5, color: "var(--text-tertiary)" }}>
+                <CameraIcon />
+                <span style={{ fontSize: 12 }}>Add photo</span>
+              </button>
+            ) : (
+              <div style={{ position: "relative", borderRadius: "var(--radius-md)", overflow: "hidden" }}>
+                <img src={photoPreview} alt="Preview" style={{ width: "100%", height: 130, objectFit: "cover", display: "block" }} />
+                {uploadProgress !== null && (
+                  <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                    <div style={{ width: "60%", height: 4, background: "rgba(255,255,255,0.3)", borderRadius: 2 }}>
+                      <div style={{ width: `${uploadProgress}%`, height: "100%", background: "white", borderRadius: 2, transition: "width 0.1s" }} />
+                    </div>
+                    <span style={{ fontSize: 12, color: "white" }}>Uploading {uploadProgress}%</span>
+                  </div>
+                )}
+                {uploadProgress === null && (
+                  <button type="button" onClick={removePhoto} style={{ position: "absolute", top: 8, right: 8, background: "rgba(0,0,0,0.6)", border: "none", borderRadius: "50%", width: 28, height: 28, color: "white", cursor: "pointer", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Notes */}
+          <div style={{ marginBottom: 8 }}>
+            <label className="form-label">Notes</label>
+            <textarea className="input-field" style={{ resize: "vertical", minHeight: 70 }} value={form.notes} onChange={(e) => set("notes", e.target.value)} />
+          </div>
         </div>
 
-        <div style={{ display: "flex", gap: 8 }}>
-          <button className="btn btn-outline" style={{ flex: 1 }} onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleSave} disabled={updateItem.isPending}>
-            {updateItem.isPending ? "Saving…" : "Save changes"}
-          </button>
+        {/* Pinned buttons */}
+        <div style={{ padding: "12px 18px", paddingBottom: "calc(12px + var(--safe-bottom))", borderTop: "1px solid var(--border)", flexShrink: 0 }}>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button className="btn btn-outline" style={{ flex: 1 }} onClick={onClose}>Cancel</button>
+            <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleSave} disabled={updateItem.isPending}>
+              {updateItem.isPending ? "Saving…" : "Save changes"}
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -157,55 +157,35 @@ function CreateSetModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-sheet animate-in" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-handle" />
-        <p style={{ fontSize: 17, fontWeight: 500, marginBottom: 16 }}>Create new set</p>
+      <div className="modal-sheet animate-in" style={{ padding: 0, display: "flex", flexDirection: "column" }} onClick={(e) => e.stopPropagation()}>
+        <div style={{ padding: "20px 18px 0", flexShrink: 0 }}>
+          <div className="modal-handle" style={{ margin: "0 auto 16px" }} />
+          <p style={{ fontSize: 17, fontWeight: 500, marginBottom: 16 }}>Create new set</p>
+          {error && (
+            <div style={{ padding: "9px 12px", borderRadius: "var(--radius-md)", background: "var(--red-dim)", color: "var(--red-text)", fontSize: 12.5, marginBottom: 12 }}>
+              {error}
+            </div>
+          )}
+        </div>
 
-        {error && (
-          <div
-            style={{
-              padding: "9px 12px", borderRadius: "var(--radius-md)",
-              background: "var(--red-dim)", color: "var(--red-text)",
-              fontSize: 12.5, marginBottom: 12,
-            }}
-          >
-            {error}
+        <div style={{ flex: 1, overflowY: "auto", padding: "0 18px 8px" }}>
+          <div style={{ marginBottom: 14 }}>
+            <label className="form-label" htmlFor="set-name">Set name</label>
+            <input id="set-name" className="input-field" placeholder="e.g. Boho Master Bedroom" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
           </div>
-        )}
+          <div style={{ marginBottom: 8 }}>
+            <label className="form-label" htmlFor="set-desc">Description</label>
+            <input id="set-desc" className="input-field" placeholder="Short description…" value={description} onChange={(e) => setDescription(e.target.value)} />
+          </div>
+        </div>
 
-        <div style={{ marginBottom: 14 }}>
-          <label className="form-label" htmlFor="set-name">Set name</label>
-          <input
-            id="set-name"
-            className="input-field"
-            placeholder="e.g. Boho Master Bedroom"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            autoFocus
-          />
-        </div>
-        <div style={{ marginBottom: 20 }}>
-          <label className="form-label" htmlFor="set-desc">Description</label>
-          <input
-            id="set-desc"
-            className="input-field"
-            placeholder="Short description…"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-        </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button className="btn btn-outline" style={{ flex: 1 }} onClick={onClose}>
-            Cancel
-          </button>
-          <button
-            className="btn btn-primary"
-            style={{ flex: 1 }}
-            onClick={handleCreate}
-            disabled={createSet.isPending}
-          >
-            {createSet.isPending ? "Creating…" : "Create"}
-          </button>
+        <div style={{ padding: "12px 18px", paddingBottom: "calc(12px + var(--safe-bottom))", borderTop: "1px solid var(--border)", flexShrink: 0 }}>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button className="btn btn-outline" style={{ flex: 1 }} onClick={onClose}>Cancel</button>
+            <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleCreate} disabled={createSet.isPending}>
+              {createSet.isPending ? "Creating…" : "Create"}
+            </button>
+          </div>
         </div>
       </div>
     </div>
