@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 
 const TOKEN_KEY = "sf_token";
+const BASE = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
 
 // ─── Download PDF ─────────────────────────────────────────────────────────────
 
@@ -10,7 +11,7 @@ export async function downloadLabels(itemIds: string[]): Promise<void> {
   const token = localStorage.getItem(TOKEN_KEY);
   const params = new URLSearchParams({ itemIds: itemIds.join(",") });
 
-  const res = await fetch(`/api/v1/labels/generate?${params}`, {
+  const res = await fetch(`${BASE}/labels/generate?${params}`, {
     headers: { Authorization: `Bearer ${token ?? ""}` },
   });
 
@@ -43,7 +44,7 @@ export function useQRCodeUrl(itemId: string): { src: string | null; loading: boo
     let mounted   = true;
     let objectUrl = "";
 
-    fetch(`/api/v1/items/${itemId}/qr`, {
+    fetch(`${BASE}/items/${itemId}/qr`, {
       headers: { Authorization: `Bearer ${token ?? ""}` },
     })
       .then((r) => (r.ok ? r.blob() : Promise.reject(new Error("qr fetch failed"))))
