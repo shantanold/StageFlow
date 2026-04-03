@@ -104,7 +104,7 @@ export function Scan() {
                     style={{ flex: 1, fontSize: 12, gap: 5, padding: "7px 12px" }}
                     onClick={() => navigate(`/scan/out/${job.id}`)}
                   >
-                    <ScanOutIcon /> Scan Out
+                    <ScanOutIcon /> Load Items
                   </button>
                   {job.status === "active" && (
                     <button

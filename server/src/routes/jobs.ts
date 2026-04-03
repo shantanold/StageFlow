@@ -215,57 +215,46 @@ router.post("/:id/assign", requireManager, async (req, res) => {
     const job = await prisma.job.findUnique({ where: { id: jobId } });
     if (!job) return res.status(404).json({ message: "Job not found" });
 
-    const availableItems = await prisma.item.findMany({
-      where: { id: { in: itemIds }, status: "available" },
-      select: { id: true },
+    // Items must not be disposed and must not already be assigned to any active job
+    const items = await prisma.item.findMany({
+      where: { id: { in: itemIds } },
+      select: { id: true, status: true },
     });
-    const availableIds = new Set(availableItems.map((i) => i.id));
-    const missing = itemIds.filter((id) => !availableIds.has(id));
-    if (missing.length > 0) {
-      return res.status(400).json({
-        message: "Some items are not available",
-        unavailableIds: missing,
-      });
+    const itemMap = new Map(items.map((i) => [i.id, i]));
+    const disposed = itemIds.filter((id) => itemMap.get(id)?.status === "disposed");
+    if (disposed.length > 0) {
+      return res.status(400).json({ message: "Some items are disposed", unavailableIds: disposed });
     }
 
-    // Exclude items already on this job (any non-returned assignment)
-    const existing = await prisma.jobItem.findMany({
+    // Exclude items already assigned to ANY non-returned job (staged or assigned elsewhere)
+    const alreadyAssigned = await prisma.jobItem.findMany({
       where: {
-        job_id: jobId,
         item_id: { in: itemIds },
         status: { not: "returned" },
       },
-      select: { item_id: true },
+      select: { item_id: true, job_id: true },
     });
-    const existingIds = new Set(existing.map((e) => e.item_id));
-    const toAssign = itemIds.filter((id) => !existingIds.has(id));
+    const assignedElsewhere = alreadyAssigned
+      .filter((a) => a.job_id !== jobId)
+      .map((a) => a.item_id);
+    if (assignedElsewhere.length > 0) {
+      return res.status(400).json({ message: "Some items are already assigned to another job", unavailableIds: assignedElsewhere });
+    }
+
+    // Exclude items already on THIS job
+    const alreadyOnJob = new Set(
+      alreadyAssigned.filter((a) => a.job_id === jobId).map((a) => a.item_id)
+    );
+    const toAssign = itemIds.filter((id) => !alreadyOnJob.has(id));
     if (toAssign.length === 0) {
       return res.status(400).json({ message: "All selected items are already on this job" });
     }
 
-    const userId = req.user!.userId;
-
+    // Create job_item records only — items stay "available" until staff scans them out
     await prisma.$transaction(async (tx) => {
       for (const itemId of toAssign) {
         await tx.jobItem.create({
-          data: {
-            job_id: jobId,
-            item_id: itemId,
-            status: "assigned",
-          },
-        });
-        await tx.item.update({
-          where: { id: itemId },
-          data: { status: "staged" },
-        });
-        await tx.movement.create({
-          data: {
-            item_id: itemId,
-            job_id: jobId,
-            from_status: "available",
-            to_status: "staged",
-            performed_by: userId,
-          },
+          data: { job_id: jobId, item_id: itemId, status: "assigned" },
         });
       }
     });
@@ -282,7 +271,8 @@ router.post("/:id/assign", requireManager, async (req, res) => {
 });
 
 // ─── POST /jobs/:id/scan-out ─────────────────────────────────────────────────
-// Validates a single item and assigns it to the job via scan
+// Confirms physical loading of a pre-assigned item. Stages the item and
+// activates the job if it was still in planning.
 
 router.post("/:id/scan-out", async (req, res) => {
   try {
@@ -301,36 +291,30 @@ router.post("/:id/scan-out", async (req, res) => {
     if (!item) return res.status(404).json({ message: "Item not found" });
 
     if (job.status !== "active" && job.status !== "planning") {
-      return res.status(400).json({ message: "Job must be active or planning", type: "invalid_job_status" });
+      return res.status(400).json({ message: "Job is not active or planning", type: "invalid_job_status" });
     }
 
-    // Already on this job (non-returned)?
-    const alreadyOnJob = await prisma.jobItem.findFirst({
-      where: { job_id: req.params.id, item_id: itemId, status: { not: "returned" } },
+    // Item must be pre-assigned to this job and not yet loaded
+    const jobItem = await prisma.jobItem.findFirst({
+      where: { job_id: req.params.id, item_id: itemId, status: "assigned" },
     });
-    if (alreadyOnJob) {
-      return res.status(409).json({ message: "Item is already on this job", type: "already_on_job", item });
-    }
 
-    if (item.status !== "available") {
-      const elsewhere = await prisma.jobItem.findFirst({
-        where: { item_id: itemId, status: { in: ["assigned", "loaded", "delivered", "picked_up"] } },
-        include: { job: { select: { id: true, address: true, client_name: true } } },
+    if (!jobItem) {
+      // Give a helpful message depending on why
+      const alreadyLoaded = await prisma.jobItem.findFirst({
+        where: { job_id: req.params.id, item_id: itemId, status: { in: ["loaded", "delivered", "picked_up"] } },
       });
-      return res.status(409).json({
-        message: item.status === "staged"
-          ? `Already staged for: ${elsewhere?.job.client_name} – ${elsewhere?.job.address}`
-          : "Item has been disposed",
-        type: "not_available",
-        item,
-        staged_job: elsewhere?.job ?? null,
-      });
+      if (alreadyLoaded) {
+        return res.status(409).json({ message: "Item is already loaded for this job", type: "already_loaded", item });
+      }
+      return res.status(404).json({ message: "Item is not assigned to this job", type: "not_on_job", item });
     }
 
     const userId = req.user!.userId;
+    const jobActivated = job.status === "planning";
 
     await prisma.$transaction(async (tx) => {
-      await tx.jobItem.create({ data: { job_id: req.params.id, item_id: itemId, status: "assigned" } });
+      await tx.jobItem.update({ where: { id: jobItem.id }, data: { status: "loaded" } });
       await tx.item.update({ where: { id: itemId }, data: { status: "staged" as ItemStatus } });
       await tx.movement.create({
         data: {
@@ -339,16 +323,24 @@ router.post("/:id/scan-out", async (req, res) => {
           from_status: "available",
           to_status: "staged",
           performed_by: userId,
-          notes: "Scan out",
+          notes: "Loaded for job",
         },
       });
+      if (jobActivated) {
+        await tx.job.update({ where: { id: req.params.id }, data: { status: "active" } });
+      }
+    });
+
+    // Count how many assigned items remain to be loaded
+    const remainingToLoad = await prisma.jobItem.count({
+      where: { job_id: req.params.id, status: "assigned" },
     });
 
     const updated = await prisma.item.findUnique({
       where: { id: itemId },
       include: { set: { select: { id: true, name: true } } },
     });
-    return res.json({ item: updated });
+    return res.json({ item: updated, job_activated: jobActivated, remaining_to_load: remainingToLoad });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: "Server error" });
