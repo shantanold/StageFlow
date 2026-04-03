@@ -93,6 +93,8 @@ export function useUpdateItem(id: string) {
       api.put<Item>(`/items/${id}`, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["items"] });
+      qc.invalidateQueries({ queryKey: ["items", id] });
+      qc.invalidateQueries({ queryKey: ["sets"] });
     },
   });
 }

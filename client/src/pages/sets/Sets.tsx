@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSets, useCreateSet } from "../../lib/queries";
+import { useAuth } from "../../contexts/AuthContext";
 import { ApiError } from "../../lib/api";
 import type { ItemSet } from "../../types";
 
@@ -22,6 +23,8 @@ function ChevronRightIcon() {
 
 export function Sets() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isManager = user?.role === "manager";
   const { data: sets = [], isLoading } = useSets();
   const [showCreate, setShowCreate] = useState(false);
 
@@ -35,13 +38,15 @@ export function Sets() {
           <h1 className="page-title">Sets</h1>
           <p className="page-subtitle">{sets.length} furniture sets</p>
         </div>
-        <button
-          className="btn btn-primary"
-          style={{ padding: "8px 14px", fontSize: 12, gap: 5 }}
-          onClick={() => setShowCreate(true)}
-        >
-          <PlusIcon /> New set
-        </button>
+        {isManager && (
+          <button
+            className="btn btn-primary"
+            style={{ padding: "8px 14px", fontSize: 12, gap: 5 }}
+            onClick={() => setShowCreate(true)}
+          >
+            <PlusIcon /> New set
+          </button>
+        )}
       </div>
 
       <div style={{ padding: "0 18px" }}>
