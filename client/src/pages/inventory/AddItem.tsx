@@ -204,7 +204,6 @@ export function AddItem() {
               ref={fileInputRef}
               type="file"
               accept="image/*"
-              capture="environment"
               style={{ display: "none" }}
               onChange={handlePhotoChange}
             />
