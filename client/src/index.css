@@ -25,6 +25,7 @@
   --red: #ef4444;
   --red-dim: rgba(239, 68, 68, 0.12);
   --red-text: #f87171;
+  --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --radius-sm: 6px;
   --radius-md: 10px;
@@ -203,7 +204,7 @@ body {
 
 /* ─── Page chrome ─────────────────────────────────────────────────── */
 .page-header {
-  padding: 16px 18px 12px;
+  padding: calc(16px + var(--safe-top)) 18px 12px;
 }
 .page-title {
   font-size: 22px;
