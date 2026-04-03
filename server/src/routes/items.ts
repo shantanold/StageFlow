@@ -138,6 +138,58 @@ router.post("/", requireManager, async (req, res) => {
   }
 });
 
+// ─── POST /items/import ───────────────────────────────────────────────────────
+
+router.post("/import", requireManager, async (req, res) => {
+  try {
+    const { items } = req.body as {
+      items?: Array<{
+        name?: string;
+        category?: string;
+        purchase_cost?: number;
+        purchase_date?: string;
+        notes?: string;
+      }>;
+    };
+
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ message: "items array is required" });
+    }
+
+    const created: string[] = [];
+    const errors: { row: number; message: string }[] = [];
+
+    for (let i = 0; i < items.length; i++) {
+      const row = items[i];
+      if (!row.name?.trim() || !row.category || !row.purchase_date) {
+        errors.push({ row: i + 1, message: "name, category, and purchase_date are required" });
+        continue;
+      }
+      try {
+        const sku = await generateSku();
+        const item = await prisma.item.create({
+          data: {
+            sku,
+            name: row.name.trim(),
+            category: row.category,
+            purchase_cost: row.purchase_cost ?? 0,
+            purchase_date: new Date(row.purchase_date),
+            notes: row.notes || null,
+          },
+        });
+        created.push(item.id);
+      } catch {
+        errors.push({ row: i + 1, message: "Failed to create item" });
+      }
+    }
+
+    return res.status(201).json({ created: created.length, errors });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
 // ─── GET /items/sku/:sku — look up by exact SKU (for QR scanner) ─────────────
 
 router.get("/sku/:sku", async (req, res) => {

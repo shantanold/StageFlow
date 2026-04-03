@@ -53,6 +53,7 @@ interface CreateItemInput {
   purchase_cost: number;
   purchase_date: string;
   notes?: string;
+  photo_url?: string;
 }
 
 export function useCreateItem() {
@@ -62,6 +63,25 @@ export function useCreateItem() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["items"] });
       qc.invalidateQueries({ queryKey: ["sets"] }); // item counts change
+    },
+  });
+}
+
+interface ImportItemRow {
+  name: string;
+  category: string;
+  purchase_cost: number;
+  purchase_date: string;
+  notes?: string;
+}
+
+export function useImportItems() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (items: ImportItemRow[]) =>
+      api.post<{ created: number; errors: { row: number; message: string }[] }>("/items/import", { items }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["items"] });
     },
   });
 }

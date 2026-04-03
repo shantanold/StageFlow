@@ -1,10 +1,20 @@
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCreateItem } from "../../lib/queries";
 import { useSets } from "../../lib/queries";
 import { CATEGORIES } from "../../lib/utils";
 import { ApiError } from "../../lib/api";
 import { useToast } from "../../contexts/ToastContext";
+import { uploadImage } from "../../lib/cloudinary";
+
+function CameraIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+      <circle cx="12" cy="13" r="4"/>
+    </svg>
+  );
+}
 
 function BackIcon() {
   return (
@@ -21,6 +31,7 @@ export function AddItem() {
   const { showToast } = useToast();
   const createItem = useCreateItem();
   const { data: sets = [] } = useSets();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({
     name: "",
@@ -30,10 +41,35 @@ export function AddItem() {
     purchase_date: new Date().toISOString().slice(0, 10),
     notes: "",
   });
+  const [photoUrl, setPhotoUrl] = useState("");
+  const [photoPreview, setPhotoPreview] = useState("");
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [error, setError] = useState("");
 
   function set<K extends keyof typeof form>(key: K, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhotoPreview(URL.createObjectURL(file));
+    setUploadProgress(0);
+    try {
+      const url = await uploadImage(file, setUploadProgress);
+      setPhotoUrl(url);
+    } catch {
+      showToast("Photo upload failed", "error");
+      setPhotoPreview("");
+    } finally {
+      setUploadProgress(null);
+    }
+  }
+
+  function removePhoto() {
+    setPhotoUrl("");
+    setPhotoPreview("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -41,6 +77,10 @@ export function AddItem() {
     setError("");
     if (!form.name.trim()) {
       setError("Name is required");
+      return;
+    }
+    if (uploadProgress !== null) {
+      setError("Please wait for the photo to finish uploading");
       return;
     }
     try {
@@ -51,6 +91,7 @@ export function AddItem() {
         purchase_cost: parseFloat(form.purchase_cost) || 0,
         purchase_date: form.purchase_date,
         notes: form.notes.trim() || undefined,
+        photo_url: photoUrl || undefined,
       });
       showToast("Item added", "success");
       navigate(-1);
@@ -154,6 +195,77 @@ export function AddItem() {
                 required
               />
             </div>
+          </div>
+
+          {/* Photo */}
+          <div style={{ marginBottom: 16 }}>
+            <label className="form-label">Photo (optional)</label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              style={{ display: "none" }}
+              onChange={handlePhotoChange}
+            />
+
+            {!photoPreview ? (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                style={{
+                  width: "100%", height: 100,
+                  border: "1.5px dashed var(--border)", borderRadius: "var(--radius-md)",
+                  background: "var(--bg-surface)", cursor: "pointer",
+                  display: "flex", flexDirection: "column",
+                  alignItems: "center", justifyContent: "center", gap: 6,
+                  color: "var(--text-tertiary)",
+                }}
+              >
+                <CameraIcon />
+                <span style={{ fontSize: 12 }}>Take photo or choose from library</span>
+              </button>
+            ) : (
+              <div style={{ position: "relative", borderRadius: "var(--radius-md)", overflow: "hidden" }}>
+                <img
+                  src={photoPreview}
+                  alt="Preview"
+                  style={{ width: "100%", height: 160, objectFit: "cover", display: "block" }}
+                />
+                {/* Upload progress overlay */}
+                {uploadProgress !== null && (
+                  <div
+                    style={{
+                      position: "absolute", inset: 0,
+                      background: "rgba(0,0,0,0.5)",
+                      display: "flex", flexDirection: "column",
+                      alignItems: "center", justifyContent: "center", gap: 8,
+                    }}
+                  >
+                    <div style={{ width: "60%", height: 4, background: "rgba(255,255,255,0.3)", borderRadius: 2 }}>
+                      <div style={{ width: `${uploadProgress}%`, height: "100%", background: "white", borderRadius: 2, transition: "width 0.1s" }} />
+                    </div>
+                    <span style={{ fontSize: 12, color: "white" }}>Uploading {uploadProgress}%</span>
+                  </div>
+                )}
+                {/* Remove / retake button */}
+                {uploadProgress === null && (
+                  <button
+                    type="button"
+                    onClick={removePhoto}
+                    style={{
+                      position: "absolute", top: 8, right: 8,
+                      background: "rgba(0,0,0,0.6)", border: "none",
+                      borderRadius: "50%", width: 28, height: 28,
+                      color: "white", cursor: "pointer", fontSize: 16,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Notes */}

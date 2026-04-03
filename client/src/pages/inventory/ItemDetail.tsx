@@ -128,10 +128,14 @@ export function ItemDetail() {
               width: 56, height: 56, borderRadius: 8,
               background: "var(--bg-surface)", flexShrink: 0,
               display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 28,
+              fontSize: 28, overflow: "hidden",
             }}
           >
-            {getCategoryEmoji(item.category)}
+            {item.photo_url ? (
+              <img src={item.photo_url} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            ) : (
+              getCategoryEmoji(item.category)
+            )}
           </div>
           <div style={{ minWidth: 0 }}>
             <h1 style={{ fontSize: 18, fontWeight: 600, letterSpacing: "-0.2px" }}>{item.name}</h1>
@@ -173,6 +177,17 @@ export function ItemDetail() {
             </div>
           )}
         </div>
+
+        {/* Photo */}
+        {item.photo_url && (
+          <div style={{ borderRadius: "var(--radius-lg)", overflow: "hidden", marginBottom: 12 }}>
+            <img
+              src={item.photo_url}
+              alt={item.name}
+              style={{ width: "100%", maxHeight: 220, objectFit: "cover", display: "block" }}
+            />
+          </div>
+        )}
 
         {/* QR code */}
         <QRSection itemId={item.id} />

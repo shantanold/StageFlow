@@ -5,6 +5,8 @@ import { useDebounce } from "../hooks/useDebounce";
 import { downloadLabels } from "../lib/labels";
 import { getCategoryEmoji, statusBadgeClass, statusLabel } from "../lib/utils";
 import { useToast } from "../contexts/ToastContext";
+import { useAuth } from "../contexts/AuthContext";
+import { ImportCSVModal } from "./inventory/ImportCSVModal";
 import type { Item } from "../types";
 
 type FilterKey = "all" | "available" | "staged" | "flagged";
@@ -37,6 +39,16 @@ function PrinterIcon() {
   );
 }
 
+function UploadIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+      <polyline points="17 8 12 3 7 8"/>
+      <line x1="12" y1="3" x2="12" y2="15"/>
+    </svg>
+  );
+}
+
 function CheckIcon() {
   return (
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -50,6 +62,8 @@ function CheckIcon() {
 export function Inventory() {
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const { user } = useAuth();
+  const isManager = user?.role === "manager";
   const [searchParams, setSearchParams] = useSearchParams();
   const initialFilter = (searchParams.get("filter") as FilterKey) ?? "all";
 
@@ -58,6 +72,7 @@ export function Inventory() {
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [downloading, setDownloading] = useState(false);
+  const [showImport, setShowImport] = useState(false);
 
   const debouncedSearch = useDebounce(search, 250);
 
@@ -149,13 +164,25 @@ export function Inventory() {
               >
                 <PrinterIcon />
               </button>
-              <button
-                className="btn btn-primary"
-                style={{ padding: "8px 14px", fontSize: 12, gap: 5 }}
-                onClick={() => navigate("/inventory/new")}
-              >
-                <PlusIcon /> Add
-              </button>
+              {isManager && (
+                <button
+                  className="btn btn-outline"
+                  style={{ padding: "7px 12px", fontSize: 12 }}
+                  onClick={() => setShowImport(true)}
+                  title="Import from CSV"
+                >
+                  <UploadIcon />
+                </button>
+              )}
+              {isManager && (
+                <button
+                  className="btn btn-primary"
+                  style={{ padding: "8px 14px", fontSize: 12, gap: 5 }}
+                  onClick={() => navigate("/inventory/new")}
+                >
+                  <PlusIcon /> Add
+                </button>
+              )}
             </div>
           </>
         )}
@@ -214,6 +241,8 @@ export function Inventory() {
           </div>
         )}
       </div>
+
+      {showImport && <ImportCSVModal onClose={() => setShowImport(false)} />}
 
       {/* Print action bar */}
       {selectMode && (
@@ -286,10 +315,15 @@ function ItemRow({
           style={{
             width: 42, height: 42, borderRadius: 6,
             background: "var(--bg-surface)", flexShrink: 0,
-            display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 20, overflow: "hidden",
           }}
         >
-          {getCategoryEmoji(item.category)}
+          {item.photo_url ? (
+            <img src={item.photo_url} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          ) : (
+            getCategoryEmoji(item.category)
+          )}
         </div>
       )}
 
