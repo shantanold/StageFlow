@@ -97,10 +97,17 @@ export function JobDetail() {
             <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Start date</div>
             <div style={{ fontSize: 13, fontWeight: 500 }}>{formatDate(job.start_date)}</div>
           </div>
-          <div className="card">
-            <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Expected close</div>
-            <div style={{ fontSize: 13, fontWeight: 500, color: "var(--amber-text)" }}>{formatDate(job.expected_end_date)}</div>
-          </div>
+          {job.actual_end_date ? (
+            <div className="card" style={{ borderColor: "rgba(16,185,129,0.3)" }}>
+              <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Closed</div>
+              <div style={{ fontSize: 13, fontWeight: 500, color: "var(--green-text)" }}>{formatDate(job.actual_end_date)}</div>
+            </div>
+          ) : (
+            <div className="card">
+              <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Expected close</div>
+              <div style={{ fontSize: 13, fontWeight: 500, color: "var(--amber-text)" }}>{formatDate(job.expected_end_date)}</div>
+            </div>
+          )}
         </div>
         {job.notes && (
           <div className="card" style={{ marginBottom: 14 }}>
