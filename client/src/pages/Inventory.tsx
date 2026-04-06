@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useItems } from "../lib/queries";
 import { useDebounce } from "../hooks/useDebounce";
@@ -10,6 +10,7 @@ import { ImportCSVModal } from "./inventory/ImportCSVModal";
 import type { Item } from "../types";
 
 type FilterKey = "all" | "available" | "staged" | "flagged";
+type ViewMode = "list" | "grid";
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
@@ -57,6 +58,30 @@ function CheckIcon() {
   );
 }
 
+function ListViewIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="8" y1="6" x2="21" y2="6" />
+      <line x1="8" y1="12" x2="21" y2="12" />
+      <line x1="8" y1="18" x2="21" y2="18" />
+      <line x1="3" y1="6" x2="3.01" y2="6" />
+      <line x1="3" y1="12" x2="3.01" y2="12" />
+      <line x1="3" y1="18" x2="3.01" y2="18" />
+    </svg>
+  );
+}
+
+function GridViewIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="7" height="7" />
+      <rect x="14" y="3" width="7" height="7" />
+      <rect x="14" y="14" width="7" height="7" />
+      <rect x="3" y="14" width="7" height="7" />
+    </svg>
+  );
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function Inventory() {
@@ -73,6 +98,13 @@ export function Inventory() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [downloading, setDownloading] = useState(false);
   const [showImport, setShowImport] = useState(false);
+  const [viewMode, setViewMode]     = useState<ViewMode>(
+    () => (localStorage.getItem("inv_view") as ViewMode) ?? "list"
+  );
+
+  useEffect(() => {
+    localStorage.setItem("inv_view", viewMode);
+  }, [viewMode]);
 
   const debouncedSearch = useDebounce(search, 250);
 
@@ -156,6 +188,15 @@ export function Inventory() {
               <p className="page-subtitle">{live.length} items total</p>
             </div>
             <div style={{ display: "flex", gap: 6 }}>
+              {/* View toggle */}
+              <button
+                className="btn btn-outline"
+                style={{ padding: "7px 12px", fontSize: 12, background: viewMode === "list" ? "var(--bg-surface)" : undefined }}
+                onClick={() => setViewMode(viewMode === "list" ? "grid" : "list")}
+                title={viewMode === "list" ? "Switch to grid view" : "Switch to list view"}
+              >
+                {viewMode === "list" ? <GridViewIcon /> : <ListViewIcon />}
+              </button>
               <button
                 className="btn btn-outline"
                 style={{ padding: "7px 12px", fontSize: 12 }}
@@ -221,11 +262,31 @@ export function Inventory() {
           ))}
         </div>
 
-        {/* List */}
+        {/* List / Grid */}
         {isLoading ? (
-          <ItemListSkeleton />
+          viewMode === "grid" ? <ItemGridSkeleton /> : <ItemListSkeleton />
         ) : liveItems.length === 0 ? (
           <EmptyState search={search} filter={filter} />
+        ) : viewMode === "grid" ? (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 10,
+              paddingBottom: 24,
+            }}
+          >
+            {liveItems.map((item) => (
+              <GridItem
+                key={item.id}
+                item={item}
+                selectMode={selectMode}
+                selected={selectedIds.has(item.id)}
+                onToggle={() => toggleItem(item.id)}
+                onClick={() => !selectMode && navigate(`/inventory/${item.id}`)}
+              />
+            ))}
+          </div>
         ) : (
           <div className="list-card">
             {liveItems.map((item) => (
@@ -344,6 +405,97 @@ function ItemRow({
   );
 }
 
+function GridItem({
+  item, selectMode, selected, onToggle, onClick,
+}: {
+  item: Item;
+  selectMode: boolean;
+  selected: boolean;
+  onToggle: () => void;
+  onClick: () => void;
+}) {
+  return (
+    <div
+      onClick={selectMode ? onToggle : onClick}
+      style={{
+        borderRadius: "var(--radius-lg)",
+        border: `1px solid ${selected ? "var(--accent)" : "var(--border)"}`,
+        background: selected ? "rgba(59,130,246,0.08)" : "var(--bg-card)",
+        overflow: "hidden",
+        cursor: "pointer",
+        position: "relative",
+      }}
+    >
+      {/* Square photo area */}
+      <div
+        style={{
+          width: "100%",
+          aspectRatio: "1 / 1",
+          background: "var(--bg-surface)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 44,
+          overflow: "hidden",
+          position: "relative",
+        }}
+      >
+        {item.photo_url ? (
+          <img src={item.photo_url} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        ) : (
+          getCategoryEmoji(item.category)
+        )}
+
+        {/* Status badge overlay */}
+        <span
+          className={statusBadgeClass(item.status, item.condition)}
+          style={{
+            position: "absolute",
+            bottom: 6,
+            right: 6,
+            fontSize: 10,
+          }}
+        >
+          {statusLabel(item.status, item.condition)}
+        </span>
+
+        {/* Select checkbox overlay */}
+        {selectMode && (
+          <div
+            style={{
+              position: "absolute",
+              top: 8,
+              right: 8,
+              width: 22,
+              height: 22,
+              borderRadius: 6,
+              border: `2px solid ${selected ? "var(--accent)" : "rgba(148,163,184,0.5)"}`,
+              background: selected ? "var(--accent)" : "rgba(0,0,0,0.4)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            {selected && <CheckIcon />}
+          </div>
+        )}
+      </div>
+
+      {/* Name row */}
+      <div style={{ padding: "8px 10px 10px" }}>
+        <div style={{ fontSize: 12.5, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          {item.name}
+        </div>
+        {item.set && (
+          <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {item.set.name}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ItemListSkeleton() {
   return (
     <div className="list-card">
@@ -353,6 +505,21 @@ function ItemListSkeleton() {
           <div style={{ flex: 1 }}>
             <div style={{ height: 13, borderRadius: 4, background: "var(--bg-surface)", width: "55%", marginBottom: 6 }} />
             <div style={{ height: 10, borderRadius: 3, background: "var(--bg-surface)", width: "35%" }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ItemGridSkeleton() {
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+      {[...Array(6)].map((_, i) => (
+        <div key={i} style={{ borderRadius: "var(--radius-lg)", border: "1px solid var(--border)", background: "var(--bg-card)", overflow: "hidden" }}>
+          <div style={{ width: "100%", aspectRatio: "1 / 1", background: "var(--bg-surface)" }} />
+          <div style={{ padding: "8px 10px 10px" }}>
+            <div style={{ height: 12, borderRadius: 4, background: "var(--bg-surface)", width: "70%" }} />
           </div>
         </div>
       ))}
