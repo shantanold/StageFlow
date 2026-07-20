@@ -15,7 +15,7 @@ export interface AuthResponse {
 
 // ─── Items ────────────────────────────────────────────────────────────────────
 
-export type ItemStatus    = "available" | "staged" | "disposed";
+export type ItemStatus    = "available" | "staged" | "disposed" | "missing";
 export type ItemCondition = "good" | "fair" | "damaged";
 
 export interface SetRef {

@@ -433,4 +433,64 @@ router.post("/:id/scan-return", async (req, res) => {
   }
 });
 
+// ─── POST /jobs/:id/force-complete ───────────────────────────────────────────
+// Manager override: closes out a job whose remaining items will never come
+// back (lost, stolen, left behind). Marks every not-yet-returned item on the
+// job as `missing` and completes the job. Missing items stay in inventory
+// (flagged) rather than disposed — a manager can mark one "found" later.
+
+router.post("/:id/force-complete", requireManager, async (req, res) => {
+  try {
+    const job = await prisma.job.findUnique({ where: { id: req.params.id } });
+    if (!job) return res.status(404).json({ message: "Job not found" });
+
+    if (job.status !== "active" && job.status !== "planning") {
+      return res.status(400).json({ message: "Only active or planning jobs can be force-completed" });
+    }
+
+    const remainingItems = await prisma.jobItem.findMany({
+      where: { job_id: req.params.id, status: { not: "returned" } },
+    });
+
+    if (remainingItems.length === 0) {
+      return res.status(400).json({ message: "No unreturned items on this job — use the normal completion flow" });
+    }
+
+    const userId = req.user!.userId;
+
+    await prisma.$transaction(async (tx) => {
+      await tx.jobItem.updateMany({
+        where: { id: { in: remainingItems.map((ji) => ji.id) } },
+        data: { status: "missing" },
+      });
+
+      await tx.item.updateMany({
+        where: { id: { in: remainingItems.map((ji) => ji.item_id) } },
+        data: { status: "missing" as ItemStatus },
+      });
+
+      await tx.movement.createMany({
+        data: remainingItems.map((ji) => ({
+          item_id: ji.item_id,
+          job_id: req.params.id,
+          from_status: "staged",
+          to_status: "missing",
+          performed_by: userId,
+          notes: "Marked missing — job force-completed",
+        })),
+      });
+
+      await tx.job.update({
+        where: { id: req.params.id },
+        data: { status: "completed", actual_end_date: new Date() },
+      });
+    });
+
+    return res.json({ job_completed: true, missing_count: remainingItems.length });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
 export default router;

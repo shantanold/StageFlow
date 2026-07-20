@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useJobs } from "../lib/queries";
 import { formatDate, jobStatusBadgeClass } from "../lib/utils";
+import { useAuth } from "../contexts/AuthContext";
 import type { Job } from "../types";
 
 type Tab = "active" | "completed";
@@ -17,6 +18,8 @@ function PlusIcon() {
 
 export function Jobs() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isManager = user?.role === "manager";
   const [tab, setTab] = useState<Tab>("active");
   const { data: jobs = [], isLoading } = useJobs();
 
@@ -32,13 +35,15 @@ export function Jobs() {
           <h1 className="page-title">Jobs</h1>
           <p className="page-subtitle">{jobs.length} total</p>
         </div>
-        <button
-          className="btn btn-primary"
-          style={{ padding: "8px 14px", fontSize: 12, display: "flex", alignItems: "center", gap: 6 }}
-          onClick={() => navigate("/jobs/new")}
-        >
-          <PlusIcon /> New job
-        </button>
+        {isManager && (
+          <button
+            className="btn btn-primary"
+            style={{ padding: "8px 14px", fontSize: 12, display: "flex", alignItems: "center", gap: 6 }}
+            onClick={() => navigate("/jobs/new")}
+          >
+            <PlusIcon /> New job
+          </button>
+        )}
       </div>
 
       <div style={{ padding: "0 18px" }}>

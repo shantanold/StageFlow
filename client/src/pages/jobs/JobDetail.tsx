@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useJob, useJobItems } from "../../lib/queries";
+import { useJob, useJobItems, useForceCompleteJob } from "../../lib/queries";
 import { getCategoryEmoji, jobStatusBadgeClass, statusBadgeClass, statusLabel } from "../../lib/utils";
 import { formatDate } from "../../lib/utils";
+import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../contexts/ToastContext";
+import { ConfirmDialog } from "../../components/ConfirmDialog";
 import type { JobItemRow } from "../../types";
 import { EditJobModal } from "./EditJobModal";
 import { AssignItemsModal } from "./AssignItemsModal";
@@ -41,11 +44,16 @@ function groupBySet(rows: JobItemRow[]): { setId: string | null; setName: string
 export function JobDetail() {
   const { id = "" } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { showToast } = useToast();
+  const isManager = user?.role === "manager";
   const [showEdit, setShowEdit] = useState(false);
   const [showAssign, setShowAssign] = useState(false);
+  const [showForceComplete, setShowForceComplete] = useState(false);
 
   const { data: job, isLoading: jobLoading } = useJob(id);
   const { data: jobItems = [], isLoading: itemsLoading } = useJobItems(id);
+  const forceComplete = useForceCompleteJob(id);
 
   if (jobLoading) {
     return (
@@ -64,6 +72,17 @@ export function JobDetail() {
   }
 
   const groups = groupBySet(jobItems);
+  const unreturnedCount = jobItems.filter((ji) => ji.status !== "returned").length;
+
+  async function handleForceComplete() {
+    try {
+      const result = await forceComplete.mutateAsync();
+      showToast(`Job closed — ${result.missing_count} item(s) marked missing`, "success");
+      setShowForceComplete(false);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to force-complete job", "error");
+    }
+  }
 
   return (
     <div className="animate-in">
@@ -118,7 +137,7 @@ export function JobDetail() {
 
         {/* Actions */}
         <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
-          {(job.status === "active" || job.status === "planning") && (
+          {isManager && (job.status === "active" || job.status === "planning") && (
             <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setShowAssign(true)}>
               Assign items
             </button>
@@ -128,10 +147,28 @@ export function JobDetail() {
               Scan return
             </button>
           )}
-          <button className="btn btn-outline" onClick={() => setShowEdit(true)}>
-            Edit job
-          </button>
+          {isManager && (
+            <button className="btn btn-outline" onClick={() => setShowEdit(true)}>
+              Edit job
+            </button>
+          )}
         </div>
+
+        {isManager && (job.status === "active" || job.status === "planning") && unreturnedCount > 0 && (
+          <button
+            className="btn btn-outline"
+            style={{
+              width: "100%",
+              fontSize: 12.5,
+              borderColor: "rgba(239,68,68,0.4)",
+              color: "var(--red-text)",
+              marginBottom: 18,
+            }}
+            onClick={() => setShowForceComplete(true)}
+          >
+            Force complete — mark {unreturnedCount} unreturned item{unreturnedCount === 1 ? "" : "s"} missing
+          </button>
+        )}
 
         {/* Items on this job */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
@@ -161,7 +198,9 @@ export function JobDetail() {
               textAlign: "center",
             }}
           >
-            <p style={{ fontSize: 13, color: "var(--text-tertiary)" }}>No items assigned yet. Tap “Assign items” to add inventory.</p>
+            <p style={{ fontSize: 13, color: "var(--text-tertiary)" }}>
+              {isManager ? "No items assigned yet. Tap “Assign items” to add inventory." : "No items assigned yet."}
+            </p>
           </div>
         ) : (
           <div style={{ paddingBottom: 24 }}>
@@ -214,6 +253,16 @@ export function JobDetail() {
 
       {showEdit && <EditJobModal job={job} onClose={() => setShowEdit(false)} />}
       {showAssign && <AssignItemsModal jobId={id} onClose={() => setShowAssign(false)} />}
+      {showForceComplete && (
+        <ConfirmDialog
+          title="Force complete this job?"
+          message={`${unreturnedCount} item${unreturnedCount === 1 ? "" : "s"} on this job haven't been returned. They'll be marked missing and flagged in inventory — you can mark one "found" later if it turns up. This closes the job now. Only do this if you're sure these items aren't coming back.`}
+          confirmLabel={forceComplete.isPending ? "Closing…" : "Force complete"}
+          confirmDanger
+          onConfirm={handleForceComplete}
+          onCancel={() => setShowForceComplete(false)}
+        />
+      )}
     </div>
   );
 }

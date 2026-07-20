@@ -55,6 +55,7 @@ export function formatCurrency(v: string | number | null | undefined): string {
 // ─── Status helpers ───────────────────────────────────────────────────────────
 
 export function statusBadgeClass(status: string, condition?: string): string {
+  if (status === "missing")   return "badge badge-red";
   if (condition === "damaged") return "badge badge-amber";
   if (status === "available") return "badge badge-green";
   if (status === "staged")    return "badge badge-blue";
@@ -63,6 +64,7 @@ export function statusBadgeClass(status: string, condition?: string): string {
 }
 
 export function statusLabel(status: string, condition?: string): string {
+  if (status === "missing")   return "Missing";
   if (condition === "damaged") return "Damaged";
   if (status === "available") return "Available";
   if (status === "staged")    return "Staged";

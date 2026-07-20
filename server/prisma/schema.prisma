@@ -18,6 +18,7 @@ enum ItemStatus {
   available
   staged
   disposed
+  missing
 }
 
 enum ItemCondition {
@@ -39,6 +40,7 @@ enum JobItemStatus {
   delivered
   picked_up
   returned
+  missing
 }
 
 enum ReturnCondition {

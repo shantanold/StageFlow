@@ -318,3 +318,29 @@ export function useAssignItems(jobId: string) {
     },
   });
 }
+
+export function useForceCompleteJob(jobId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<{ job_completed: boolean; missing_count: number }>(`/jobs/${jobId}/force-complete`, {}),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["jobs"] });
+      qc.invalidateQueries({ queryKey: ["jobs", jobId] });
+      qc.invalidateQueries({ queryKey: ["jobs", jobId, "items"] });
+      qc.invalidateQueries({ queryKey: ["items"] });
+      qc.invalidateQueries({ queryKey: ["stats"] });
+    },
+  });
+}
+
+export function useMarkItemFound(itemId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<Item>(`/items/${itemId}/found`, {}),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["items"] });
+      qc.invalidateQueries({ queryKey: ["items", itemId] });
+      qc.invalidateQueries({ queryKey: ["stats"] });
+    },
+  });
+}

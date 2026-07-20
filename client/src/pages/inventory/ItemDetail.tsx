@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useItem, useItemMovements, useUpdateItem } from "../../lib/queries";
+import { useItem, useItemMovements, useUpdateItem, useMarkItemFound } from "../../lib/queries";
 import { useSets } from "../../lib/queries";
 import { downloadLabels, useQRCodeUrl } from "../../lib/labels";
 import { uploadImage } from "../../lib/cloudinary";
@@ -115,11 +115,22 @@ export function ItemDetail() {
   const { id = "" } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { showToast } = useToast();
   const isManager = user?.role === "manager";
   const [showEdit, setShowEdit] = useState(false);
 
   const { data: item, isLoading, isError } = useItem(id);
   const { data: movements = [] } = useItemMovements(id);
+  const markFound = useMarkItemFound(id);
+
+  async function handleMarkFound() {
+    try {
+      await markFound.mutateAsync();
+      showToast("Item marked available", "success");
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : "Failed to update item", "error");
+    }
+  }
 
   if (isLoading) {
     return (
@@ -210,6 +221,23 @@ export function ItemDetail() {
             </div>
           )}
         </div>
+
+        {/* Missing item resolution */}
+        {isManager && item.status === "missing" && (
+          <div className="card" style={{ borderColor: "rgba(239,68,68,0.3)", marginBottom: 12 }}>
+            <p style={{ fontSize: 12.5, color: "var(--text-secondary)", marginBottom: 10 }}>
+              This item was marked missing when a job was force-completed with it unreturned. If it's turned up, mark it found to put it back in available inventory.
+            </p>
+            <button
+              className="btn btn-primary"
+              style={{ width: "100%" }}
+              disabled={markFound.isPending}
+              onClick={handleMarkFound}
+            >
+              {markFound.isPending ? "Marking found…" : "Mark as found"}
+            </button>
+          </div>
+        )}
 
         {/* Photo */}
         {item.photo_url && (

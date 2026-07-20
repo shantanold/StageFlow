@@ -109,13 +109,14 @@ export function Inventory() {
   const debouncedSearch = useDebounce(search, 250);
 
   const apiFilters = {
-    search:    debouncedSearch || undefined,
-    status:    filter === "available" ? "available" : filter === "staged" ? "staged" : undefined,
-    condition: filter === "flagged" ? "damaged" : undefined,
+    search: debouncedSearch || undefined,
+    status: filter === "available" ? "available" : filter === "staged" ? "staged" : undefined,
   };
 
-  const { data: allItems = [], isLoading } = useItems(apiFilters);
-  const liveItems = allItems.filter((i) => i.status !== "disposed");
+  const { data: rawItems = [], isLoading } = useItems(apiFilters);
+  const liveItems = rawItems
+    .filter((i) => i.status !== "disposed")
+    .filter((i) => filter !== "flagged" || i.condition === "damaged" || i.status === "missing");
 
   const { data: allForCounts = [] } = useItems({});
   const live = allForCounts.filter((i) => i.status !== "disposed");
@@ -123,7 +124,7 @@ export function Inventory() {
     all:       live.length,
     available: live.filter((i) => i.status === "available").length,
     staged:    live.filter((i) => i.status === "staged").length,
-    flagged:   live.filter((i) => i.condition === "damaged").length,
+    flagged:   live.filter((i) => i.condition === "damaged" || i.status === "missing").length,
   };
 
   function handleFilterChange(f: FilterKey) {

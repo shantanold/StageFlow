@@ -40,11 +40,15 @@ router.get("/dashboard", async (_req, res) => {
     // Parse item counts
     const availableCount = itemCounts.find((r) => r.status === "available")?._count ?? 0;
     const stagedCount    = itemCounts.find((r) => r.status === "staged")?._count    ?? 0;
-    const totalItems     = availableCount + stagedCount;
+    const missingCount   = itemCounts.find((r) => r.status === "missing")?._count   ?? 0;
+    const totalItems     = availableCount + stagedCount + missingCount;
 
-    // Damaged items count
+    // Damaged or missing items need attention
     const needsAttention = await prisma.item.count({
-      where: { condition: "damaged", status: { not: "disposed" } },
+      where: {
+        status: { not: "disposed" },
+        OR: [{ condition: "damaged" }, { status: "missing" }],
+      },
     });
 
     // Active jobs count

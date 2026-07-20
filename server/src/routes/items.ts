@@ -56,7 +56,7 @@ router.get("/", async (req, res) => {
 
     const where: Prisma.ItemWhereInput = {};
 
-    const validStatuses: ItemStatus[] = ["available", "staged", "disposed"];
+    const validStatuses: ItemStatus[] = ["available", "staged", "disposed", "missing"];
     if (status && validStatuses.includes(status as ItemStatus)) {
       where.status = status as ItemStatus;
     }
@@ -279,6 +279,46 @@ router.put("/:id", requireManager, async (req, res) => {
       },
       include: { set: { select: { id: true, name: true } } },
     });
+
+    return res.json(item);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
+// ─── POST /items/:id/found ─────────────────────────────────────────────────────
+// Resolves an item that was marked missing (e.g. a force-completed job) back
+// into available inventory. Condition is left as-is — edit the item afterward
+// if it came back damaged.
+
+router.post("/:id/found", requireManager, async (req, res) => {
+  try {
+    const existing = await prisma.item.findUnique({ where: { id: req.params.id } });
+    if (!existing) return res.status(404).json({ message: "Item not found" });
+    if (existing.status !== "missing") {
+      return res.status(400).json({ message: "Item is not marked missing" });
+    }
+
+    const userId = req.user!.userId;
+
+    const [item] = await prisma.$transaction([
+      prisma.item.update({
+        where: { id: req.params.id },
+        data: { status: "available" },
+        include: { set: { select: { id: true, name: true } } },
+      }),
+      prisma.movement.create({
+        data: {
+          item_id: req.params.id,
+          job_id: null,
+          from_status: "missing",
+          to_status: "available",
+          performed_by: userId,
+          notes: "Found — marked available",
+        },
+      }),
+    ]);
 
     return res.json(item);
   } catch (err) {

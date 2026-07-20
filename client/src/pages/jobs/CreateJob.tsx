@@ -1,8 +1,9 @@
 import { useState, FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Navigate } from "react-router-dom";
 import { useCreateJob } from "../../lib/queries";
 import { ApiError } from "../../lib/api";
 import { useToast } from "../../contexts/ToastContext";
+import { useAuth } from "../../contexts/AuthContext";
 
 function BackIcon() {
   return (
@@ -14,6 +15,7 @@ function BackIcon() {
 
 export function CreateJob() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { showToast } = useToast();
   const createJob = useCreateJob();
   const [form, setForm] = useState({
@@ -28,6 +30,10 @@ export function CreateJob() {
     notes: "",
   });
   const [error, setError] = useState("");
+
+  if (user?.role !== "manager") {
+    return <Navigate to="/jobs" replace />;
+  }
 
   function set<K extends keyof typeof form>(key: K, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
