@@ -82,6 +82,10 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
+    if (!user.is_active) {
+      return res.status(403).json({ message: "This account has been deactivated" });
+    }
+
     const token = signToken(user.id, user.email, user.role);
     return res.json({ token, user: safeUser(user) });
   } catch (err) {
@@ -95,14 +99,19 @@ router.get("/me", authenticate, async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.user!.userId },
-      select: { id: true, name: true, email: true, role: true, created_at: true },
+      select: { id: true, name: true, email: true, role: true, is_active: true, created_at: true },
     });
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    return res.json(user);
+    if (!user.is_active) {
+      return res.status(401).json({ message: "This account has been deactivated" });
+    }
+
+    const { is_active, ...rest } = user;
+    return res.json(rest);
   } catch (err) {
     console.error("me error", err);
     return res.status(500).json({ message: "Server error" });

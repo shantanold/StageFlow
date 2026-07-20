@@ -13,6 +13,15 @@ export interface AuthResponse {
   user: User;
 }
 
+export interface ManagedUser {
+  id: string;
+  name: string;
+  email: string;
+  role: "staff" | "manager";
+  is_active: boolean;
+  created_at: string;
+}
+
 // ─── Items ────────────────────────────────────────────────────────────────────
 
 export type ItemStatus    = "available" | "staged" | "disposed" | "missing";

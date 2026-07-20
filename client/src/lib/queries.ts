@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api";
-import type { Item, ItemDetail, ItemSet, Movement, Job, JobItemRow } from "../types";
+import type { Item, ItemDetail, ItemSet, Movement, Job, JobItemRow, ManagedUser } from "../types";
 
 // ─── Items ────────────────────────────────────────────────────────────────────
 
@@ -341,6 +341,26 @@ export function useMarkItemFound(itemId: string) {
       qc.invalidateQueries({ queryKey: ["items"] });
       qc.invalidateQueries({ queryKey: ["items", itemId] });
       qc.invalidateQueries({ queryKey: ["stats"] });
+    },
+  });
+}
+
+// ─── Users (manager only) ────────────────────────────────────────────────────
+
+export function useUsers() {
+  return useQuery({
+    queryKey: ["users"],
+    queryFn: () => api.get<ManagedUser[]>("/users"),
+  });
+}
+
+export function useUpdateUserAccess(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { role?: "staff" | "manager"; is_active?: boolean }) =>
+      api.patch<ManagedUser>(`/users/${id}`, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["users"] });
     },
   });
 }

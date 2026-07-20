@@ -12,6 +12,7 @@ import setsRouter  from "./routes/sets";
 import labelsRouter from "./routes/labels";
 import jobsRouter  from "./routes/jobs";
 import statsRouter from "./routes/stats";
+import usersRouter from "./routes/users";
 
 const app = express();
 const PORT = process.env.PORT ?? 3001;
@@ -59,6 +60,7 @@ app.use("/api/v1/sets",   apiLimiter,  setsRouter);
 app.use("/api/v1/labels", apiLimiter,  labelsRouter);
 app.use("/api/v1/jobs",   apiLimiter,  jobsRouter);
 app.use("/api/v1/stats",  apiLimiter,  statsRouter);
+app.use("/api/v1/users",  apiLimiter,  usersRouter);
 
 app.use((_req, res) => {
   res.status(404).json({ message: "Not found" });

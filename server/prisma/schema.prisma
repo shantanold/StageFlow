@@ -57,6 +57,7 @@ model User {
   email         String   @unique
   password_hash String
   role          Role     @default(staff)
+  is_active     Boolean  @default(true)
   created_at    DateTime @default(now())
 
   jobs_created  Job[]       @relation("JobCreatedBy")

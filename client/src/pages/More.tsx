@@ -40,6 +40,9 @@ export function More() {
       description: "Utilization, performance, value & damage",
       route: "/reports",
     },
+    ...(user?.role === "manager"
+      ? [{ label: "Users", description: "Manage roles & access", route: "/users" }]
+      : []),
   ];
 
   return (
