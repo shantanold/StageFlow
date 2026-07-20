@@ -31,6 +31,9 @@ import { JobDetail }   from "./pages/jobs/JobDetail";
 // Labels
 import { PrintLabels } from "./pages/labels/PrintLabels";
 
+// Reports
+import { Reports } from "./pages/Reports";
+
 // Scan sub-pages
 import { QuickScan }  from "./pages/scan/QuickScan";
 import { ScanOut }    from "./pages/scan/ScanOut";
@@ -65,6 +68,7 @@ export default function App() {
               <Route path="/sets"                  element={<Sets />} />
               <Route path="/sets/:id"              element={<SetDetail />} />
               <Route path="/labels"                element={<PrintLabels />} />
+              <Route path="/reports"               element={<Reports />} />
             </Route>
           </Route>
 

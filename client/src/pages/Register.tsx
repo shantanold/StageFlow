@@ -11,6 +11,7 @@ export function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"staff" | "manager">("staff");
+  const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -23,7 +24,7 @@ export function Register() {
     }
     setLoading(true);
     try {
-      await register(name, email, password, role);
+      await register(name, email, password, role, code);
       navigate("/home", { replace: true });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong");
@@ -149,6 +150,19 @@ export function Register() {
               <option value="staff">Staff — can scan and view</option>
               <option value="manager">Manager — full access</option>
             </select>
+          </div>
+          <div>
+            <label className="form-label" htmlFor="code">Signup code</label>
+            <input
+              id="code"
+              type="text"
+              className="input-field"
+              placeholder="Ask your manager for this"
+              autoComplete="off"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              required
+            />
           </div>
 
           <button

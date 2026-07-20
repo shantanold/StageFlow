@@ -170,6 +170,71 @@ export function useDashboard() {
   });
 }
 
+export interface UtilizationReport {
+  overall_pct: number;
+  by_category: { category: string; total: number; staged: number; utilization_pct: number }[];
+  dead_stock:  { id: string; sku: string; name: string; category: string }[];
+  top_items:   { id: string; name: string; category: string; job_count: number }[];
+}
+
+export interface JobPerformanceReport {
+  total_completed:     number;
+  avg_duration_days:   number;
+  on_time_rate_pct:    number;
+  damage_rate_pct:     number;
+  top_clients:         { client_name: string; job_count: number }[];
+  monthly_completions: { month: string; count: number }[];
+}
+
+export interface InventoryValueReport {
+  total_value:     number;
+  available_value: number;
+  staged_value:    number;
+  disposed_value:  number;
+  disposed_count:  number;
+  by_category:     { category: string; value: number; count: number }[];
+}
+
+export interface DamageLossReport {
+  total_damage_events:  number;
+  total_disposed_count: number;
+  total_disposed_value: number;
+  top_damaged_items:    { id: string; name: string; sku: string; category: string; damage_count: number }[];
+  recent_events: {
+    item_name: string; item_sku: string; item_category: string;
+    job_address: string; job_client: string;
+    condition: string; notes: string | null; returned_at: string | null;
+  }[];
+}
+
+export function useUtilizationReport() {
+  return useQuery({
+    queryKey: ["stats", "reports", "utilization"],
+    queryFn:  () => api.get<UtilizationReport>("/stats/reports/utilization"),
+  });
+}
+
+export function useJobPerformanceReport() {
+  return useQuery({
+    queryKey: ["stats", "reports", "job-performance"],
+    queryFn:  () => api.get<JobPerformanceReport>("/stats/reports/job-performance"),
+  });
+}
+
+export function useInventoryValueReport() {
+  return useQuery({
+    queryKey: ["stats", "reports", "inventory-value"],
+    queryFn:  () => api.get<InventoryValueReport>("/stats/reports/inventory-value"),
+  });
+}
+
+export function useDamageLossReport() {
+  return useQuery({
+    queryKey: ["stats", "reports", "damage-loss"],
+    queryFn:  () => api.get<DamageLossReport>("/stats/reports/damage-loss"),
+  });
+}
+
 // ─── Jobs ────────────────────────────────────────────────────────────────────
 
 interface JobFilters {

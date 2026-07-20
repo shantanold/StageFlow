@@ -24,15 +24,20 @@ const safeUser = (u: { id: string; name: string; email: string; role: string }) 
 // POST /api/v1/auth/register
 router.post("/register", async (req, res) => {
   try {
-    const { name, email, password, role } = req.body as {
+    const { name, email, password, role, code } = req.body as {
       name?: string;
       email?: string;
       password?: string;
       role?: string;
+      code?: string;
     };
 
     if (!name?.trim() || !email?.trim() || !password) {
       return res.status(400).json({ message: "Name, email, and password are required" });
+    }
+
+    if (!code || code !== process.env.SIGNUP_CODE) {
+      return res.status(403).json({ message: "Invalid signup code" });
     }
 
     const existing = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });

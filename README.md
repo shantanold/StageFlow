@@ -91,6 +91,7 @@ DATABASE_URL="postgresql://..." npm run seed
    JWT_SECRET=<output of: openssl rand -base64 32>
    CORS_ORIGIN=https://your-app.vercel.app
    PORT=3001
+   SIGNUP_CODE=<a code you make up and share only with your team>
    ```
 4. Railway auto-detects the `start` script (`node dist/index.js`) after running `npm run build`
 5. Add a custom start command: `npm run build && npm start`
@@ -122,6 +123,7 @@ The PWA manifest and service worker are automatically included in the `dist/` bu
 | `JWT_SECRET` | ✅ | Secret for signing JWTs — use a long random string |
 | `PORT` | | Server port (default: 3001) |
 | `CORS_ORIGIN` | | Allowed frontend origin (default: http://localhost:5173) |
+| `SIGNUP_CODE` | ✅ | Shared secret required to register a new account — pick your own and share it only with your team |
 
 ### Client (`client/.env`)
 

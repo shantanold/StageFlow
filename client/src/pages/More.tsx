@@ -37,9 +37,8 @@ export function More() {
     },
     {
       label: "Reports",
-      description: "Utilization and activity reports",
-      disabled: true,
-      badge: "Phase 6",
+      description: "Utilization, performance, value & damage",
+      route: "/reports",
     },
   ];
 

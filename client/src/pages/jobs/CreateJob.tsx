@@ -24,7 +24,7 @@ export function CreateJob() {
     client_name: "",
     client_contact: "",
     start_date: new Date().toISOString().slice(0, 10),
-    expected_end_date: "",
+    expected_end_date: (() => { const d = new Date(); d.setMonth(d.getMonth() + 3); return d.toISOString().slice(0, 10); })(),
     notes: "",
   });
   const [error, setError] = useState("");
