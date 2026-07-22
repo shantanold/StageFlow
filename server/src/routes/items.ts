@@ -100,7 +100,7 @@ router.get("/", async (req, res) => {
 
 router.post("/", requireManager, async (req, res) => {
   try {
-    const { name, category, set_id, purchase_cost, purchase_date, notes, photo_url } =
+    const { name, category, set_id, purchase_cost, purchase_date, notes, photo_url, width_in, depth_in, height_in } =
       req.body as {
         name?: string;
         category?: string;
@@ -109,6 +109,9 @@ router.post("/", requireManager, async (req, res) => {
         purchase_date?: string;
         notes?: string;
         photo_url?: string;
+        width_in?: number;
+        depth_in?: number;
+        height_in?: number;
       };
 
     if (!name?.trim() || !category || !purchase_date) {
@@ -125,6 +128,9 @@ router.post("/", requireManager, async (req, res) => {
         set_id: set_id || null,
         purchase_cost: purchase_cost ?? 0,
         purchase_date: new Date(purchase_date),
+        width_in: width_in ?? null,
+        depth_in: depth_in ?? null,
+        height_in: height_in ?? null,
         notes: notes || null,
         photo_url: photo_url || null,
       },
@@ -253,7 +259,7 @@ router.put("/:id", requireManager, async (req, res) => {
     const existing = await prisma.item.findUnique({ where: { id: req.params.id } });
     if (!existing) return res.status(404).json({ message: "Item not found" });
 
-    const { name, category, set_id, condition, notes, photo_url, purchase_cost, purchase_date } =
+    const { name, category, set_id, condition, notes, photo_url, purchase_cost, purchase_date, width_in, depth_in, height_in } =
       req.body as Partial<{
         name: string;
         category: string;
@@ -263,6 +269,9 @@ router.put("/:id", requireManager, async (req, res) => {
         photo_url: string | null;
         purchase_cost: number;
         purchase_date: string;
+        width_in: number | null;
+        depth_in: number | null;
+        height_in: number | null;
       }>;
 
     const item = await prisma.item.update({
@@ -276,6 +285,9 @@ router.put("/:id", requireManager, async (req, res) => {
         ...(photo_url !== undefined && { photo_url }),
         ...(purchase_cost !== undefined && { purchase_cost }),
         ...(purchase_date !== undefined && { purchase_date: new Date(purchase_date) }),
+        ...(width_in !== undefined && { width_in }),
+        ...(depth_in !== undefined && { depth_in }),
+        ...(height_in !== undefined && { height_in }),
       },
       include: { set: { select: { id: true, name: true } } },
     });

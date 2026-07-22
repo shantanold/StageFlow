@@ -52,6 +52,9 @@ interface CreateItemInput {
   set_id?: string | null;
   purchase_cost: number;
   purchase_date: string;
+  width_in?: number | null;
+  depth_in?: number | null;
+  height_in?: number | null;
   notes?: string;
   photo_url?: string;
 }

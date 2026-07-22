@@ -39,6 +39,9 @@ export function AddItem() {
     set_id: "",
     purchase_cost: "",
     purchase_date: new Date().toISOString().slice(0, 10),
+    width_in: "",
+    depth_in: "",
+    height_in: "",
     notes: "",
   });
   const [photoUrl, setPhotoUrl] = useState("");
@@ -90,6 +93,9 @@ export function AddItem() {
         set_id: form.set_id || null,
         purchase_cost: parseFloat(form.purchase_cost) || 0,
         purchase_date: form.purchase_date,
+        width_in: form.width_in ? parseFloat(form.width_in) : null,
+        depth_in: form.depth_in ? parseFloat(form.depth_in) : null,
+        height_in: form.height_in ? parseFloat(form.height_in) : null,
         notes: form.notes.trim() || undefined,
         photo_url: photoUrl || undefined,
       });
@@ -193,6 +199,31 @@ export function AddItem() {
                 value={form.purchase_date}
                 onChange={(e) => set("purchase_date", e.target.value)}
                 required
+              />
+            </div>
+          </div>
+
+          {/* Dimensions */}
+          <div style={{ marginBottom: 16 }}>
+            <label className="form-label">Dimensions in inches (optional)</label>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+              <input
+                type="number" min="0" step="0.1"
+                className="input-field" placeholder="W"
+                value={form.width_in}
+                onChange={(e) => set("width_in", e.target.value)}
+              />
+              <input
+                type="number" min="0" step="0.1"
+                className="input-field" placeholder="D"
+                value={form.depth_in}
+                onChange={(e) => set("depth_in", e.target.value)}
+              />
+              <input
+                type="number" min="0" step="0.1"
+                className="input-field" placeholder="H"
+                value={form.height_in}
+                onChange={(e) => set("height_in", e.target.value)}
               />
             </div>
           </div>

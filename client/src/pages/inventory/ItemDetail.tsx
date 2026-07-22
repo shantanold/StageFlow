@@ -6,7 +6,7 @@ import { downloadLabels, useQRCodeUrl } from "../../lib/labels";
 import { uploadImage } from "../../lib/cloudinary";
 import {
   getCategoryEmoji, statusBadgeClass, statusLabel,
-  formatDate, formatCurrency, movementDotColor, CATEGORIES,
+  formatDate, formatCurrency, formatDimensions, movementDotColor, CATEGORIES,
 } from "../../lib/utils";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
@@ -215,6 +215,11 @@ export function ItemDetail() {
           <InfoCell label="Set" value={item.set?.name ?? "None"} />
           <InfoCell label="Cost" value={formatCurrency(item.purchase_cost)} />
           <InfoCell label="Purchased" value={formatDate(item.purchase_date)} />
+          {formatDimensions(item.width_in, item.depth_in, item.height_in) && (
+            <div style={{ gridColumn: "1 / -1" }}>
+              <InfoCell label="Dimensions" value={formatDimensions(item.width_in, item.depth_in, item.height_in)!} />
+            </div>
+          )}
           {item.notes && (
             <div style={{ gridColumn: "1 / -1" }}>
               <InfoCell label="Notes" value={item.notes} />
@@ -361,6 +366,9 @@ function EditItemModal({ item, onClose }: { item: ItemDetailType; onClose: () =>
     condition: item.condition,
     purchase_cost: item.purchase_cost,
     purchase_date: item.purchase_date.slice(0, 10),
+    width_in: item.width_in ?? "",
+    depth_in: item.depth_in ?? "",
+    height_in: item.height_in ?? "",
     notes: item.notes ?? "",
   });
   const [photoUrl, setPhotoUrl] = useState(item.photo_url ?? "");
@@ -406,6 +414,9 @@ function EditItemModal({ item, onClose }: { item: ItemDetailType; onClose: () =>
         condition: form.condition,
         purchase_cost: parseFloat(String(form.purchase_cost)) || 0,
         purchase_date: form.purchase_date,
+        width_in: form.width_in !== "" ? parseFloat(String(form.width_in)) : null,
+        depth_in: form.depth_in !== "" ? parseFloat(String(form.depth_in)) : null,
+        height_in: form.height_in !== "" ? parseFloat(String(form.height_in)) : null,
         notes: form.notes.trim() || undefined,
         photo_url: photoUrl || undefined,
       });
@@ -478,6 +489,16 @@ function EditItemModal({ item, onClose }: { item: ItemDetailType; onClose: () =>
             <div>
               <label className="form-label">Purchase date</label>
               <input type="date" className="input-field" value={form.purchase_date} onChange={(e) => set("purchase_date", e.target.value)} />
+            </div>
+          </div>
+
+          {/* Dimensions */}
+          <div style={{ marginBottom: 12 }}>
+            <label className="form-label">Dimensions in inches (optional)</label>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+              <input type="number" min="0" step="0.1" className="input-field" placeholder="W" value={form.width_in} onChange={(e) => set("width_in", e.target.value)} />
+              <input type="number" min="0" step="0.1" className="input-field" placeholder="D" value={form.depth_in} onChange={(e) => set("depth_in", e.target.value)} />
+              <input type="number" min="0" step="0.1" className="input-field" placeholder="H" value={form.height_in} onChange={(e) => set("height_in", e.target.value)} />
             </div>
           </div>
 

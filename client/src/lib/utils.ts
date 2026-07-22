@@ -52,6 +52,20 @@ export function formatCurrency(v: string | number | null | undefined): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(v));
 }
 
+// ─── Dimensions ───────────────────────────────────────────────────────────────
+
+export function formatDimensions(
+  width_in: string | number | null | undefined,
+  depth_in: string | number | null | undefined,
+  height_in: string | number | null | undefined
+): string | null {
+  if (width_in == null && depth_in == null && height_in == null) return null;
+  const w = width_in != null ? `${Number(width_in)}"W` : null;
+  const d = depth_in != null ? `${Number(depth_in)}"D` : null;
+  const h = height_in != null ? `${Number(height_in)}"H` : null;
+  return [w, d, h].filter(Boolean).join(" × ");
+}
+
 // ─── Status helpers ───────────────────────────────────────────────────────────
 
 export function statusBadgeClass(status: string, condition?: string): string {

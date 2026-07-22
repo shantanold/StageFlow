@@ -88,6 +88,9 @@ model Item {
   photo_url     String?
   purchase_cost Decimal       @db.Decimal(10, 2)
   purchase_date DateTime      @db.Date
+  width_in      Decimal?      @db.Decimal(6, 1)
+  depth_in      Decimal?      @db.Decimal(6, 1)
+  height_in     Decimal?      @db.Decimal(6, 1)
   notes         String?
   created_at    DateTime      @default(now())
 
