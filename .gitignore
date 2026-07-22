@@ -1,6 +1,8 @@
 node_modules/
 dist/
 .env
+.env.test
 *.env.local
 .DS_Store
 *.log
+*PLAN*
