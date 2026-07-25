@@ -52,11 +52,12 @@ enum ReturnCondition {
 // ─── Models ──────────────────────────────────────────────────────────────────
 
 model Organization {
-  id         String   @id @default(uuid())
-  name       String
-  slug       String   @unique
-  is_active  Boolean  @default(true)
-  created_at DateTime @default(now())
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  invite_code String?  @unique
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
 
   users      User[]
   items      Item[]
