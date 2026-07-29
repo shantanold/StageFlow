@@ -10,12 +10,15 @@ interface ParsedRow {
   category: Category;
   purchase_cost: number;
   purchase_date: string;
+  width_in?: number;
+  depth_in?: number;
+  height_in?: number;
   notes: string;
   _error?: string;
 }
 
 const VALID_CATEGORIES = new Set<string>(CATEGORIES);
-const EXPECTED_HEADERS = ["name", "category", "purchase_cost", "purchase_date", "notes"];
+const EXPECTED_HEADERS = ["name", "category", "purchase_cost", "purchase_date", "width_in", "depth_in", "height_in", "notes"];
 
 function parseCSV(text: string): ParsedRow[] {
   const lines = text.split(/\r?\n/).filter((l) => l.trim());
@@ -45,12 +48,22 @@ function parseCSV(text: string): ParsedRow[] {
     const purchase_date = get("purchase_date");
     const notes = get("notes");
 
+    const parseDim = (key: string) => {
+      const raw = get(key);
+      if (!raw) return undefined;
+      const n = parseFloat(raw);
+      return isNaN(n) ? undefined : n;
+    };
+    const width_in = parseDim("width_in");
+    const depth_in = parseDim("depth_in");
+    const height_in = parseDim("height_in");
+
     const errors: string[] = [];
     if (!name) errors.push("name required");
     if (!VALID_CATEGORIES.has(rawCategory)) errors.push(`unknown category "${rawCategory}"`);
     if (!purchase_date || isNaN(Date.parse(purchase_date))) errors.push("invalid purchase_date");
 
-    return { name, category, purchase_cost, purchase_date, notes, _error: errors.join("; ") || undefined };
+    return { name, category, purchase_cost, purchase_date, width_in, depth_in, height_in, notes, _error: errors.join("; ") || undefined };
   });
 }
 
@@ -85,8 +98,8 @@ export function ImportCSVModal({ onClose }: Props) {
     if (validRows.length === 0) return;
     try {
       const result = await importItems.mutateAsync(
-        validRows.map(({ name, category, purchase_cost, purchase_date, notes }) => ({
-          name, category, purchase_cost, purchase_date, notes: notes || undefined,
+        validRows.map(({ name, category, purchase_cost, purchase_date, width_in, depth_in, height_in, notes }) => ({
+          name, category, purchase_cost, purchase_date, width_in, depth_in, height_in, notes: notes || undefined,
         }))
       );
       const msg =
@@ -138,7 +151,7 @@ export function ImportCSVModal({ onClose }: Props) {
           {EXPECTED_HEADERS.join(",")}
         </div>
         <p style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 14 }}>
-          purchase_date format: YYYY-MM-DD · Categories: {CATEGORIES.join(", ")}
+          purchase_date format: YYYY-MM-DD · width_in/depth_in/height_in optional (inches) · Categories: {CATEGORIES.join(", ")}
         </p>
 
         {/* File picker */}

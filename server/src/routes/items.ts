@@ -155,6 +155,9 @@ router.post("/import", requireManager, async (req, res) => {
         category?: string;
         purchase_cost?: number;
         purchase_date?: string;
+        width_in?: number;
+        depth_in?: number;
+        height_in?: number;
         notes?: string;
       }>;
     };
@@ -182,6 +185,9 @@ router.post("/import", requireManager, async (req, res) => {
             category: row.category,
             purchase_cost: row.purchase_cost ?? 0,
             purchase_date: new Date(row.purchase_date),
+            width_in: row.width_in ?? null,
+            depth_in: row.depth_in ?? null,
+            height_in: row.height_in ?? null,
             notes: row.notes || null,
           },
         });
