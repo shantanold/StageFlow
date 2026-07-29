@@ -55,7 +55,7 @@ model Organization {
   id          String   @id @default(uuid())
   name        String
   slug        String   @unique
-  invite_code String?  @unique
+  invite_code String   @unique
   is_active   Boolean  @default(true)
   created_at  DateTime @default(now())
 
@@ -71,7 +71,7 @@ model Organization {
 
 model User {
   id            String   @id @default(uuid())
-  org_id        String?
+  org_id        String
   name          String
   email         String   @unique
   password_hash String
@@ -79,7 +79,7 @@ model User {
   is_active     Boolean  @default(true)
   created_at    DateTime @default(now())
 
-  org           Organization? @relation(fields: [org_id], references: [id])
+  org           Organization @relation(fields: [org_id], references: [id])
   jobs_created  Job[]       @relation("JobCreatedBy")
   movements     Movement[]  @relation("MovementPerformedBy")
 
@@ -89,12 +89,12 @@ model User {
 
 model Set {
   id          String   @id @default(uuid())
-  org_id      String?
+  org_id      String
   name        String
   description String   @default("")
   created_at  DateTime @default(now())
 
-  org         Organization? @relation(fields: [org_id], references: [id])
+  org         Organization @relation(fields: [org_id], references: [id])
   items       Item[]
 
   @@index([org_id])
@@ -103,8 +103,8 @@ model Set {
 
 model Item {
   id            String        @id @default(uuid())
-  org_id        String?
-  sku           String        @unique
+  org_id        String
+  sku           String
   name          String
   category      String
   set_id        String?
@@ -119,18 +119,19 @@ model Item {
   notes         String?
   created_at    DateTime      @default(now())
 
-  org           Organization? @relation(fields: [org_id], references: [id])
+  org           Organization  @relation(fields: [org_id], references: [id])
   set           Set?          @relation(fields: [set_id], references: [id])
   job_items     JobItem[]
   movements     Movement[]
 
+  @@unique([org_id, sku])
   @@index([org_id, status])
   @@map("items")
 }
 
 model Job {
   id                String    @id @default(uuid())
-  org_id            String?
+  org_id            String
   address           String
   city              String
   state             String
@@ -145,7 +146,7 @@ model Job {
   notes             String?
   created_at        DateTime  @default(now())
 
-  org               Organization? @relation(fields: [org_id], references: [id])
+  org               Organization @relation(fields: [org_id], references: [id])
   creator           User      @relation("JobCreatedBy", fields: [created_by], references: [id])
   job_items         JobItem[]
   movements         Movement[]
@@ -156,7 +157,7 @@ model Job {
 
 model JobItem {
   id               String          @id @default(uuid())
-  org_id           String?
+  org_id           String
   job_id           String
   item_id          String
   status           JobItemStatus   @default(assigned)
@@ -165,7 +166,7 @@ model JobItem {
   assigned_at      DateTime        @default(now())
   returned_at      DateTime?
 
-  org              Organization?   @relation(fields: [org_id], references: [id])
+  org              Organization    @relation(fields: [org_id], references: [id])
   job              Job             @relation(fields: [job_id], references: [id])
   item             Item            @relation(fields: [item_id], references: [id])
 
@@ -175,7 +176,7 @@ model JobItem {
 
 model Movement {
   id           String   @id @default(uuid())
-  org_id       String?
+  org_id       String
   item_id      String
   job_id       String?
   from_status  String
@@ -184,7 +185,7 @@ model Movement {
   notes        String?
   created_at   DateTime @default(now())
 
-  org          Organization? @relation(fields: [org_id], references: [id])
+  org          Organization @relation(fields: [org_id], references: [id])
   item         Item     @relation(fields: [item_id], references: [id])
   job          Job?     @relation(fields: [job_id], references: [id])
   performer    User     @relation("MovementPerformedBy", fields: [performed_by], references: [id])

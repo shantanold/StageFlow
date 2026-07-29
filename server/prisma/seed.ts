@@ -4,6 +4,8 @@ import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
+const DEFAULT_ORG_ID = "00000000-0000-0000-0000-000000000001";
+
 async function main() {
   console.log("Seeding database...");
 
@@ -16,6 +18,7 @@ async function main() {
     where:  { email: "manager@stageflow.app" },
     update: {},
     create: {
+      org_id:        DEFAULT_ORG_ID,
       name:          "Sarah Kim",
       email:         "manager@stageflow.app",
       password_hash: managerHash,
@@ -27,6 +30,7 @@ async function main() {
     where:  { email: "staff@stageflow.app" },
     update: {},
     create: {
+      org_id:        DEFAULT_ORG_ID,
       name:          "Mike Torres",
       email:         "staff@stageflow.app",
       password_hash: staffHash,
@@ -41,13 +45,13 @@ async function main() {
   const modernLiving =
     (await prisma.set.findFirst({ where: { name: "Modern Living Set" } })) ??
     (await prisma.set.create({
-      data: { name: "Modern Living Set", description: "Contemporary neutral-palette living room" },
+      data: { org_id: DEFAULT_ORG_ID, name: "Modern Living Set", description: "Contemporary neutral-palette living room" },
     }));
 
   const coastalBedroom =
     (await prisma.set.findFirst({ where: { name: "Coastal Bedroom Set" } })) ??
     (await prisma.set.create({
-      data: { name: "Coastal Bedroom Set", description: "Light and airy coastal bedroom staging" },
+      data: { org_id: DEFAULT_ORG_ID, name: "Coastal Bedroom Set", description: "Light and airy coastal bedroom staging" },
     }));
 
   console.log(`✓ Sets: ${modernLiving.name}, ${coastalBedroom.name}`);
@@ -75,9 +79,9 @@ async function main() {
 
   for (const item of itemsData) {
     await prisma.item.upsert({
-      where:  { sku: item.sku },
+      where:  { org_id_sku: { org_id: DEFAULT_ORG_ID, sku: item.sku } },
       update: {},
-      create: item,
+      create: { ...item, org_id: DEFAULT_ORG_ID },
     });
   }
 
@@ -90,6 +94,7 @@ async function main() {
     update: {},
     create: {
       id:               "seed-job-001",
+      org_id:           DEFAULT_ORG_ID,
       address:          "4821 Elm Creek Dr",
       city:             "Pearland",
       state:            "TX",
