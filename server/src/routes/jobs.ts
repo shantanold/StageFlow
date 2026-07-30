@@ -271,6 +271,69 @@ router.post("/:id/assign", requireManager, async (req, res) => {
   }
 });
 
+// ─── POST /jobs/:id/unassign ─────────────────────────────────────────────────
+// Removes items that were planned onto the job but not yet scanned out.
+// Only job_items with status "assigned" can be removed — once loaded/staged,
+// use scan-return (or force-complete) instead.
+
+router.post("/:id/unassign", requireManager, async (req, res) => {
+  try {
+    const jobId = req.params.id;
+    const body = req.body as { itemIds?: string[] };
+    const itemIds = Array.isArray(body?.itemIds) ? body.itemIds : [];
+
+    if (itemIds.length === 0) {
+      return res.status(400).json({ message: "itemIds array is required and must not be empty" });
+    }
+
+    const job = await prisma.job.findUnique({ where: { id: jobId } });
+    if (!job) return res.status(404).json({ message: "Job not found" });
+
+    if (job.status !== "planning" && job.status !== "active") {
+      return res.status(400).json({ message: "Can only unassign items from planning or active jobs" });
+    }
+
+    const jobItems = await prisma.jobItem.findMany({
+      where: { job_id: jobId, item_id: { in: itemIds } },
+      select: { id: true, item_id: true, status: true },
+    });
+    const onJob = new Map(jobItems.map((ji) => [ji.item_id, ji]));
+
+    const notOnJob = itemIds.filter((id) => !onJob.has(id));
+    if (notOnJob.length > 0) {
+      return res.status(400).json({
+        message: "Some items are not on this job",
+        unavailableIds: notOnJob,
+      });
+    }
+
+    const notAssignable = jobItems.filter((ji) => ji.status !== "assigned");
+    if (notAssignable.length > 0) {
+      return res.status(400).json({
+        message: "Some items have already been scanned out — return them instead of unassigning",
+        unavailableIds: notAssignable.map((ji) => ji.item_id),
+      });
+    }
+
+    await prisma.jobItem.deleteMany({
+      where: { id: { in: jobItems.map((ji) => ji.id) } },
+    });
+
+    const updated = await prisma.job.findUnique({
+      where: { id: jobId },
+      include: { _count: { select: { job_items: true } } },
+    });
+    return res.json({
+      ...updated,
+      item_count: updated!._count.job_items,
+      unassigned_count: jobItems.length,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
 // ─── POST /jobs/:id/scan-out ─────────────────────────────────────────────────
 // Confirms physical loading of a pre-assigned item. Stages the item and
 // activates the job if it was still in planning.

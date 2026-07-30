@@ -333,6 +333,21 @@ export function useAssignItems(jobId: string) {
   });
 }
 
+export function useUnassignItems(jobId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (itemIds: string[]) =>
+      api.post<Job & { unassigned_count: number }>(`/jobs/${jobId}/unassign`, { itemIds }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["jobs"] });
+      qc.invalidateQueries({ queryKey: ["jobs", jobId] });
+      qc.invalidateQueries({ queryKey: ["jobs", jobId, "items"] });
+      qc.invalidateQueries({ queryKey: ["items"] });
+      qc.invalidateQueries({ queryKey: ["sets"] });
+    },
+  });
+}
+
 export function useForceCompleteJob(jobId: string) {
   const qc = useQueryClient();
   return useMutation({
