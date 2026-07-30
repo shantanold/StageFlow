@@ -121,7 +121,7 @@ export function PrintLabels() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div>
             <h1 className="page-title">Print QR Labels</h1>
-            <p className="page-subtitle">Select items for the label sheet</p>
+            <p className="page-subtitle">2″ × 4″ shipping labels · 10 per sheet</p>
           </div>
         </div>
       </div>
@@ -277,7 +277,7 @@ export function PrintLabels() {
           </p>
           {selectedIds.size > 0 && (
             <p style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 1 }}>
-              {Math.ceil(selectedIds.size / 30)} page{Math.ceil(selectedIds.size / 30) !== 1 ? "s" : ""} · 30 labels/page
+              {Math.ceil(selectedIds.size / 10)} page{Math.ceil(selectedIds.size / 10) !== 1 ? "s" : ""} · 10 labels/page
             </p>
           )}
         </div>

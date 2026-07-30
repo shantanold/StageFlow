@@ -43,7 +43,7 @@ export interface Item {
   condition: ItemCondition;
   photo_url: string | null;
   purchase_cost: string; // Prisma Decimal comes back as string
-  purchase_date: string;
+  purchase_date: string | null;
   width_in: string | null;  // Prisma Decimal comes back as string
   depth_in: string | null;
   height_in: string | null;

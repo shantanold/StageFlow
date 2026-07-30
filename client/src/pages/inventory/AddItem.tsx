@@ -38,7 +38,7 @@ export function AddItem() {
     category: "Sofa",
     set_id: "",
     purchase_cost: "",
-    purchase_date: new Date().toISOString().slice(0, 10),
+    purchase_date: "",
     width_in: "",
     depth_in: "",
     height_in: "",
@@ -92,7 +92,7 @@ export function AddItem() {
         category: form.category,
         set_id: form.set_id || null,
         purchase_cost: parseFloat(form.purchase_cost) || 0,
-        purchase_date: form.purchase_date,
+        purchase_date: form.purchase_date || null,
         width_in: form.width_in ? parseFloat(form.width_in) : null,
         depth_in: form.depth_in ? parseFloat(form.depth_in) : null,
         height_in: form.height_in ? parseFloat(form.height_in) : null,
@@ -191,14 +191,13 @@ export function AddItem() {
               />
             </div>
             <div>
-              <label className="form-label" htmlFor="purchase_date">Purchase date</label>
+              <label className="form-label" htmlFor="purchase_date">Purchase date (optional)</label>
               <input
                 id="purchase_date"
                 type="date"
                 className="input-field"
                 value={form.purchase_date}
                 onChange={(e) => set("purchase_date", e.target.value)}
-                required
               />
             </div>
           </div>

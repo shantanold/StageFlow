@@ -120,8 +120,8 @@ router.post("/", requireManager, async (req, res) => {
         height_in?: number;
       };
 
-    if (!name?.trim() || !category || !purchase_date) {
-      return res.status(400).json({ message: "name, category, and purchase_date are required" });
+    if (!name?.trim() || !category) {
+      return res.status(400).json({ message: "name and category are required" });
     }
 
     const sku = await generateSku();
@@ -134,7 +134,7 @@ router.post("/", requireManager, async (req, res) => {
         category,
         set_id: set_id || null,
         purchase_cost: purchase_cost ?? 0,
-        purchase_date: new Date(purchase_date),
+        purchase_date: purchase_date ? new Date(purchase_date) : null,
         width_in: width_in ?? null,
         depth_in: depth_in ?? null,
         height_in: height_in ?? null,
@@ -177,8 +177,8 @@ router.post("/import", requireManager, async (req, res) => {
 
     for (let i = 0; i < items.length; i++) {
       const row = items[i];
-      if (!row.name?.trim() || !row.category || !row.purchase_date) {
-        errors.push({ row: i + 1, message: "name, category, and purchase_date are required" });
+      if (!row.name?.trim() || !row.category) {
+        errors.push({ row: i + 1, message: "name and category are required" });
         continue;
       }
       try {
@@ -190,7 +190,7 @@ router.post("/import", requireManager, async (req, res) => {
             name: row.name.trim(),
             category: row.category,
             purchase_cost: row.purchase_cost ?? 0,
-            purchase_date: new Date(row.purchase_date),
+            purchase_date: row.purchase_date ? new Date(row.purchase_date) : null,
             width_in: row.width_in ?? null,
             depth_in: row.depth_in ?? null,
             height_in: row.height_in ?? null,
@@ -282,7 +282,7 @@ router.put("/:id", requireManager, async (req, res) => {
         notes: string | null;
         photo_url: string | null;
         purchase_cost: number;
-        purchase_date: string;
+        purchase_date: string | null;
         width_in: number | null;
         depth_in: number | null;
         height_in: number | null;
@@ -299,7 +299,9 @@ router.put("/:id", requireManager, async (req, res) => {
         ...(notes !== undefined && { notes }),
         ...(photo_url !== undefined && { photo_url }),
         ...(purchase_cost !== undefined && { purchase_cost }),
-        ...(purchase_date !== undefined && { purchase_date: new Date(purchase_date) }),
+        ...(purchase_date !== undefined && {
+          purchase_date: purchase_date ? new Date(purchase_date) : null,
+        }),
         ...(width_in !== undefined && { width_in }),
         ...(depth_in !== undefined && { depth_in }),
         ...(height_in !== undefined && { height_in }),
