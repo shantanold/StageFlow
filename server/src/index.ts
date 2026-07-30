@@ -1,6 +1,9 @@
 import app from "./app";
 
-const PORT = process.env.PORT ?? 3001;
+const PORT = Number.parseInt(String(process.env.PORT ?? "3001").trim(), 10);
+if (!Number.isFinite(PORT) || PORT < 1 || PORT > 65535) {
+  throw new Error(`Invalid PORT "${process.env.PORT}" — expected an integer 1–65535`);
+}
 
 const server = app.listen(PORT, () => {
   console.log(`StageFlow server running on http://localhost:${PORT}`);
