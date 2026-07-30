@@ -7,19 +7,25 @@ import { authenticate } from "../middleware/auth";
 const router = Router();
 router.use(authenticate);
 
-// ─── PDF layout: Avery 5163–style 2" × 4" shipping labels ────────────────────
-// Sheet: US Letter 8.5" × 11" · 10 labels/sheet · 2 cols × 5 rows
-// Each label: 4" wide × 2" tall
+// ─── PDF layout: 8.5″×11″ 10-up (2×5 of 4″×2″) ────────────────────────────────
+// Matched to Avery 5163 / Online Labels OL5125–style sheets and the reference
+// template `8.5x11in-10up.pdf` (rounded-corner cut guides, 2 cols × 5 rows).
+//
+// All units are PDF points (72 pt = 1″).
 
 const COLS     = 2;
 const ROWS     = 5;
-const LABEL_W  = 288;          // 4"
-const LABEL_H  = 144;          // 2"
-const MARGIN_X = 11.25;        // ~0.156" (Avery side margin)
-const MARGIN_Y = 36;           // 0.5" top margin
-const COL_GAP  = 13.5;         // ~0.188" gap between columns
-const QR_SIZE  = 88;
+const LABEL_W  = 288;   // 4.000″
+const LABEL_H  = 144;   // 2.000″
+const MARGIN_X = 11;    // 0.1528″ side margin (matches reference template)
+const MARGIN_Y = 36;    // 0.500″ top/bottom
+const COL_GAP  = 13.5;  // 0.1875″ gutter between columns
+const ROW_GAP  = 0;     // labels share horizontal edges
 const LABELS_PER_PAGE = COLS * ROWS;
+
+// In-label content — keep clear of ~9–10 pt rounded corners
+const PAD      = 16;
+const QR_SIZE  = 112;   // ~1.56″ — large enough to scan from a phone at arm’s length
 
 function cellOrigin(index: number): { x: number; y: number } {
   const pageIndex = index % LABELS_PER_PAGE;
@@ -27,7 +33,7 @@ function cellOrigin(index: number): { x: number; y: number } {
   const row = Math.floor(pageIndex / COLS);
   return {
     x: MARGIN_X + col * (LABEL_W + COL_GAP),
-    y: MARGIN_Y + row * LABEL_H,
+    y: MARGIN_Y + row * (LABEL_H + ROW_GAP),
   };
 }
 
@@ -69,7 +75,7 @@ router.get("/generate", async (req, res) => {
     // Pre-generate all QR buffers
     const qrBuffers = await Promise.all(
       ordered.map((item) =>
-        QRCode.toBuffer(item.sku, { type: "png", width: 280, margin: 1 })
+        QRCode.toBuffer(item.sku, { type: "png", width: 320, margin: 1 })
       )
     );
 
@@ -102,31 +108,36 @@ router.get("/generate", async (req, res) => {
       const qrBuf = qrBuffers[i];
       const { x, y } = cellOrigin(i);
 
-      // QR on the left half of the 4" × 2" label
-      const qrX = x + 18;
+      // QR left, vertically centered within the 2″ label
+      const qrX = x + PAD;
       const qrY = y + (LABEL_H - QR_SIZE) / 2;
       doc.image(qrBuf, qrX, qrY, { width: QR_SIZE, height: QR_SIZE });
 
-      // Name + SKU on the right half
-      const textX = qrX + QR_SIZE + 14;
-      const textW = LABEL_W - (textX - x) - 14;
-      const textY = y + LABEL_H / 2 - 14;
+      // Name + SKU on the right, vertically centered as a two-line block
+      const textX = qrX + QR_SIZE + 12;
+      const textW = x + LABEL_W - PAD - textX;
+      const line1 = 13;
+      const line2 = 11;
+      const gap = 6;
+      const blockH = line1 + gap + line2;
+      const textY = y + (LABEL_H - blockH) / 2;
 
       doc
         .fillColor("#111827")
         .font("Helvetica-Bold")
-        .fontSize(10)
-        .text(truncate(item.name, 36), textX, textY, {
+        .fontSize(line1)
+        .text(truncate(item.name, 28), textX, textY, {
           width: textW,
           align: "left",
           lineBreak: false,
+          height: line1 + 2,
         });
 
       doc
-        .fillColor("#6b7280")
+        .fillColor("#4b5563")
         .font("Courier")
-        .fontSize(9)
-        .text(item.sku, textX, textY + 16, {
+        .fontSize(line2)
+        .text(item.sku, textX, textY + line1 + gap, {
           width: textW,
           align: "left",
           lineBreak: false,
