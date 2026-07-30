@@ -92,6 +92,7 @@ model Item {
   depth_in      Decimal?      @db.Decimal(6, 1)
   height_in     Decimal?      @db.Decimal(6, 1)
   notes         String?
+  qr_printed    Boolean       @default(false)
   created_at    DateTime      @default(now())
 
   set           Set?          @relation(fields: [set_id], references: [id])

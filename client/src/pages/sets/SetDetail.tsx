@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useSet, useSetItems, useUpdateSet } from "../../lib/queries";
 import { downloadLabels } from "../../lib/labels";
 import { getCategoryEmoji, statusBadgeClass, statusLabel } from "../../lib/utils";
@@ -39,6 +40,7 @@ export function SetDetail() {
   const { id = "" } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   const isManager = user?.role === "manager";
   const [printing, setPrinting] = useState(false);
@@ -52,6 +54,7 @@ export function SetDetail() {
     setPrinting(true);
     try {
       await downloadLabels(items.map((i) => i.id));
+      await queryClient.invalidateQueries({ queryKey: ["items"] });
       showToast("Label PDF downloaded", "success");
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Download failed", "error");
@@ -239,6 +242,7 @@ function SetItemRow({ item, onClick }: { item: Item; onClick: () => void }) {
             {item.sku}
           </span>
           {" · "}{item.category}
+          {" · "}{item.qr_printed ? "QR printed" : "QR not printed"}
         </p>
       </div>
       <span className={statusBadgeClass(item.status, item.condition)}>

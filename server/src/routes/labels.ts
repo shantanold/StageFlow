@@ -72,6 +72,11 @@ router.get("/generate", async (req, res) => {
       )
     );
 
+    await prisma.item.updateMany({
+      where: { id: { in: ordered.map((it) => it.id) } },
+      data: { qr_printed: true },
+    });
+
     // Build PDF
     const doc = new PDFDocument({
       size: "LETTER",

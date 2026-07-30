@@ -10,6 +10,7 @@ interface ItemFilters {
   condition?: string;
   category?: string;
   set_id?: string;
+  qr_printed?: boolean;
 }
 
 function buildItemsQS(filters: ItemFilters): string {
@@ -19,6 +20,7 @@ function buildItemsQS(filters: ItemFilters): string {
   if (filters.condition) p.set("condition", filters.condition);
   if (filters.category)  p.set("category",  filters.category);
   if (filters.set_id)    p.set("set_id",    filters.set_id);
+  if (filters.qr_printed !== undefined) p.set("qr_printed", String(filters.qr_printed));
   const qs = p.toString();
   return qs ? `?${qs}` : "";
 }
@@ -92,7 +94,7 @@ export function useImportItems() {
 export function useUpdateItem(id: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: Partial<CreateItemInput & { condition: string }>) =>
+    mutationFn: (data: Partial<CreateItemInput & { condition: string; qr_printed: boolean }>) =>
       api.put<Item>(`/items/${id}`, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["items"] });

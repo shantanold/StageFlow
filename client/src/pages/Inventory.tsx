@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useItems } from "../lib/queries";
 import { useDebounce } from "../hooks/useDebounce";
 import { downloadLabels } from "../lib/labels";
@@ -87,6 +88,7 @@ function GridViewIcon() {
 export function Inventory() {
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   const isManager = user?.role === "manager";
   const [searchParams, setSearchParams] = useSearchParams();
@@ -150,6 +152,7 @@ export function Inventory() {
     setDownloading(true);
     try {
       await downloadLabels([...selectedIds]);
+      await queryClient.invalidateQueries({ queryKey: ["items"] });
       showToast("Label PDF downloaded", "success");
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Download failed", "error");
@@ -396,6 +399,7 @@ function ItemRow({
         <div style={{ fontSize: 11.5, color: "var(--text-tertiary)", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
           <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, opacity: 0.8 }}>{item.sku}</span>
           {item.set && <span> · {item.set.name}</span>}
+          <span> · {item.qr_printed ? "QR printed" : "QR not printed"}</span>
         </div>
       </div>
 
@@ -487,11 +491,10 @@ function GridItem({
         <div style={{ fontSize: 12.5, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
           {item.name}
         </div>
-        {item.set && (
-          <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-            {item.set.name}
-          </div>
-        )}
+        <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          {item.set ? `${item.set.name} · ` : ""}
+          {item.qr_printed ? "QR printed" : "QR not printed"}
+        </div>
       </div>
     </div>
   );

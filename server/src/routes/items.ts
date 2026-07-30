@@ -52,7 +52,7 @@ async function generateSku(): Promise<string> {
 
 router.get("/", async (req, res) => {
   try {
-    const { search, status, condition, category, set_id } = req.query as Record<string, string>;
+    const { search, status, condition, category, set_id, qr_printed } = req.query as Record<string, string>;
 
     const where: Prisma.ItemWhereInput = {};
 
@@ -74,6 +74,12 @@ router.get("/", async (req, res) => {
       where.set_id = null;
     } else if (set_id) {
       where.set_id = set_id;
+    }
+
+    if (qr_printed === "true") {
+      where.qr_printed = true;
+    } else if (qr_printed === "false") {
+      where.qr_printed = false;
     }
 
     if (search) {
@@ -259,7 +265,7 @@ router.put("/:id", requireManager, async (req, res) => {
     const existing = await prisma.item.findUnique({ where: { id: req.params.id } });
     if (!existing) return res.status(404).json({ message: "Item not found" });
 
-    const { name, category, set_id, condition, notes, photo_url, purchase_cost, purchase_date, width_in, depth_in, height_in } =
+    const { name, category, set_id, condition, notes, photo_url, purchase_cost, purchase_date, width_in, depth_in, height_in, qr_printed } =
       req.body as Partial<{
         name: string;
         category: string;
@@ -272,6 +278,7 @@ router.put("/:id", requireManager, async (req, res) => {
         width_in: number | null;
         depth_in: number | null;
         height_in: number | null;
+        qr_printed: boolean;
       }>;
 
     const item = await prisma.item.update({
@@ -288,6 +295,7 @@ router.put("/:id", requireManager, async (req, res) => {
         ...(width_in !== undefined && { width_in }),
         ...(depth_in !== undefined && { depth_in }),
         ...(height_in !== undefined && { height_in }),
+        ...(qr_printed !== undefined && { qr_printed: Boolean(qr_printed) }),
       },
       include: { set: { select: { id: true, name: true } } },
     });

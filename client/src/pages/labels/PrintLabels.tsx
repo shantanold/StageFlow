@@ -1,10 +1,13 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useItems } from "../../lib/queries";
 import { useDebounce } from "../../hooks/useDebounce";
 import { downloadLabels } from "../../lib/labels";
 import { getCategoryEmoji, statusBadgeClass, statusLabel } from "../../lib/utils";
 import { useToast } from "../../contexts/ToastContext";
+
+type PrintFilter = "all" | "unprinted" | "printed";
 
 function BackIcon() {
   return (
@@ -43,7 +46,9 @@ function CheckIcon() {
 export function PrintLabels() {
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const queryClient = useQueryClient();
   const [search, setSearch]           = useState("");
+  const [printFilter, setPrintFilter] = useState<PrintFilter>("unprinted");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [downloading, setDownloading] = useState(false);
 
@@ -52,12 +57,21 @@ export function PrintLabels() {
   const live = allItems.filter((i) => i.status !== "disposed");
 
   const filtered = useMemo(() => {
-    if (!debouncedSearch) return live;
+    let list = live;
+    if (printFilter === "unprinted") list = list.filter((i) => !i.qr_printed);
+    if (printFilter === "printed")   list = list.filter((i) => i.qr_printed);
+    if (!debouncedSearch) return list;
     const q = debouncedSearch.toLowerCase();
-    return live.filter(
+    return list.filter(
       (i) => i.name.toLowerCase().includes(q) || i.sku.toLowerCase().includes(q)
     );
-  }, [live, debouncedSearch]);
+  }, [live, debouncedSearch, printFilter]);
+
+  const counts = useMemo(() => ({
+    all: live.length,
+    unprinted: live.filter((i) => !i.qr_printed).length,
+    printed: live.filter((i) => i.qr_printed).length,
+  }), [live]);
 
   const allFilteredSelected =
     filtered.length > 0 && filtered.every((i) => selectedIds.has(i.id));
@@ -87,6 +101,8 @@ export function PrintLabels() {
     setDownloading(true);
     try {
       await downloadLabels([...selectedIds]);
+      await queryClient.invalidateQueries({ queryKey: ["items"] });
+      setSelectedIds(new Set());
       showToast("Label PDF downloaded", "success");
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Download failed", "error");
@@ -123,6 +139,23 @@ export function PrintLabels() {
             onChange={(e) => setSearch(e.target.value)}
             style={{ paddingLeft: 34 }}
           />
+        </div>
+
+        {/* Print-status filter */}
+        <div style={{ display: "flex", gap: 6, marginBottom: 12, overflowX: "auto" }}>
+          {([
+            ["unprinted", `Needs print (${counts.unprinted})`],
+            ["printed",   `Printed (${counts.printed})`],
+            ["all",       `All (${counts.all})`],
+          ] as [PrintFilter, string][]).map(([key, label]) => (
+            <button
+              key={key}
+              className={`chip${printFilter === key ? " active" : ""}`}
+              onClick={() => setPrintFilter(key)}
+            >
+              {label}
+            </button>
+          ))}
         </div>
 
         {/* Select-all row */}
@@ -204,6 +237,7 @@ export function PrintLabels() {
                     <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 1 }}>
                       <span style={{ fontFamily: "var(--font-mono)" }}>{item.sku}</span>
                       {item.set && <span> · {item.set.name}</span>}
+                      <span> · {item.qr_printed ? "QR printed" : "QR not printed"}</span>
                     </div>
                   </div>
 
