@@ -9,7 +9,7 @@ interface ParsedRow {
   name: string;
   category: Category;
   purchase_cost: number;
-  purchase_date: string;
+  purchase_date: string | null;
   width_in?: number;
   depth_in?: number;
   height_in?: number;
@@ -61,9 +61,9 @@ function parseCSV(text: string): ParsedRow[] {
     const errors: string[] = [];
     if (!name) errors.push("name required");
     if (!VALID_CATEGORIES.has(rawCategory)) errors.push(`unknown category "${rawCategory}"`);
-    if (!purchase_date || isNaN(Date.parse(purchase_date))) errors.push("invalid purchase_date");
+    if (purchase_date && isNaN(Date.parse(purchase_date))) errors.push("invalid purchase_date");
 
-    return { name, category, purchase_cost, purchase_date, width_in, depth_in, height_in, notes, _error: errors.join("; ") || undefined };
+    return { name, category, purchase_cost, purchase_date: purchase_date || null, width_in, depth_in, height_in, notes, _error: errors.join("; ") || undefined };
   });
 }
 
@@ -151,7 +151,7 @@ export function ImportCSVModal({ onClose }: Props) {
           {EXPECTED_HEADERS.join(",")}
         </div>
         <p style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 14 }}>
-          purchase_date format: YYYY-MM-DD · width_in/depth_in/height_in optional (inches) · Categories: {CATEGORIES.join(", ")}
+          purchase_date optional (YYYY-MM-DD) · width_in/depth_in/height_in optional (inches) · Categories: {CATEGORIES.join(", ")}
         </p>
 
         {/* File picker */}

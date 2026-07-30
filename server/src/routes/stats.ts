@@ -51,10 +51,35 @@ router.get("/dashboard", async (_req, res) => {
       },
     });
 
-    // Active jobs count
+    // Active jobs count (currently in progress or planning)
     const activeJobsCount =
       (jobCounts.find((r) => r.status === "active")?._count  ?? 0) +
       (jobCounts.find((r) => r.status === "planning")?._count ?? 0);
+
+    // Major pieces: match category or name (seeded tables often share category "Table")
+    const MAJOR_PIECE_DEFS = [
+      { key: "sofa",            label: "Sofas",            pattern: /\bsofas?\b/i },
+      { key: "dining_table",    label: "Dining Tables",    pattern: /dining\s*tables?/i },
+      { key: "breakfast_table", label: "Breakfast Tables", pattern: /breakfast\s*tables?/i },
+      { key: "coffee_table",    label: "Coffee Tables",    pattern: /coffee\s*tables?/i },
+    ] as const;
+
+    const majorCandidates = await prisma.item.findMany({
+      where: { status: { in: ["available", "staged"] } },
+      select: { category: true, name: true, status: true },
+    });
+
+    const major_pieces = MAJOR_PIECE_DEFS.map((def) => {
+      const matched = majorCandidates.filter(
+        (it) => def.pattern.test(it.category) || def.pattern.test(it.name)
+      );
+      return {
+        key: def.key,
+        label: def.label,
+        available: matched.filter((it) => it.status === "available").length,
+        staged: matched.filter((it) => it.status === "staged").length,
+      };
+    });
 
     // Utilization
     const utilizationPct = totalItems > 0 ? Math.round((stagedCount / totalItems) * 100) : 0;
@@ -76,6 +101,7 @@ router.get("/dashboard", async (_req, res) => {
       utilization_pct:      utilizationPct,
       total_inventory_value: totalInventoryValue,
       upcoming_jobs:        upcomingJobRows,
+      major_pieces,
     });
   } catch (err) {
     console.error(err);

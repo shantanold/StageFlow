@@ -58,245 +58,272 @@ export function AssignItemsModal({ jobId, onClose }: AssignItemsModalProps) {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-sheet" onClick={(e) => e.stopPropagation()} style={{ maxHeight: "90vh" }}>
-        <div className="modal-handle" />
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-          <div style={{ fontSize: 17, fontWeight: 500 }}>Assign items</div>
-          <span className="badge badge-blue">{selected.size} selected</span>
-        </div>
-        <div className="chip-row" style={{ marginBottom: 10 }}>
-          <button className={`chip ${mode === "sets" ? "active" : ""}`} onClick={() => setMode("sets")}>
-            By set
-          </button>
-          <button className={`chip ${mode === "individual" ? "active" : ""}`} onClick={() => setMode("individual")}>
-            Individual
-          </button>
+      <div
+        className="modal-sheet"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          maxHeight: "90vh",
+          padding: 0,
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+        }}
+      >
+        {/* Header */}
+        <div style={{ padding: "16px 18px 0", flexShrink: 0 }}>
+          <div className="modal-handle" />
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <div style={{ fontSize: 17, fontWeight: 500 }}>Assign items</div>
+            <span className="badge badge-blue">{selected.size} selected</span>
+          </div>
+          <div className="chip-row" style={{ marginBottom: 10 }}>
+            <button className={`chip ${mode === "sets" ? "active" : ""}`} onClick={() => setMode("sets")}>
+              By set
+            </button>
+            <button className={`chip ${mode === "individual" ? "active" : ""}`} onClick={() => setMode("individual")}>
+              Individual
+            </button>
+          </div>
         </div>
 
-        {mode === "sets" ? (
-          <div style={{ maxHeight: 350, overflowY: "auto" }}>
-            {sets.map((set) => {
-              const avail = allItems.filter((i) => i.set_id === set.id);
-              if (avail.length === 0) return null;
-              const allSel = avail.every((i) => selected.has(i.id));
-              const someSel = avail.some((i) => selected.has(i.id));
-              return (
-                <div key={set.id} style={{ marginBottom: 10 }}>
-                  <div
-                    className="card"
-                    style={{
-                      cursor: "pointer",
-                      borderColor: someSel ? "rgba(59,130,246,0.4)" : undefined,
-                    }}
-                    onClick={() => toggleSet(set.id)}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <div
-                        style={{
-                          width: 22,
-                          height: 22,
-                          borderRadius: 4,
-                          border: `2px solid ${allSel ? "var(--accent)" : "var(--text-tertiary)"}`,
-                          background: allSel ? "var(--accent)" : "transparent",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          flexShrink: 0,
-                        }}
-                      >
-                        {allSel && (
-                          <span style={{ color: "white" }}>
-                            <CheckIcon />
-                          </span>
-                        )}
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 14, fontWeight: 500 }}>{set.name}</div>
-                        <div style={{ fontSize: 11.5, color: "var(--text-tertiary)" }}>{avail.length} items available</div>
-                      </div>
-                    </div>
-                  </div>
-                  {someSel && (
-                    <div style={{ paddingLeft: 14 }}>
-                      {avail.map((item: Item) => (
+        {/* Scrollable list */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "0 18px" }}>
+          {mode === "sets" ? (
+            <div>
+              {sets.map((set) => {
+                const avail = allItems.filter((i) => i.set_id === set.id);
+                if (avail.length === 0) return null;
+                const allSel = avail.every((i) => selected.has(i.id));
+                const someSel = avail.some((i) => selected.has(i.id));
+                return (
+                  <div key={set.id} style={{ marginBottom: 10 }}>
+                    <div
+                      className="card"
+                      style={{
+                        cursor: "pointer",
+                        borderColor: someSel ? "rgba(59,130,246,0.4)" : undefined,
+                      }}
+                      onClick={() => toggleSet(set.id)}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                         <div
-                          key={item.id}
                           style={{
+                            width: 22,
+                            height: 22,
+                            borderRadius: 4,
+                            border: `2px solid ${allSel ? "var(--accent)" : "var(--text-tertiary)"}`,
+                            background: allSel ? "var(--accent)" : "transparent",
                             display: "flex",
                             alignItems: "center",
-                            gap: 8,
-                            padding: "5px 0",
-                            cursor: "pointer",
-                            fontSize: 12.5,
-                          }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleItem(item.id);
+                            justifyContent: "center",
+                            flexShrink: 0,
                           }}
                         >
+                          {allSel && (
+                            <span style={{ color: "white" }}>
+                              <CheckIcon />
+                            </span>
+                          )}
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 14, fontWeight: 500 }}>{set.name}</div>
+                          <div style={{ fontSize: 11.5, color: "var(--text-tertiary)" }}>{avail.length} items available</div>
+                        </div>
+                      </div>
+                    </div>
+                    {someSel && (
+                      <div style={{ paddingLeft: 14 }}>
+                        {avail.map((item: Item) => (
                           <div
+                            key={item.id}
                             style={{
-                              width: 18,
-                              height: 18,
-                              borderRadius: 3,
-                              border: `1.5px solid ${selected.has(item.id) ? "var(--accent)" : "var(--text-tertiary)"}`,
-                              background: selected.has(item.id) ? "var(--accent)" : "transparent",
                               display: "flex",
                               alignItems: "center",
-                              justifyContent: "center",
-                              flexShrink: 0,
+                              gap: 8,
+                              padding: "5px 0",
+                              cursor: "pointer",
+                              fontSize: 12.5,
+                            }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleItem(item.id);
                             }}
                           >
-                            {selected.has(item.id) && (
-                              <span style={{ color: "white" }}>
-                                <CheckIcon />
-                              </span>
-                            )}
+                            <div
+                              style={{
+                                width: 18,
+                                height: 18,
+                                borderRadius: 3,
+                                border: `1.5px solid ${selected.has(item.id) ? "var(--accent)" : "var(--text-tertiary)"}`,
+                                background: selected.has(item.id) ? "var(--accent)" : "transparent",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                flexShrink: 0,
+                              }}
+                            >
+                              {selected.has(item.id) && (
+                                <span style={{ color: "white" }}>
+                                  <CheckIcon />
+                                </span>
+                              )}
+                            </div>
+                            <span style={{ color: selected.has(item.id) ? "var(--text-primary)" : "var(--text-secondary)" }}>
+                              {item.name}
+                            </span>
                           </div>
-                          <span style={{ color: selected.has(item.id) ? "var(--text-primary)" : "var(--text-secondary)" }}>
-                            {item.name}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-            {/* Standalone items as a "set" */}
-            {(() => {
-              const standalone = allItems.filter((i) => !i.set_id);
-              if (standalone.length === 0) return null;
-              const allSel = standalone.every((i) => selected.has(i.id));
-              const someSel = standalone.some((i) => selected.has(i.id));
-              return (
-                <div style={{ marginBottom: 10 }}>
-                  <div
-                    className="card"
-                    style={{
-                      cursor: "pointer",
-                      borderColor: someSel ? "rgba(59,130,246,0.4)" : undefined,
-                    }}
-                    onClick={() => {
-                      setSelected((prev) => {
-                        const next = new Set(prev);
-                        standalone.forEach((i) => (allSel ? next.delete(i.id) : next.add(i.id)));
-                        return next;
-                      });
-                    }}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <div
-                        style={{
-                          width: 22,
-                          height: 22,
-                          borderRadius: 4,
-                          border: `2px solid ${allSel ? "var(--accent)" : "var(--text-tertiary)"}`,
-                          background: allSel ? "var(--accent)" : "transparent",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          flexShrink: 0,
-                        }}
-                      >
-                        {allSel && (
-                          <span style={{ color: "white" }}>
-                            <CheckIcon />
-                          </span>
-                        )}
+                        ))}
                       </div>
-                      <div>
-                        <div style={{ fontSize: 14, fontWeight: 500 }}>Standalone items</div>
-                        <div style={{ fontSize: 11.5, color: "var(--text-tertiary)" }}>{standalone.length} items available</div>
-                      </div>
-                    </div>
+                    )}
                   </div>
-                  {someSel && (
-                    <div style={{ paddingLeft: 14 }}>
-                      {standalone.map((item: Item) => (
+                );
+              })}
+              {/* Standalone items as a "set" */}
+              {(() => {
+                const standalone = allItems.filter((i) => !i.set_id);
+                if (standalone.length === 0) return null;
+                const allSel = standalone.every((i) => selected.has(i.id));
+                const someSel = standalone.some((i) => selected.has(i.id));
+                return (
+                  <div style={{ marginBottom: 10 }}>
+                    <div
+                      className="card"
+                      style={{
+                        cursor: "pointer",
+                        borderColor: someSel ? "rgba(59,130,246,0.4)" : undefined,
+                      }}
+                      onClick={() => {
+                        setSelected((prev) => {
+                          const next = new Set(prev);
+                          standalone.forEach((i) => (allSel ? next.delete(i.id) : next.add(i.id)));
+                          return next;
+                        });
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                         <div
-                          key={item.id}
                           style={{
+                            width: 22,
+                            height: 22,
+                            borderRadius: 4,
+                            border: `2px solid ${allSel ? "var(--accent)" : "var(--text-tertiary)"}`,
+                            background: allSel ? "var(--accent)" : "transparent",
                             display: "flex",
                             alignItems: "center",
-                            gap: 8,
-                            padding: "5px 0",
-                            cursor: "pointer",
-                            fontSize: 12.5,
-                          }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleItem(item.id);
+                            justifyContent: "center",
+                            flexShrink: 0,
                           }}
                         >
+                          {allSel && (
+                            <span style={{ color: "white" }}>
+                              <CheckIcon />
+                            </span>
+                          )}
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 14, fontWeight: 500 }}>Standalone items</div>
+                          <div style={{ fontSize: 11.5, color: "var(--text-tertiary)" }}>{standalone.length} items available</div>
+                        </div>
+                      </div>
+                    </div>
+                    {someSel && (
+                      <div style={{ paddingLeft: 14 }}>
+                        {standalone.map((item: Item) => (
                           <div
+                            key={item.id}
                             style={{
-                              width: 18,
-                              height: 18,
-                              borderRadius: 3,
-                              border: `1.5px solid ${selected.has(item.id) ? "var(--accent)" : "var(--text-tertiary)"}`,
-                              background: selected.has(item.id) ? "var(--accent)" : "transparent",
                               display: "flex",
                               alignItems: "center",
-                              justifyContent: "center",
-                              flexShrink: 0,
+                              gap: 8,
+                              padding: "5px 0",
+                              cursor: "pointer",
+                              fontSize: 12.5,
+                            }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleItem(item.id);
                             }}
                           >
-                            {selected.has(item.id) && (
-                              <span style={{ color: "white" }}>
-                                <CheckIcon />
-                              </span>
-                            )}
+                            <div
+                              style={{
+                                width: 18,
+                                height: 18,
+                                borderRadius: 3,
+                                border: `1.5px solid ${selected.has(item.id) ? "var(--accent)" : "var(--text-tertiary)"}`,
+                                background: selected.has(item.id) ? "var(--accent)" : "transparent",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                flexShrink: 0,
+                              }}
+                            >
+                              {selected.has(item.id) && (
+                                <span style={{ color: "white" }}>
+                                  <CheckIcon />
+                                </span>
+                              )}
+                            </div>
+                            <span style={{ color: selected.has(item.id) ? "var(--text-primary)" : "var(--text-secondary)" }}>
+                              {item.name}
+                            </span>
                           </div>
-                          <span style={{ color: selected.has(item.id) ? "var(--text-primary)" : "var(--text-secondary)" }}>
-                            {item.name}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
-          </div>
-        ) : (
-          <div className="list-card" style={{ maxHeight: 350, overflowY: "auto" }}>
-            {allItems.map((item: Item) => (
-              <div key={item.id} className="list-row" onClick={() => toggleItem(item.id)}>
-                <div
-                  style={{
-                    width: 22,
-                    height: 22,
-                    borderRadius: 4,
-                    border: `2px solid ${selected.has(item.id) ? "var(--accent)" : "var(--text-tertiary)"}`,
-                    background: selected.has(item.id) ? "var(--accent)" : "transparent",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
-                  }}
-                >
-                  {selected.has(item.id) && (
-                    <span style={{ color: "white" }}>
-                      <CheckIcon />
-                    </span>
-                  )}
-                </div>
-                <div style={{ width: 32, height: 32, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  {getCategoryEmoji(item.category)}
-                </div>
-                <div className="list-row-content" style={{ flex: 1 }}>
-                  <div className="list-row-title" style={{ fontSize: 13 }}>
-                    {item.name}
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  <div className="list-row-sub">{item.sku}</div>
+                );
+              })()}
+            </div>
+          ) : (
+            <div className="list-card" style={{ marginBottom: 8 }}>
+              {allItems.map((item: Item) => (
+                <div key={item.id} className="list-row" onClick={() => toggleItem(item.id)}>
+                  <div
+                    style={{
+                      width: 22,
+                      height: 22,
+                      borderRadius: 4,
+                      border: `2px solid ${selected.has(item.id) ? "var(--accent)" : "var(--text-tertiary)"}`,
+                      background: selected.has(item.id) ? "var(--accent)" : "transparent",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {selected.has(item.id) && (
+                      <span style={{ color: "white" }}>
+                        <CheckIcon />
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ width: 32, height: 32, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {getCategoryEmoji(item.category)}
+                  </div>
+                  <div className="list-row-content" style={{ flex: 1 }}>
+                    <div className="list-row-title" style={{ fontSize: 13 }}>
+                      {item.name}
+                    </div>
+                    <div className="list-row-sub">{item.sku}</div>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </div>
 
-        <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+        {/* Pinned footer — always visible on mobile */}
+        <div
+          style={{
+            display: "flex",
+            gap: 8,
+            padding: "12px 18px",
+            paddingBottom: "calc(12px + var(--safe-bottom))",
+            borderTop: "1px solid var(--border)",
+            flexShrink: 0,
+            background: "var(--bg-card)",
+          }}
+        >
           <button className="btn btn-outline" style={{ flex: 1 }} onClick={onClose}>
             Cancel
           </button>

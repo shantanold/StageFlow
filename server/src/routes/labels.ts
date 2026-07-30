@@ -7,26 +7,27 @@ import { authenticate } from "../middleware/auth";
 const router = Router();
 router.use(authenticate);
 
-// ─── PDF layout constants (US Letter, 3 col × 10 row) ────────────────────────
+// ─── PDF layout: Avery 5163–style 2" × 4" shipping labels ────────────────────
+// Sheet: US Letter 8.5" × 11" · 10 labels/sheet · 2 cols × 5 rows
+// Each label: 4" wide × 2" tall
 
-const PAGE_W  = 612;
-const PAGE_H  = 792;
-const MARGIN_X = 18;
-const MARGIN_Y = 20;
-const COLS    = 3;
-const ROWS    = 10;
-const CELL_W  = (PAGE_W - MARGIN_X * 2) / COLS;   // 192 pt
-const CELL_H  = (PAGE_H - MARGIN_Y * 2) / ROWS;   // 75.2 pt
-const QR_SIZE = 48;
-const QR_TOP  = 5;
+const COLS     = 2;
+const ROWS     = 5;
+const LABEL_W  = 288;          // 4"
+const LABEL_H  = 144;          // 2"
+const MARGIN_X = 11.25;        // ~0.156" (Avery side margin)
+const MARGIN_Y = 36;           // 0.5" top margin
+const COL_GAP  = 13.5;         // ~0.188" gap between columns
+const QR_SIZE  = 88;
+const LABELS_PER_PAGE = COLS * ROWS;
 
 function cellOrigin(index: number): { x: number; y: number } {
-  const pageIndex = index % (COLS * ROWS);
+  const pageIndex = index % LABELS_PER_PAGE;
   const col = pageIndex % COLS;
   const row = Math.floor(pageIndex / COLS);
   return {
-    x: MARGIN_X + col * CELL_W,
-    y: MARGIN_Y + row * CELL_H,
+    x: MARGIN_X + col * (LABEL_W + COL_GAP),
+    y: MARGIN_Y + row * LABEL_H,
   };
 }
 
@@ -68,7 +69,7 @@ router.get("/generate", async (req, res) => {
     // Pre-generate all QR buffers
     const qrBuffers = await Promise.all(
       ordered.map((item) =>
-        QRCode.toBuffer(item.sku, { type: "png", width: 200, margin: 1 })
+        QRCode.toBuffer(item.sku, { type: "png", width: 280, margin: 1 })
       )
     );
 
@@ -92,11 +93,8 @@ router.get("/generate", async (req, res) => {
     );
     doc.pipe(res);
 
-    const labelsPerPage = COLS * ROWS;
-
     for (let i = 0; i < ordered.length; i++) {
-      // New page every labelsPerPage items
-      if (i % labelsPerPage === 0) {
+      if (i % LABELS_PER_PAGE === 0) {
         doc.addPage({ size: "LETTER", margins: { top: 0, bottom: 0, left: 0, right: 0 } });
       }
 
@@ -104,37 +102,33 @@ router.get("/generate", async (req, res) => {
       const qrBuf = qrBuffers[i];
       const { x, y } = cellOrigin(i);
 
-      // Very subtle cell border
-      doc
-        .rect(x + 0.5, y + 0.5, CELL_W - 1, CELL_H - 1)
-        .stroke("#e5e7eb");
-
-      // QR code — centered horizontally
-      const qrX = x + (CELL_W - QR_SIZE) / 2;
-      const qrY = y + QR_TOP;
+      // QR on the left half of the 4" × 2" label
+      const qrX = x + 18;
+      const qrY = y + (LABEL_H - QR_SIZE) / 2;
       doc.image(qrBuf, qrX, qrY, { width: QR_SIZE, height: QR_SIZE });
 
-      // Item name (Helvetica, 7pt, centered)
-      const nameY = qrY + QR_SIZE + 4;
+      // Name + SKU on the right half
+      const textX = qrX + QR_SIZE + 14;
+      const textW = LABEL_W - (textX - x) - 14;
+      const textY = y + LABEL_H / 2 - 14;
+
       doc
         .fillColor("#111827")
-        .font("Helvetica")
-        .fontSize(7)
-        .text(truncate(item.name, 30), x + 4, nameY, {
-          width: CELL_W - 8,
-          align: "center",
+        .font("Helvetica-Bold")
+        .fontSize(10)
+        .text(truncate(item.name, 36), textX, textY, {
+          width: textW,
+          align: "left",
           lineBreak: false,
         });
 
-      // SKU (Courier, 6.5pt, centered)
-      const skuY = nameY + 9;
       doc
         .fillColor("#6b7280")
         .font("Courier")
-        .fontSize(6.5)
-        .text(item.sku, x + 4, skuY, {
-          width: CELL_W - 8,
-          align: "center",
+        .fontSize(9)
+        .text(item.sku, textX, textY + 16, {
+          width: textW,
+          align: "left",
           lineBreak: false,
         });
     }

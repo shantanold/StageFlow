@@ -387,7 +387,7 @@ function EditItemModal({ item, onClose }: { item: ItemDetailType; onClose: () =>
     set_id: item.set_id ?? "",
     condition: item.condition,
     purchase_cost: item.purchase_cost,
-    purchase_date: item.purchase_date.slice(0, 10),
+    purchase_date: item.purchase_date ? item.purchase_date.slice(0, 10) : "",
     width_in: item.width_in ?? "",
     depth_in: item.depth_in ?? "",
     height_in: item.height_in ?? "",
@@ -435,7 +435,7 @@ function EditItemModal({ item, onClose }: { item: ItemDetailType; onClose: () =>
         set_id: form.set_id || null,
         condition: form.condition,
         purchase_cost: parseFloat(String(form.purchase_cost)) || 0,
-        purchase_date: form.purchase_date,
+        purchase_date: form.purchase_date || null,
         width_in: form.width_in !== "" ? parseFloat(String(form.width_in)) : null,
         depth_in: form.depth_in !== "" ? parseFloat(String(form.depth_in)) : null,
         height_in: form.height_in !== "" ? parseFloat(String(form.height_in)) : null,
@@ -509,7 +509,7 @@ function EditItemModal({ item, onClose }: { item: ItemDetailType; onClose: () =>
               <input type="number" min="0" step="0.01" className="input-field" value={form.purchase_cost} onChange={(e) => set("purchase_cost", e.target.value)} />
             </div>
             <div>
-              <label className="form-label">Purchase date</label>
+              <label className="form-label">Purchase date (optional)</label>
               <input type="date" className="input-field" value={form.purchase_date} onChange={(e) => set("purchase_date", e.target.value)} />
             </div>
           </div>
