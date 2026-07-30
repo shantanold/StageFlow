@@ -53,7 +53,7 @@ interface CreateItemInput {
   category: string;
   set_id?: string | null;
   purchase_cost: number;
-  purchase_date: string;
+  purchase_date?: string | null;
   width_in?: number | null;
   depth_in?: number | null;
   height_in?: number | null;
@@ -76,7 +76,7 @@ interface ImportItemRow {
   name: string;
   category: string;
   purchase_cost: number;
-  purchase_date: string;
+  purchase_date?: string | null;
   width_in?: number;
   depth_in?: number;
   height_in?: number;
@@ -168,6 +168,12 @@ export interface DashboardStats {
   utilization_pct: number;
   total_inventory_value: number;
   upcoming_jobs: import("../types").Job[];
+  major_pieces: {
+    key: string;
+    label: string;
+    available: number;
+    staged: number;
+  }[];
 }
 
 export function useDashboard() {
@@ -348,6 +354,31 @@ export function useMarkItemFound(itemId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["items"] });
       qc.invalidateQueries({ queryKey: ["items", itemId] });
+      qc.invalidateQueries({ queryKey: ["stats"] });
+    },
+  });
+}
+
+export function useDisposeItem(itemId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<Item>(`/items/${itemId}/dispose`, {}),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["items"] });
+      qc.invalidateQueries({ queryKey: ["items", itemId] });
+      qc.invalidateQueries({ queryKey: ["sets"] });
+      qc.invalidateQueries({ queryKey: ["stats"] });
+    },
+  });
+}
+
+export function useDeleteItem(itemId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.delete<{ message: string; id: string }>(`/items/${itemId}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["items"] });
+      qc.invalidateQueries({ queryKey: ["sets"] });
       qc.invalidateQueries({ queryKey: ["stats"] });
     },
   });

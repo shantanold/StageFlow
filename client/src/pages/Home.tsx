@@ -11,6 +11,8 @@ function greeting(): string {
   return "Good evening";
 }
 
+const LOW_STOCK_THRESHOLD = 5;
+
 export function Home() {
   const { user } = useAuth();
   const navigate  = useNavigate();
@@ -41,7 +43,7 @@ export function Home() {
     {
       label:  "Needs attention",
       value:  stats?.needs_attention ?? "—",
-      sub:    "damaged items",
+      sub:    "damaged or missing",
       color:  "var(--amber-text)",
       onClick: () => navigate("/inventory?filter=flagged"),
     },
@@ -75,6 +77,50 @@ export function Home() {
               <p style={{ fontSize: 11, color: "var(--text-tertiary)" }}>{card.sub}</p>
             </div>
           ))}
+        </div>
+
+        {/* Major pieces */}
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ marginBottom: 10 }}>
+            <span className="section-title">Major pieces</span>
+          </div>
+          {isLoading ? (
+            <div className="card" style={{ padding: 14 }}>
+              <div style={{ height: 14, width: "40%", background: "var(--bg-surface)", borderRadius: 4, marginBottom: 10 }} />
+              <div style={{ height: 14, width: "55%", background: "var(--bg-surface)", borderRadius: 4 }} />
+            </div>
+          ) : (
+            <div className="list-card">
+              {(stats?.major_pieces ?? []).map((piece) => {
+                const low = piece.available < LOW_STOCK_THRESHOLD;
+                return (
+                  <div key={piece.key} className="list-row" style={{ cursor: "default" }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p
+                        style={{
+                          fontSize: 13.5,
+                          fontWeight: 500,
+                          color: low ? "var(--red-text)" : "var(--text-primary)",
+                        }}
+                      >
+                        {piece.label}
+                      </p>
+                      <p
+                        style={{
+                          fontSize: 11.5,
+                          marginTop: 2,
+                          color: low ? "var(--red-text)" : "var(--text-tertiary)",
+                        }}
+                      >
+                        {piece.available} available · {piece.staged} staged
+                        {low ? " · low stock" : ""}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Upcoming returns */}
