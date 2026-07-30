@@ -210,6 +210,42 @@ router.post("/import", requireManager, async (req, res) => {
   }
 });
 
+// ─── POST /items/bulk-unlabeled ───────────────────────────────────────────────
+// Create N placeholder items (SKU + QR only) for pre-printing labels before
+// details are known. Managers fill in name/category later via edit / quick scan.
+
+router.post("/bulk-unlabeled", requireManager, async (req, res) => {
+  try {
+    const count = Number((req.body as { count?: number })?.count);
+    if (!Number.isInteger(count) || count < 1 || count > 200) {
+      return res.status(400).json({ message: "count must be an integer between 1 and 200" });
+    }
+
+    const items = [];
+    for (let i = 0; i < count; i++) {
+      const sku = await generateSku();
+      const item = await prisma.item.create({
+        data: {
+          org_id: req.user!.org_id,
+          sku,
+          name: `Unlabeled ${sku}`,
+          category: "Other",
+          purchase_cost: 0,
+          purchase_date: null,
+          notes: "Placeholder — fill in details after sticking the QR label",
+        },
+        include: { set: { select: { id: true, name: true } } },
+      });
+      items.push(item);
+    }
+
+    return res.status(201).json({ created: items.length, items });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
 // ─── GET /items/sku/:sku — look up by exact SKU (for QR scanner) ─────────────
 
 router.get("/sku/:sku", async (req, res) => {
@@ -311,6 +347,71 @@ router.put("/:id", requireManager, async (req, res) => {
     });
 
     return res.json(item);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
+// ─── POST /items/:id/dispose ──────────────────────────────────────────────────
+// Soft-remove from active inventory (status → disposed). Record stays for history.
+
+router.post("/:id/dispose", requireManager, async (req, res) => {
+  try {
+    const existing = await prisma.item.findUnique({ where: { id: req.params.id } });
+    if (!existing) return res.status(404).json({ message: "Item not found" });
+    if (existing.status === "disposed") {
+      return res.status(400).json({ message: "Item is already disposed" });
+    }
+    if (existing.status === "staged") {
+      return res.status(400).json({ message: "Cannot dispose an item that is currently staged — return it first" });
+    }
+
+    const userId = req.user!.userId;
+    const [item] = await prisma.$transaction([
+      prisma.item.update({
+        where: { id: req.params.id },
+        data: { status: "disposed" },
+        include: { set: { select: { id: true, name: true } } },
+      }),
+      prisma.movement.create({
+        data: {
+          org_id: req.user!.org_id,
+          item_id: req.params.id,
+          job_id: null,
+          from_status: existing.status,
+          to_status: "disposed",
+          performed_by: userId,
+          notes: "Disposed — removed from active inventory",
+        },
+      }),
+    ]);
+
+    return res.json(item);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
+// ─── DELETE /items/:id ────────────────────────────────────────────────────────
+// Permanently deletes the item and its history. Blocked while staged.
+
+router.delete("/:id", requireManager, async (req, res) => {
+  try {
+    const existing = await prisma.item.findUnique({ where: { id: req.params.id } });
+    if (!existing) return res.status(404).json({ message: "Item not found" });
+    if (existing.status === "staged") {
+      return res.status(400).json({ message: "Cannot delete an item that is currently staged — return it first" });
+    }
+
+    await prisma.$transaction([
+      prisma.movement.deleteMany({ where: { item_id: req.params.id } }),
+      prisma.jobItem.deleteMany({ where: { item_id: req.params.id } }),
+      prisma.item.delete({ where: { id: req.params.id } }),
+    ]);
+
+    return res.json({ message: "Item deleted", id: req.params.id });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: "Server error" });

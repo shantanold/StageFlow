@@ -1,7 +1,10 @@
 import { useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { useItem, useItemMovements, useUpdateItem, useMarkItemFound } from "../../lib/queries";
+import {
+  useItem, useItemMovements, useUpdateItem, useMarkItemFound,
+  useDisposeItem, useDeleteItem,
+} from "../../lib/queries";
 import { useSets } from "../../lib/queries";
 import { downloadLabels, useQRCodeUrl } from "../../lib/labels";
 import { uploadImage } from "../../lib/cloudinary";
@@ -58,10 +61,21 @@ function CameraIcon() {
   );
 }
 
-function QRSection({ itemId, qrPrinted }: { itemId: string; qrPrinted: boolean }) {
+function QRSection({
+  itemId,
+  qrPrinted,
+  canEdit,
+}: {
+  itemId: string;
+  qrPrinted: boolean;
+  canEdit: boolean;
+}) {
   const { src, loading } = useQRCodeUrl(itemId);
   const [printing, setPrinting] = useState(false);
+  const [toggling, setToggling] = useState(false);
   const queryClient = useQueryClient();
+  const updateItem = useUpdateItem(itemId);
+  const { showToast } = useToast();
 
   async function handlePrint() {
     setPrinting(true);
@@ -70,6 +84,19 @@ function QRSection({ itemId, qrPrinted }: { itemId: string; qrPrinted: boolean }
       await queryClient.invalidateQueries({ queryKey: ["items"] });
     } finally {
       setPrinting(false);
+    }
+  }
+
+  async function handleTogglePrinted() {
+    if (!canEdit || toggling) return;
+    setToggling(true);
+    try {
+      await updateItem.mutateAsync({ qr_printed: !qrPrinted });
+      showToast(qrPrinted ? "Marked as not printed" : "Marked as printed", "success");
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : "Failed to update", "error");
+    } finally {
+      setToggling(false);
     }
   }
 
@@ -120,14 +147,26 @@ function QRSection({ itemId, qrPrinted }: { itemId: string; qrPrinted: boolean }
         <p style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 10 }}>
           Scan to look up this item
         </p>
-        <button
-          className="btn btn-outline"
-          style={{ padding: "6px 12px", fontSize: 12, gap: 5 }}
-          onClick={handlePrint}
-          disabled={printing || loading}
-        >
-          <PrinterIcon /> {printing ? "Generating…" : "Print label"}
-        </button>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          <button
+            className="btn btn-outline"
+            style={{ padding: "6px 12px", fontSize: 12, gap: 5 }}
+            onClick={handlePrint}
+            disabled={printing || loading}
+          >
+            <PrinterIcon /> {printing ? "Generating…" : "Print label"}
+          </button>
+          {canEdit && (
+            <button
+              className="btn btn-outline"
+              style={{ padding: "6px 12px", fontSize: 12 }}
+              onClick={handleTogglePrinted}
+              disabled={toggling}
+            >
+              {toggling ? "Saving…" : qrPrinted ? "Mark not printed" : "Mark printed"}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -144,6 +183,9 @@ export function ItemDetail() {
   const { data: item, isLoading, isError } = useItem(id);
   const { data: movements = [] } = useItemMovements(id);
   const markFound = useMarkItemFound(id);
+  const disposeItem = useDisposeItem(id);
+  const deleteItem = useDeleteItem(id);
+  const [confirmAction, setConfirmAction] = useState<"dispose" | "delete" | null>(null);
 
   async function handleMarkFound() {
     try {
@@ -151,6 +193,28 @@ export function ItemDetail() {
       showToast("Item marked available", "success");
     } catch (err) {
       showToast(err instanceof ApiError ? err.message : "Failed to update item", "error");
+    }
+  }
+
+  async function handleDispose() {
+    try {
+      await disposeItem.mutateAsync();
+      showToast("Item removed from active inventory", "success");
+      setConfirmAction(null);
+      navigate("/inventory");
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : "Failed to dispose item", "error");
+    }
+  }
+
+  async function handleDelete() {
+    try {
+      await deleteItem.mutateAsync();
+      showToast("Item permanently deleted", "success");
+      setConfirmAction(null);
+      navigate("/inventory");
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : "Failed to delete item", "error");
     }
   }
 
@@ -278,7 +342,7 @@ export function ItemDetail() {
         )}
 
         {/* QR code */}
-        <QRSection itemId={item.id} qrPrinted={item.qr_printed} />
+        <QRSection itemId={item.id} qrPrinted={item.qr_printed} canEdit={isManager} />
 
         {/* Current job card */}
         {item.current_job && (
@@ -349,6 +413,88 @@ export function ItemDetail() {
             {movements.map((m, i) => (
               <MovementRow key={m.id} movement={m} isLast={i === movements.length - 1} />
             ))}
+          </div>
+        )}
+
+        {/* Manager: remove / delete */}
+        {isManager && item.status !== "disposed" && (
+          <div className="card" style={{ marginTop: 8, marginBottom: 28, borderColor: "rgba(239,68,68,0.25)" }}>
+            <p style={{ fontSize: 11, fontWeight: 500, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 8 }}>
+              Remove item
+            </p>
+            <p style={{ fontSize: 12.5, color: "var(--text-secondary)", marginBottom: 12 }}>
+              {item.status === "staged"
+                ? "This item is currently staged. Return it from the job before removing or deleting."
+                : "Dispose keeps the record for history. Delete permanently removes the item and its history (frees the SKU)."}
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <button
+                className="btn btn-outline"
+                style={{ width: "100%", color: "var(--amber-text)", borderColor: "rgba(245,158,11,0.35)" }}
+                disabled={item.status === "staged" || disposeItem.isPending}
+                onClick={() => setConfirmAction("dispose")}
+              >
+                Dispose (remove from inventory)
+              </button>
+              <button
+                className="btn btn-outline"
+                style={{ width: "100%", color: "var(--red-text)", borderColor: "rgba(239,68,68,0.35)" }}
+                disabled={item.status === "staged" || deleteItem.isPending}
+                onClick={() => setConfirmAction("delete")}
+              >
+                Delete permanently
+              </button>
+            </div>
+          </div>
+        )}
+
+        {confirmAction && (
+          <div className="modal-overlay" onClick={() => setConfirmAction(null)}>
+            <div
+              className="modal-sheet"
+              onClick={(e) => e.stopPropagation()}
+              style={{ padding: 0, display: "flex", flexDirection: "column" }}
+            >
+              <div style={{ padding: "16px 18px 0" }}>
+                <div className="modal-handle" />
+                <p style={{ fontSize: 17, fontWeight: 500, marginBottom: 8 }}>
+                  {confirmAction === "delete" ? "Delete permanently?" : "Dispose item?"}
+                </p>
+                <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 4 }}>
+                  {confirmAction === "delete"
+                    ? `“${item.name}” and all of its movement history will be permanently deleted. This cannot be undone.`
+                    : `“${item.name}” will be removed from active inventory. The record stays for history.`}
+                </p>
+              </div>
+              <div
+                style={{
+                  display: "flex", gap: 8,
+                  padding: "12px 18px",
+                  paddingBottom: "calc(12px + var(--safe-bottom))",
+                  borderTop: "1px solid var(--border)",
+                  marginTop: 14,
+                }}
+              >
+                <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => setConfirmAction(null)}>
+                  Cancel
+                </button>
+                <button
+                  className="btn btn-primary"
+                  style={{
+                    flex: 1,
+                    background: confirmAction === "delete" ? "var(--red-text)" : undefined,
+                  }}
+                  disabled={disposeItem.isPending || deleteItem.isPending}
+                  onClick={confirmAction === "delete" ? handleDelete : handleDispose}
+                >
+                  {disposeItem.isPending || deleteItem.isPending
+                    ? "Working…"
+                    : confirmAction === "delete"
+                      ? "Delete"
+                      : "Dispose"}
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

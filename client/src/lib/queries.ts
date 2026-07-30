@@ -359,6 +359,31 @@ export function useMarkItemFound(itemId: string) {
   });
 }
 
+export function useDisposeItem(itemId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<Item>(`/items/${itemId}/dispose`, {}),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["items"] });
+      qc.invalidateQueries({ queryKey: ["items", itemId] });
+      qc.invalidateQueries({ queryKey: ["sets"] });
+      qc.invalidateQueries({ queryKey: ["stats"] });
+    },
+  });
+}
+
+export function useDeleteItem(itemId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.delete<{ message: string; id: string }>(`/items/${itemId}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["items"] });
+      qc.invalidateQueries({ queryKey: ["sets"] });
+      qc.invalidateQueries({ queryKey: ["stats"] });
+    },
+  });
+}
+
 // ─── Users (manager only) ────────────────────────────────────────────────────
 
 export function useUsers() {
