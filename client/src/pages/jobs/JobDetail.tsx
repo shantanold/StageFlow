@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useJob, useJobItems, useForceCompleteJob } from "../../lib/queries";
+import { useJob, useJobItems, useForceCompleteJob, useUnassignItems } from "../../lib/queries";
 import { getCategoryEmoji, jobStatusBadgeClass, statusBadgeClass, statusLabel } from "../../lib/utils";
 import { formatDate } from "../../lib/utils";
 import { useAuth } from "../../contexts/AuthContext";
@@ -14,6 +14,15 @@ function BackIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="15 18 9 12 15 6" />
+    </svg>
+  );
+}
+
+function RemoveIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
     </svg>
   );
 }
@@ -41,6 +50,18 @@ function groupBySet(rows: JobItemRow[]): { setId: string | null; setName: string
   }));
 }
 
+function jobItemStatusLabel(status: string): string {
+  switch (status) {
+    case "assigned": return "Assigned";
+    case "loaded":
+    case "delivered":
+    case "picked_up": return "Staged out";
+    case "returned": return "Returned";
+    case "missing": return "Missing";
+    default: return status;
+  }
+}
+
 export function JobDetail() {
   const { id = "" } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -50,10 +71,12 @@ export function JobDetail() {
   const [showEdit, setShowEdit] = useState(false);
   const [showAssign, setShowAssign] = useState(false);
   const [showForceComplete, setShowForceComplete] = useState(false);
+  const [unassignTarget, setUnassignTarget] = useState<JobItemRow | null>(null);
 
   const { data: job, isLoading: jobLoading } = useJob(id);
   const { data: jobItems = [], isLoading: itemsLoading } = useJobItems(id);
   const forceComplete = useForceCompleteJob(id);
+  const unassignItems = useUnassignItems(id);
 
   if (jobLoading) {
     return (
@@ -73,6 +96,7 @@ export function JobDetail() {
 
   const groups = groupBySet(jobItems);
   const unreturnedCount = jobItems.filter((ji) => ji.status !== "returned").length;
+  const canEditItems = isManager && (job.status === "active" || job.status === "planning");
 
   async function handleForceComplete() {
     try {
@@ -81,6 +105,17 @@ export function JobDetail() {
       setShowForceComplete(false);
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to force-complete job", "error");
+    }
+  }
+
+  async function handleUnassign() {
+    if (!unassignTarget) return;
+    try {
+      await unassignItems.mutateAsync([unassignTarget.item_id]);
+      showToast(`Removed “${unassignTarget.item.name}” from this job`, "success");
+      setUnassignTarget(null);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to unassign item", "error");
     }
   }
 
@@ -137,7 +172,7 @@ export function JobDetail() {
 
         {/* Actions */}
         <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
-          {isManager && (job.status === "active" || job.status === "planning") && (
+          {canEditItems && (
             <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setShowAssign(true)}>
               Assign items
             </button>
@@ -154,7 +189,7 @@ export function JobDetail() {
           )}
         </div>
 
-        {isManager && (job.status === "active" || job.status === "planning") && unreturnedCount > 0 && (
+        {canEditItems && unreturnedCount > 0 && (
           <button
             className="btn btn-outline"
             style={{
@@ -210,40 +245,62 @@ export function JobDetail() {
                   {items.length} item{items.length !== 1 ? "s" : ""} from {setName}
                 </div>
                 <div className="list-card">
-                  {items.map((row) => (
-                    <div
-                      key={row.id}
-                      className="list-row"
-                      onClick={() => navigate(`/inventory/${row.item.id}`)}
-                    >
+                  {items.map((row) => {
+                    const canUnassign = canEditItems && row.status === "assigned";
+                    return (
                       <div
-                        style={{
-                          width: 42,
-                          height: 42,
-                          borderRadius: 6,
-                          background: "var(--bg-surface)",
-                          flexShrink: 0,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          fontSize: 20,
-                        }}
+                        key={row.id}
+                        className="list-row"
+                        onClick={() => navigate(`/inventory/${row.item.id}`)}
                       >
-                        {getCategoryEmoji(row.item.category)}
+                        <div
+                          style={{
+                            width: 42,
+                            height: 42,
+                            borderRadius: 6,
+                            background: "var(--bg-surface)",
+                            flexShrink: 0,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontSize: 20,
+                          }}
+                        >
+                          {getCategoryEmoji(row.item.category)}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ fontSize: 13.5, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                            {row.item.name}
+                          </p>
+                          <p style={{ fontSize: 11.5, color: "var(--text-tertiary)", marginTop: 2 }}>
+                            {row.item.sku} · {jobItemStatusLabel(row.status)}
+                          </p>
+                        </div>
+                        <span className={statusBadgeClass(row.item.status, row.item.condition)}>
+                          {statusLabel(row.item.status, row.item.condition)}
+                        </span>
+                        {canUnassign && (
+                          <button
+                            className="btn btn-outline"
+                            title="Remove from job"
+                            aria-label={`Remove ${row.item.name} from job`}
+                            style={{
+                              padding: 7,
+                              flexShrink: 0,
+                              borderColor: "rgba(239,68,68,0.35)",
+                              color: "var(--red-text)",
+                            }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setUnassignTarget(row);
+                            }}
+                          >
+                            <RemoveIcon />
+                          </button>
+                        )}
                       </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ fontSize: 13.5, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                          {row.item.name}
-                        </p>
-                        <p style={{ fontSize: 11.5, color: "var(--text-tertiary)", marginTop: 2 }}>
-                          {row.item.sku} · {row.item.category}
-                        </p>
-                      </div>
-                      <span className={statusBadgeClass(row.item.status, row.item.condition)}>
-                        {statusLabel(row.item.status, row.item.condition)}
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             ))}
@@ -261,6 +318,16 @@ export function JobDetail() {
           confirmDanger
           onConfirm={handleForceComplete}
           onCancel={() => setShowForceComplete(false)}
+        />
+      )}
+      {unassignTarget && (
+        <ConfirmDialog
+          title="Remove from this job?"
+          message={`“${unassignTarget.item.name}” will be unassigned and go back into available inventory. Only do this if it hasn’t been loaded onto the truck yet.`}
+          confirmLabel={unassignItems.isPending ? "Removing…" : "Remove"}
+          confirmDanger
+          onConfirm={handleUnassign}
+          onCancel={() => setUnassignTarget(null)}
         />
       )}
     </div>

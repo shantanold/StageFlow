@@ -151,4 +151,66 @@ describe("core job lifecycle", () => {
       });
     expect(jobRes.status).toBe(403);
   });
+
+  it("manager can unassign items that have not been scanned out", async () => {
+    const manager = await registerUser(app, { role: "manager" });
+
+    const itemA = await request(app)
+      .post("/api/v1/items")
+      .set(authHeader(manager.token))
+      .send({ name: "Lamp A", category: "lamp", purchase_cost: 40 });
+    const itemB = await request(app)
+      .post("/api/v1/items")
+      .set(authHeader(manager.token))
+      .send({ name: "Lamp B", category: "lamp", purchase_cost: 40 });
+
+    const job = await request(app)
+      .post("/api/v1/jobs")
+      .set(authHeader(manager.token))
+      .send({
+        address: "789 Pine St",
+        client_name: "Sam Realtor",
+        start_date: "2025-02-01",
+        expected_end_date: "2025-05-01",
+      });
+
+    await request(app)
+      .post(`/api/v1/jobs/${job.body.id}/assign`)
+      .set(authHeader(manager.token))
+      .send({ itemIds: [itemA.body.id, itemB.body.id] });
+
+    // Scan out only B — A stays "assigned"
+    await request(app)
+      .post(`/api/v1/jobs/${job.body.id}/scan-out`)
+      .set(authHeader(manager.token))
+      .send({ itemId: itemB.body.id });
+
+    // Cannot unassign a loaded item
+    const blocked = await request(app)
+      .post(`/api/v1/jobs/${job.body.id}/unassign`)
+      .set(authHeader(manager.token))
+      .send({ itemIds: [itemB.body.id] });
+    expect(blocked.status).toBe(400);
+
+    // Can unassign the still-assigned item
+    const unassign = await request(app)
+      .post(`/api/v1/jobs/${job.body.id}/unassign`)
+      .set(authHeader(manager.token))
+      .send({ itemIds: [itemA.body.id] });
+    expect(unassign.status).toBe(200);
+    expect(unassign.body.unassigned_count).toBe(1);
+    expect(unassign.body.item_count).toBe(1);
+
+    const items = await request(app)
+      .get(`/api/v1/jobs/${job.body.id}/items`)
+      .set(authHeader(manager.token));
+    expect(items.body).toHaveLength(1);
+    expect(items.body[0].item_id).toBe(itemB.body.id);
+
+    // Item A is still available and free to assign elsewhere
+    const a = await request(app)
+      .get(`/api/v1/items/${itemA.body.id}`)
+      .set(authHeader(manager.token));
+    expect(a.body.status).toBe("available");
+  });
 });
