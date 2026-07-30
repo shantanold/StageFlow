@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useItem, useItemMovements, useUpdateItem, useMarkItemFound } from "../../lib/queries";
 import { useSets } from "../../lib/queries";
 import { downloadLabels, useQRCodeUrl } from "../../lib/labels";
@@ -57,13 +58,19 @@ function CameraIcon() {
   );
 }
 
-function QRSection({ itemId }: { itemId: string }) {
+function QRSection({ itemId, qrPrinted }: { itemId: string; qrPrinted: boolean }) {
   const { src, loading } = useQRCodeUrl(itemId);
   const [printing, setPrinting] = useState(false);
+  const queryClient = useQueryClient();
 
   async function handlePrint() {
     setPrinting(true);
-    try { await downloadLabels([itemId]); } finally { setPrinting(false); }
+    try {
+      await downloadLabels([itemId]);
+      await queryClient.invalidateQueries({ queryKey: ["items"] });
+    } finally {
+      setPrinting(false);
+    }
   }
 
   return (
@@ -92,9 +99,24 @@ function QRSection({ itemId }: { itemId: string }) {
 
       {/* Label */}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ fontSize: 11, fontWeight: 500, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 4 }}>
-          QR Label
-        </p>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+          <p style={{ fontSize: 11, fontWeight: 500, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.8px", margin: 0 }}>
+            QR Label
+          </p>
+          <span
+            style={{
+              fontSize: 10,
+              fontWeight: 500,
+              color: "var(--text-tertiary)",
+              background: "var(--bg-surface)",
+              border: "1px solid var(--border)",
+              borderRadius: 4,
+              padding: "1px 6px",
+            }}
+          >
+            {qrPrinted ? "Printed" : "Not printed"}
+          </span>
+        </div>
         <p style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 10 }}>
           Scan to look up this item
         </p>
@@ -256,7 +278,7 @@ export function ItemDetail() {
         )}
 
         {/* QR code */}
-        <QRSection itemId={item.id} />
+        <QRSection itemId={item.id} qrPrinted={item.qr_printed} />
 
         {/* Current job card */}
         {item.current_job && (

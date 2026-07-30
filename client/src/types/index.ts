@@ -48,6 +48,7 @@ export interface Item {
   depth_in: string | null;
   height_in: string | null;
   notes: string | null;
+  qr_printed: boolean;
   created_at: string;
 }
 
