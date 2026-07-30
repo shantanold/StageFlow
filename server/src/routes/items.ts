@@ -91,11 +91,26 @@ router.get("/", async (req, res) => {
 
     const items = await prisma.item.findMany({
       where,
-      include: { set: { select: { id: true, name: true } } },
+      include: {
+        set: { select: { id: true, name: true } },
+        // Same filter the assign route uses to detect "already on a job":
+        // anything not yet returned counts as an active assignment.
+        job_items: {
+          where: { status: { not: "returned" } },
+          select: { job_id: true },
+        },
+      },
       orderBy: { created_at: "desc" },
     });
 
-    return res.json(items);
+    // Flatten to active_job_id so clients can tell an "available" item is
+    // already planned onto a job (items stay available until scan-out).
+    const rows = items.map(({ job_items, ...item }) => ({
+      ...item,
+      active_job_id: job_items[0]?.job_id ?? null,
+    }));
+
+    return res.json(rows);
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: "Server error" });
