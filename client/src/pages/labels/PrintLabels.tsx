@@ -121,7 +121,7 @@ export function PrintLabels() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div>
             <h1 className="page-title">Print QR Labels</h1>
-            <p className="page-subtitle">2″ × 4″ shipping labels · 10 per sheet</p>
+            <p className="page-subtitle">8.5″ × 11″ · 2″ × 4″ labels · 10 per sheet</p>
           </div>
         </div>
       </div>
