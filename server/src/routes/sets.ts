@@ -50,7 +50,7 @@ router.post("/", requireManager, async (req, res) => {
     }
 
     const set = await prisma.set.create({
-      data: { name: name.trim(), description: description?.trim() ?? "" },
+      data: { org_id: req.user!.org_id, name: name.trim(), description: description?.trim() ?? "" },
     });
 
     return res.status(201).json({ ...set, item_count: 0, available_count: 0, staged_count: 0 });

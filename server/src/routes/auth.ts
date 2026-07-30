@@ -1,14 +1,14 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { prisma } from "../lib/prisma";
+import { prisma, rawPrisma } from "../lib/prisma";
 import { authenticate } from "../middleware/auth";
 
 const router = Router();
 
-function signToken(userId: string, email: string, role: string) {
+function signToken(userId: string, email: string, role: string, org_id: string) {
   return jwt.sign(
-    { userId, email, role },
+    { userId, email, role, org_id },
     process.env.JWT_SECRET!,
     { expiresIn: "7d" }
   );
@@ -36,26 +36,34 @@ router.post("/register", async (req, res) => {
       return res.status(400).json({ message: "Name, email, and password are required" });
     }
 
-    if (!code || code !== process.env.SIGNUP_CODE) {
+    if (!code) {
       return res.status(403).json({ message: "Invalid signup code" });
     }
 
-    const existing = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+    // No tenant context yet (we don't know which org until the code resolves
+    // one) — every lookup here uses the unscoped client.
+    const org = await rawPrisma.organization.findUnique({ where: { invite_code: code } });
+    if (!org || !org.is_active) {
+      return res.status(403).json({ message: "Invalid signup code" });
+    }
+
+    const existing = await rawPrisma.user.findUnique({ where: { email: email.toLowerCase() } });
     if (existing) {
       return res.status(409).json({ message: "An account with this email already exists" });
     }
 
     const password_hash = await bcrypt.hash(password, 10);
-    const user = await prisma.user.create({
+    const user = await rawPrisma.user.create({
       data: {
         name: name.trim(),
         email: email.toLowerCase().trim(),
         password_hash,
         role: role === "manager" ? "manager" : "staff",
+        org_id: org.id,
       },
     });
 
-    const token = signToken(user.id, user.email, user.role);
+    const token = signToken(user.id, user.email, user.role, user.org_id!);
     return res.status(201).json({ token, user: safeUser(user) });
   } catch (err) {
     console.error("register error", err);
@@ -72,7 +80,8 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ message: "Email and password are required" });
     }
 
-    const user = await prisma.user.findUnique({ where: { email: email.toLowerCase().trim() } });
+    // Pre-auth: we don't yet know the org, so this must stay unscoped.
+    const user = await rawPrisma.user.findUnique({ where: { email: email.toLowerCase().trim() } });
     if (!user) {
       return res.status(401).json({ message: "Invalid email or password" });
     }
@@ -86,7 +95,7 @@ router.post("/login", async (req, res) => {
       return res.status(403).json({ message: "This account has been deactivated" });
     }
 
-    const token = signToken(user.id, user.email, user.role);
+    const token = signToken(user.id, user.email, user.role, user.org_id!);
     return res.json({ token, user: safeUser(user) });
   } catch (err) {
     console.error("login error", err);

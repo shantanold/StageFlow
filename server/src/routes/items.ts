@@ -1,17 +1,17 @@
 import { Router } from "express";
 import { Prisma, ItemStatus, ItemCondition } from "@prisma/client";
 import QRCode from "qrcode";
-import { prisma } from "../lib/prisma";
+import { prisma, rawPrisma } from "../lib/prisma";
 import { authenticate } from "../middleware/auth";
 import { requireManager } from "../middleware/role";
 
 const router = Router();
 
-// ─── GET /items/:id/qr  (public — SKU is on physical labels) ─────────────────
+// ─── GET /items/:id/qr  (public — SKU is on physical labels, no auth = no tenant context) ─
 
 router.get("/:id/qr", async (req, res) => {
   try {
-    const item = await prisma.item.findUnique({
+    const item = await rawPrisma.item.findUnique({
       where: { id: req.params.id },
       select: { sku: true },
     });
@@ -128,6 +128,7 @@ router.post("/", requireManager, async (req, res) => {
 
     const item = await prisma.item.create({
       data: {
+        org_id: req.user!.org_id,
         sku,
         name: name.trim(),
         category,
@@ -160,6 +161,9 @@ router.post("/import", requireManager, async (req, res) => {
         category?: string;
         purchase_cost?: number;
         purchase_date?: string;
+        width_in?: number;
+        depth_in?: number;
+        height_in?: number;
         notes?: string;
       }>;
     };
@@ -181,11 +185,15 @@ router.post("/import", requireManager, async (req, res) => {
         const sku = await generateSku();
         const item = await prisma.item.create({
           data: {
+            org_id: req.user!.org_id,
             sku,
             name: row.name.trim(),
             category: row.category,
             purchase_cost: row.purchase_cost ?? 0,
             purchase_date: new Date(row.purchase_date),
+            width_in: row.width_in ?? null,
+            depth_in: row.depth_in ?? null,
+            height_in: row.height_in ?? null,
             notes: row.notes || null,
           },
         });
@@ -207,7 +215,7 @@ router.post("/import", requireManager, async (req, res) => {
 router.get("/sku/:sku", async (req, res) => {
   try {
     const item = await prisma.item.findUnique({
-      where: { sku: req.params.sku },
+      where: { org_id_sku: { org_id: req.user!.org_id, sku: req.params.sku } },
       include: { set: { select: { id: true, name: true } } },
     });
     if (!item) return res.status(404).json({ message: "Item not found" });
@@ -330,6 +338,7 @@ router.post("/:id/found", requireManager, async (req, res) => {
       }),
       prisma.movement.create({
         data: {
+          org_id: req.user!.org_id,
           item_id: req.params.id,
           job_id: null,
           from_status: "missing",

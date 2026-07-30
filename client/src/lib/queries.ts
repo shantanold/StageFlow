@@ -77,6 +77,9 @@ interface ImportItemRow {
   category: string;
   purchase_cost: number;
   purchase_date: string;
+  width_in?: number;
+  depth_in?: number;
+  height_in?: number;
   notes?: string;
 }
 

@@ -74,6 +74,7 @@ router.post("/", requireManager, async (req, res) => {
 
     const job = await prisma.job.create({
       data: {
+        org_id: req.user!.org_id,
         address: body.address.trim(),
         city: (body.city ?? "").trim() || "Pearland",
         state: (body.state ?? "").trim() || "TX",
@@ -254,7 +255,7 @@ router.post("/:id/assign", requireManager, async (req, res) => {
     await prisma.$transaction(async (tx) => {
       for (const itemId of toAssign) {
         await tx.jobItem.create({
-          data: { job_id: jobId, item_id: itemId, status: "assigned" },
+          data: { org_id: req.user!.org_id, job_id: jobId, item_id: itemId, status: "assigned" },
         });
       }
     });
@@ -318,6 +319,7 @@ router.post("/:id/scan-out", async (req, res) => {
       await tx.item.update({ where: { id: itemId }, data: { status: "staged" as ItemStatus } });
       await tx.movement.create({
         data: {
+          org_id: req.user!.org_id,
           item_id: itemId,
           job_id: req.params.id,
           from_status: "available",
@@ -399,6 +401,7 @@ router.post("/:id/scan-return", async (req, res) => {
       });
       await tx.movement.create({
         data: {
+          org_id: req.user!.org_id,
           item_id: itemId,
           job_id: req.params.id,
           from_status: "staged",
@@ -471,6 +474,7 @@ router.post("/:id/force-complete", requireManager, async (req, res) => {
 
       await tx.movement.createMany({
         data: remainingItems.map((ji) => ({
+          org_id: req.user!.org_id,
           item_id: ji.item_id,
           job_id: req.params.id,
           from_status: "staged",

@@ -1,14 +1,14 @@
 import { describe, it, expect, beforeEach, afterAll } from "vitest";
 import request from "supertest";
 import app from "../src/app";
-import { prisma } from "../src/lib/prisma";
+import { rawPrisma } from "../src/lib/prisma";
 import { cleanDb, registerUser, authHeader, uniqueEmail } from "./helpers";
 
 describe("auth", () => {
   beforeEach(cleanDb);
   afterAll(async () => {
     await cleanDb();
-    await prisma.$disconnect();
+    await rawPrisma.$disconnect();
   });
 
   it("rejects registration without the correct signup code", async () => {
@@ -56,7 +56,7 @@ describe("auth", () => {
       .send({ is_active: false });
     expect(patchRes.status).toBe(200);
 
-    const staffUser = await prisma.user.findUnique({ where: { id: staff.userId } });
+    const staffUser = await rawPrisma.user.findUnique({ where: { id: staff.userId } });
     const loginRes = await request(app).post("/api/v1/auth/login").send({
       email: staffUser!.email,
       password: "password123",
