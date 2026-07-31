@@ -2,7 +2,7 @@ import { useState, FormEvent, useRef } from "react";
 import { useNavigate, useParams, Navigate } from "react-router-dom";
 import { useItem, useClaimItem, useSets, useItems } from "../../lib/queries";
 import { CATEGORIES } from "../../lib/utils";
-import { uploadImage } from "../../lib/cloudinary";
+import { displayPhotoUrl, uploadImage } from "../../lib/cloudinary";
 import { useToast } from "../../contexts/ToastContext";
 import { ApiError } from "../../lib/api";
 import type { Item } from "../../types";
@@ -59,7 +59,7 @@ export function ClaimItem() {
     });
     if (source.photo_url) {
       setPhotoUrl(source.photo_url);
-      setPhotoPreview(source.photo_url);
+      setPhotoPreview(displayPhotoUrl(source.photo_url) ?? source.photo_url);
     }
   }
 

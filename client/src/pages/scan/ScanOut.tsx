@@ -4,6 +4,7 @@ import { useJob, useJobItems } from "../../lib/queries";
 import { useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "../../lib/api";
 import { getCategoryEmoji } from "../../lib/utils";
+import { displayPhotoUrl } from "../../lib/cloudinary";
 import { useToast } from "../../contexts/ToastContext";
 import { QrScannerView } from "./QrScannerView";
 import type { Item } from "../../types";
@@ -195,8 +196,8 @@ function ItemRow({ item, loaded }: { item: Item; loaded: boolean }) {
   return (
     <div className="list-row" style={{ background: loaded ? "rgba(16,185,129,0.07)" : undefined }}>
       <div style={{ width: 36, height: 36, borderRadius: 6, flexShrink: 0, background: "var(--bg-surface)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, overflow: "hidden" }}>
-        {item.photo_url
-          ? <img src={item.photo_url} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        {displayPhotoUrl(item.photo_url)
+          ? <img src={displayPhotoUrl(item.photo_url)} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
           : getCategoryEmoji(item.category)
         }
       </div>
