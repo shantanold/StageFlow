@@ -7,7 +7,7 @@ import {
 } from "../../lib/queries";
 import { useSets } from "../../lib/queries";
 import { downloadLabels, useQRCodeUrl } from "../../lib/labels";
-import { uploadImage } from "../../lib/cloudinary";
+import { displayPhotoUrl, uploadImage } from "../../lib/cloudinary";
 import {
   getCategoryEmoji, statusBadgeClass, statusLabel,
   formatDate, formatCurrency, formatDimensions, movementDotColor, CATEGORIES,
@@ -292,8 +292,8 @@ export function ItemDetail() {
               fontSize: 28, overflow: "hidden",
             }}
           >
-            {item.photo_url ? (
-              <img src={item.photo_url} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            {displayPhotoUrl(item.photo_url) ? (
+              <img src={displayPhotoUrl(item.photo_url)} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
             ) : (
               getCategoryEmoji(item.category)
             )}
@@ -377,7 +377,7 @@ export function ItemDetail() {
         {item.photo_url && (
           <div style={{ borderRadius: "var(--radius-lg)", overflow: "hidden", marginBottom: 12 }}>
             <img
-              src={item.photo_url}
+              src={displayPhotoUrl(item.photo_url)}
               alt={item.name}
               style={{ width: "100%", maxHeight: 220, objectFit: "cover", display: "block" }}
             />
@@ -666,7 +666,7 @@ function EditItemModal({ item, onClose }: { item: ItemDetailType; onClose: () =>
     notes: item.notes ?? "",
   });
   const [photoUrl, setPhotoUrl] = useState(item.photo_url ?? "");
-  const [photoPreview, setPhotoPreview] = useState(item.photo_url ?? "");
+  const [photoPreview, setPhotoPreview] = useState(displayPhotoUrl(item.photo_url) ?? "");
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [error, setError] = useState("");
 
@@ -684,7 +684,7 @@ function EditItemModal({ item, onClose }: { item: ItemDetailType; onClose: () =>
       setPhotoUrl(url);
     } catch {
       showToast("Photo upload failed", "error");
-      setPhotoPreview(item.photo_url ?? "");
+      setPhotoPreview(displayPhotoUrl(item.photo_url) ?? "");
     } finally {
       setUploadProgress(null);
     }

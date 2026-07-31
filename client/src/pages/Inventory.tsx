@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useItems, useSets } from "../lib/queries";
 import { useDebounce } from "../hooks/useDebounce";
 import { downloadLabels } from "../lib/labels";
+import { displayPhotoUrl } from "../lib/cloudinary";
 import { getCategoryEmoji, statusBadgeClass, statusLabel } from "../lib/utils";
 import { useToast } from "../contexts/ToastContext";
 import { useAuth } from "../contexts/AuthContext";
@@ -693,8 +694,8 @@ function ItemRow({
             fontSize: 20, overflow: "hidden",
           }}
         >
-          {item.photo_url ? (
-            <img src={item.photo_url} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          {displayPhotoUrl(item.photo_url) ? (
+            <img src={displayPhotoUrl(item.photo_url)} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
           ) : (
             getCategoryEmoji(item.category)
           )}
@@ -754,8 +755,8 @@ function GridItem({
           position: "relative",
         }}
       >
-        {item.photo_url ? (
-          <img src={item.photo_url} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        {displayPhotoUrl(item.photo_url) ? (
+          <img src={displayPhotoUrl(item.photo_url)} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
         ) : (
           getCategoryEmoji(item.category)
         )}
