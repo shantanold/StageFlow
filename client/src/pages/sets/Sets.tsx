@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useSets, useCreateSet } from "../../lib/queries";
 import { useAuth } from "../../contexts/AuthContext";
 import { ApiError } from "../../lib/api";
+import { ModalOverlay } from "../../components/ModalOverlay";
 import type { ItemSet } from "../../types";
 
 function PlusIcon() {
@@ -49,15 +50,17 @@ export function Sets() {
         )}
       </div>
 
-      <div style={{ padding: "0 18px" }}>
+      <div className="page-body">
         {isLoading ? (
           <SetListSkeleton />
         ) : sets.length === 0 ? (
           <EmptyState onCreateClick={() => setShowCreate(true)} />
         ) : (
-          sets.map((s) => (
-            <SetCard key={s.id} set={s} onClick={() => navigate(`/sets/${s.id}`)} />
-          ))
+          <div className="card-stack">
+            {sets.map((s) => (
+              <SetCard key={s.id} set={s} onClick={() => navigate(`/sets/${s.id}`)} />
+            ))}
+          </div>
         )}
       </div>
 
@@ -156,7 +159,7 @@ function CreateSetModal({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <ModalOverlay onClose={onClose}>
       <div className="modal-sheet animate-in" style={{ padding: 0, display: "flex", flexDirection: "column" }} onClick={(e) => e.stopPropagation()}>
         <div style={{ padding: "20px 18px 0", flexShrink: 0 }}>
           <div className="modal-handle" style={{ margin: "0 auto 16px" }} />
@@ -188,6 +191,6 @@ function CreateSetModal({ onClose }: { onClose: () => void }) {
           </div>
         </div>
       </div>
-    </div>
+    </ModalOverlay>
   );
 }

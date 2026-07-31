@@ -46,7 +46,7 @@ export function Jobs() {
         )}
       </div>
 
-      <div style={{ padding: "0 18px" }}>
+      <div className="page-body">
         <div className="chip-row" style={{ marginBottom: 14 }}>
           <button
             className={`chip ${tab === "active" ? "active" : ""}`}
@@ -71,7 +71,7 @@ export function Jobs() {
             No {tab} jobs
           </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingBottom: 24 }}>
+          <div className="card-stack">
             {filtered.map((job: Job) => (
               <div
                 key={job.id}

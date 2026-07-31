@@ -56,9 +56,9 @@ export function Home() {
         <h1 className="page-title">{user?.name}</h1>
       </div>
 
-      <div style={{ padding: "0 18px" }}>
+      <div className="page-body">
         {/* Stat cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 20 }}>
+        <div className="stat-grid">
           {statCards.map((card) => (
             <div
               key={card.label}

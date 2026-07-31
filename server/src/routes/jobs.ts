@@ -1,8 +1,15 @@
 import { Router } from "express";
-import { JobStatus, ItemStatus, ItemCondition, ReturnCondition } from "@prisma/client";
+import { JobStatus, ItemStatus } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import { authenticate } from "../middleware/auth";
 import { requireManager } from "../middleware/role";
+import {
+  loadAssignedItem,
+  undoLoadItem,
+  returnItemFromJob,
+  maybeCompleteJob,
+  type ReturnCond,
+} from "../lib/itemTransitions";
 
 const router = Router();
 router.use(authenticate);
@@ -378,25 +385,16 @@ router.post("/:id/scan-out", async (req, res) => {
     const jobActivated = job.status === "planning";
 
     await prisma.$transaction(async (tx) => {
-      await tx.jobItem.update({ where: { id: jobItem.id }, data: { status: "loaded" } });
-      await tx.item.update({ where: { id: itemId }, data: { status: "staged" as ItemStatus } });
-      await tx.movement.create({
-        data: {
-          org_id: req.user!.org_id,
-          item_id: itemId,
-          job_id: req.params.id,
-          from_status: "available",
-          to_status: "staged",
-          performed_by: userId,
-          notes: "Loaded for job",
-        },
+      await loadAssignedItem(tx, {
+        orgId: req.user!.org_id,
+        jobId: req.params.id,
+        itemId,
+        jobItemId: jobItem.id,
+        userId,
+        activateJob: jobActivated,
       });
-      if (jobActivated) {
-        await tx.job.update({ where: { id: req.params.id }, data: { status: "active" } });
-      }
     });
 
-    // Count how many assigned items remain to be loaded
     const remainingToLoad = await prisma.jobItem.count({
       where: { job_id: req.params.id, status: "assigned" },
     });
@@ -412,6 +410,109 @@ router.post("/:id/scan-out", async (req, res) => {
   }
 });
 
+// ─── POST /jobs/:id/mark-loaded ──────────────────────────────────────────────
+// Manager override: same effect as scan-out without the camera.
+
+router.post("/:id/mark-loaded", requireManager, async (req, res) => {
+  try {
+    const { itemId } = req.body as { itemId?: string };
+    if (!itemId) return res.status(400).json({ message: "itemId is required" });
+
+    const [job, item] = await Promise.all([
+      prisma.job.findUnique({ where: { id: req.params.id } }),
+      prisma.item.findUnique({ where: { id: itemId } }),
+    ]);
+
+    if (!job) return res.status(404).json({ message: "Job not found" });
+    if (!item) return res.status(404).json({ message: "Item not found" });
+
+    if (job.status !== "active" && job.status !== "planning") {
+      return res.status(400).json({ message: "Job is not active or planning", type: "invalid_job_status" });
+    }
+
+    const jobItem = await prisma.jobItem.findFirst({
+      where: { job_id: req.params.id, item_id: itemId, status: "assigned" },
+    });
+    if (!jobItem) {
+      const alreadyLoaded = await prisma.jobItem.findFirst({
+        where: { job_id: req.params.id, item_id: itemId, status: { in: ["loaded", "delivered", "picked_up"] } },
+      });
+      if (alreadyLoaded) {
+        return res.status(409).json({ message: "Item is already loaded for this job", type: "already_loaded" });
+      }
+      return res.status(404).json({ message: "Item is not assigned to this job", type: "not_on_job" });
+    }
+
+    const jobActivated = job.status === "planning";
+    await prisma.$transaction(async (tx) => {
+      await loadAssignedItem(tx, {
+        orgId: req.user!.org_id,
+        jobId: req.params.id,
+        itemId,
+        jobItemId: jobItem.id,
+        userId: req.user!.userId,
+        activateJob: jobActivated,
+        notes: "Manually marked loaded",
+      });
+    });
+
+    const remainingToLoad = await prisma.jobItem.count({
+      where: { job_id: req.params.id, status: "assigned" },
+    });
+    const updated = await prisma.item.findUnique({
+      where: { id: itemId },
+      include: { set: { select: { id: true, name: true } } },
+    });
+    return res.json({ item: updated, job_activated: jobActivated, remaining_to_load: remainingToLoad });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
+// ─── POST /jobs/:id/undo-load ────────────────────────────────────────────────
+// Manager override: reverse a mistaken load (staged → available, loaded → assigned).
+
+router.post("/:id/undo-load", requireManager, async (req, res) => {
+  try {
+    const { itemId } = req.body as { itemId?: string };
+    if (!itemId) return res.status(400).json({ message: "itemId is required" });
+
+    const job = await prisma.job.findUnique({ where: { id: req.params.id } });
+    if (!job) return res.status(404).json({ message: "Job not found" });
+
+    if (job.status !== "active" && job.status !== "planning") {
+      return res.status(400).json({ message: "Job is not active or planning" });
+    }
+
+    const jobItem = await prisma.jobItem.findFirst({
+      where: { job_id: req.params.id, item_id: itemId, status: { in: ["loaded", "delivered", "picked_up"] } },
+    });
+    if (!jobItem) {
+      return res.status(400).json({ message: "Item is not loaded on this job — nothing to undo" });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await undoLoadItem(tx, {
+        orgId: req.user!.org_id,
+        jobId: req.params.id,
+        itemId,
+        jobItemId: jobItem.id,
+        userId: req.user!.userId,
+      });
+    });
+
+    const updated = await prisma.item.findUnique({
+      where: { id: itemId },
+      include: { set: { select: { id: true, name: true } } },
+    });
+    return res.json({ item: updated });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
 // ─── POST /jobs/:id/scan-return ──────────────────────────────────────────────
 // Processes return of a single item with condition assessment
 
@@ -419,7 +520,7 @@ router.post("/:id/scan-return", async (req, res) => {
   try {
     const { itemId, condition, notes } = req.body as {
       itemId?: string;
-      condition?: "good" | "damaged" | "dispose";
+      condition?: ReturnCond;
       notes?: string;
     };
 
@@ -440,54 +541,85 @@ router.post("/:id/scan-return", async (req, res) => {
       return res.status(404).json({ message: "Item is not on this job or already returned" });
     }
 
-    const newItemStatus = (condition === "dispose" ? "disposed" : "available") as ItemStatus;
-    const newCondition = (condition === "damaged" ? "damaged" : "good") as ItemCondition;
-    const returnCond = condition as ReturnCondition;
-    const userId = req.user!.userId;
-
+    let jobCompleted = false;
     await prisma.$transaction(async (tx) => {
-      await tx.jobItem.update({
-        where: { id: jobItem.id },
-        data: {
-          status: "returned",
-          return_condition: returnCond,
-          return_notes: notes || null,
-          returned_at: new Date(),
-        },
+      await returnItemFromJob(tx, {
+        orgId: req.user!.org_id,
+        jobId: req.params.id,
+        itemId,
+        jobItemId: jobItem.id,
+        userId: req.user!.userId,
+        condition,
+        notes,
       });
-      await tx.item.update({
-        where: { id: itemId },
-        data: {
-          status: newItemStatus,
-          ...(condition !== "dispose" && { condition: newCondition }),
-        },
-      });
-      await tx.movement.create({
-        data: {
-          org_id: req.user!.org_id,
-          item_id: itemId,
-          job_id: req.params.id,
-          from_status: "staged",
-          to_status: newItemStatus,
-          performed_by: userId,
-          notes: notes || `Return: ${condition}`,
-        },
-      });
+      jobCompleted = await maybeCompleteJob(tx, req.params.id);
     });
 
-    // Auto-complete job if all items returned
     const remaining = await prisma.jobItem.count({
       where: { job_id: req.params.id, status: { not: "returned" } },
     });
-    let jobCompleted = false;
-    if (remaining === 0) {
-      await prisma.job.update({
-        where: { id: req.params.id },
-        data: { status: "completed", actual_end_date: new Date() },
-      });
-      jobCompleted = true;
+
+    const updatedItem = await prisma.item.findUnique({
+      where: { id: itemId },
+      include: { set: { select: { id: true, name: true } } },
+    });
+    return res.json({ item: updatedItem, job_completed: jobCompleted, remaining });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
+// ─── POST /jobs/:id/mark-returned ────────────────────────────────────────────
+// Manager override: same effect as scan-return without the camera.
+
+router.post("/:id/mark-returned", requireManager, async (req, res) => {
+  try {
+    const { itemId, condition, notes } = req.body as {
+      itemId?: string;
+      condition?: ReturnCond;
+      notes?: string;
+    };
+
+    if (!itemId || !condition) {
+      return res.status(400).json({ message: "itemId and condition are required" });
+    }
+    if (!["good", "damaged", "dispose"].includes(condition)) {
+      return res.status(400).json({ message: "condition must be good, damaged, or dispose" });
     }
 
+    const job = await prisma.job.findUnique({ where: { id: req.params.id } });
+    if (!job) return res.status(404).json({ message: "Job not found" });
+
+    if (job.status !== "active" && job.status !== "planning") {
+      return res.status(400).json({ message: "Job is not active or planning" });
+    }
+
+    const jobItem = await prisma.jobItem.findFirst({
+      where: { job_id: req.params.id, item_id: itemId, status: { not: "returned" } },
+    });
+    if (!jobItem) {
+      return res.status(404).json({ message: "Item is not on this job or already returned" });
+    }
+
+    let jobCompleted = false;
+    await prisma.$transaction(async (tx) => {
+      await returnItemFromJob(tx, {
+        orgId: req.user!.org_id,
+        jobId: req.params.id,
+        itemId,
+        jobItemId: jobItem.id,
+        userId: req.user!.userId,
+        condition,
+        notes,
+        movementNotes: notes || `Manually marked returned: ${condition}`,
+      });
+      jobCompleted = await maybeCompleteJob(tx, req.params.id);
+    });
+
+    const remaining = await prisma.jobItem.count({
+      where: { job_id: req.params.id, status: { not: "returned" } },
+    });
     const updatedItem = await prisma.item.findUnique({
       where: { id: itemId },
       include: { set: { select: { id: true, name: true } } },

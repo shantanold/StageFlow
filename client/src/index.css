@@ -31,6 +31,10 @@
   --radius-md: 10px;
   --radius-lg: 14px;
   --radius-xl: 20px;
+  --shell-max: 100%;
+  --content-max: 100%;
+  --page-pad-x: 18px;
+  --sidebar-width: 220px;
 }
 
 /* ─── Base ────────────────────────────────────────────────────────── */
@@ -61,9 +65,9 @@ body {
   display: flex;
   flex-direction: column;
   height: 100%;
-  max-width: 480px;
-  margin: 0 auto;
   width: 100%;
+  max-width: var(--shell-max);
+  margin: 0 auto;
 }
 
 .page-scroll {
@@ -73,17 +77,29 @@ body {
   -webkit-overflow-scrolling: touch;
   /* room for fixed tab bar */
   padding-bottom: calc(80px + var(--safe-bottom));
+  width: 100%;
 }
-.page-scroll::-webkit-scrollbar { display: none; }
+.page-scroll::-webkit-scrollbar { width: 0; height: 0; }
 
-/* ─── Tab bar ─────────────────────────────────────────────────────── */
+.page-scroll-inner {
+  width: 100%;
+  max-width: var(--content-max);
+  margin: 0 auto;
+}
+
+.page-body {
+  padding: 0 var(--page-pad-x);
+}
+
+/* ─── Tab bar (bottom on mobile) ─────────────────────────────────── */
 .tab-bar {
   position: fixed;
   bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
+  right: 0;
+  margin: 0 auto;
   width: 100%;
-  max-width: 480px;
+  max-width: var(--shell-max);
   display: flex;
   align-items: flex-end;
   justify-content: space-around;
@@ -92,6 +108,10 @@ body {
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   z-index: 100;
+}
+
+.tab-brand {
+  display: none;
 }
 
 .tab-item {
@@ -108,11 +128,11 @@ body {
   letter-spacing: 0.3px;
   cursor: pointer;
   padding: 4px 8px;
-  transition: color 0.2s;
+  transition: color 0.2s, background 0.15s;
   text-decoration: none;
 }
 .tab-item.active { color: var(--accent); }
-.tab-item svg { width: 22px; height: 22px; }
+.tab-item svg { width: 22px; height: 22px; flex-shrink: 0; }
 
 .tab-scan-btn {
   display: flex;
@@ -130,6 +150,71 @@ body {
 }
 .tab-scan-btn:active { transform: scale(0.93); }
 .tab-scan-btn svg { width: 24px; height: 24px; color: white; }
+
+.tab-scan-label {
+  display: none;
+}
+
+.tab-scan-link {
+  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: inherit;
+}
+
+/* Sticky bottom action bars (print select, etc.) */
+.sticky-action-bar {
+  position: fixed;
+  bottom: calc(70px + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: var(--shell-max);
+  padding: 10px var(--page-pad-x);
+  background: var(--bg-card);
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 99;
+  box-sizing: border-box;
+}
+
+/* Responsive grids */
+.stat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.card-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 24px;
+}
+
+.item-photo-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.filter-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.pair-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
 
 /* ─── Cards ───────────────────────────────────────────────────────── */
 .card {
@@ -204,7 +289,7 @@ body {
 
 /* ─── Page chrome ─────────────────────────────────────────────────── */
 .page-header {
-  padding: calc(16px + var(--safe-top)) 18px 12px;
+  padding: calc(16px + var(--safe-top)) var(--page-pad-x) 12px;
 }
 .page-title {
   font-size: 22px;
@@ -257,19 +342,26 @@ body {
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  z-index: 200;
+  /* Above tab bar (100). Must portal to body — see ModalOverlay.tsx */
+  z-index: 1000;
   display: flex;
   align-items: flex-end;
   justify-content: center;
+  /* iOS Safari: keep overlay in the visible dynamic viewport */
+  height: 100dvh;
+  max-height: 100dvh;
 }
 .modal-sheet {
   background: var(--bg-card);
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   width: 100%;
-  max-width: 480px;
-  max-height: 85vh;
+  max-width: 520px;
+  /* dvh accounts for Safari collapsing/expanding chrome; vh fallback for older browsers */
+  max-height: min(90dvh, 90vh);
   overflow-y: auto;
   padding: 20px 18px calc(20px + var(--safe-bottom));
+  /* Keep sheet above home indicator without relying on tab-bar clearance */
+  padding-bottom: calc(20px + var(--safe-bottom));
 }
 .modal-handle {
   width: 36px;
@@ -278,6 +370,208 @@ body {
   border-radius: 2px;
   margin: 0 auto 16px;
   opacity: 0.4;
+}
+
+/* ─── Tablet+ : wider content, still bottom nav ───────────────────── */
+@media (min-width: 768px) {
+  :root {
+    --page-pad-x: 28px;
+    --content-max: 960px;
+  }
+
+  .page-title { font-size: 26px; }
+
+  .stat-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+
+  .card-stack {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .item-photo-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+
+  .filter-row {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+
+  .pair-grid {
+    gap: 12px;
+    max-width: 560px;
+  }
+
+  .form-narrow {
+    max-width: 640px;
+  }
+
+  .list-row {
+    padding: 14px 16px;
+  }
+
+  .list-row:hover {
+    background: var(--bg-card-hover);
+  }
+}
+
+/* ─── Desktop : sidebar nav + full workspace ──────────────────────── */
+@media (min-width: 1024px) {
+  :root {
+    --page-pad-x: 36px;
+    --content-max: 1200px;
+    --shell-max: 100%;
+  }
+
+  .app-shell {
+    flex-direction: row;
+    max-width: none;
+  }
+
+  .page-scroll {
+    padding-bottom: 32px;
+    min-width: 0;
+  }
+
+  .page-title { font-size: 28px; }
+
+  .tab-bar {
+    position: sticky;
+    top: 0;
+    bottom: auto;
+    left: auto;
+    right: auto;
+    margin: 0;
+    width: var(--sidebar-width);
+    max-width: none;
+    height: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 4px;
+    padding: 20px 14px calc(20px + var(--safe-bottom));
+    background: var(--bg-card);
+    border-right: 1px solid var(--border);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    flex-shrink: 0;
+    z-index: 50;
+  }
+
+  .tab-brand {
+    display: block;
+    padding: 8px 12px 20px;
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    color: var(--text-primary);
+  }
+
+  .tab-item {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 12px;
+    font-size: 14px;
+    padding: 11px 12px;
+    border-radius: var(--radius-md);
+    width: 100%;
+  }
+
+  .tab-item.active {
+    background: var(--accent-dim);
+    color: #60a5fa;
+  }
+
+  .tab-item:hover:not(.active) {
+    background: var(--bg-card-hover);
+    color: var(--text-secondary);
+  }
+
+  .tab-scan-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    margin: 8px 0;
+    border-radius: var(--radius-md);
+    text-decoration: none;
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .tab-scan-link:hover,
+  .tab-scan-link.active {
+    background: var(--accent-dim);
+    color: #60a5fa;
+  }
+
+  .tab-scan-btn {
+    width: 36px;
+    height: 36px;
+    margin-bottom: 0;
+    border-width: 0;
+    flex-shrink: 0;
+    box-shadow: none;
+  }
+
+  .tab-scan-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .tab-scan-label {
+    display: inline;
+  }
+
+  .sticky-action-bar {
+    left: var(--sidebar-width);
+    right: 0;
+    transform: none;
+    width: auto;
+    max-width: none;
+    bottom: 0;
+    padding-bottom: calc(10px + var(--safe-bottom));
+  }
+
+  .item-photo-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .modal-overlay {
+    align-items: center;
+    padding: 24px;
+  }
+
+  .modal-sheet {
+    border-radius: var(--radius-xl);
+    max-width: 560px;
+    max-height: min(85dvh, 85vh);
+    padding: 24px;
+  }
+
+  .modal-handle {
+    display: none;
+  }
+}
+
+@media (min-width: 1400px) {
+  :root {
+    --content-max: 1360px;
+  }
+
+  .item-photo-grid {
+    grid-template-columns: repeat(5, 1fr);
+  }
+
+  .card-stack {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 
 /* ─── Filter chips ────────────────────────────────────────────────── */

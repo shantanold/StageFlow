@@ -54,13 +54,15 @@ function MoreIcon() {
 
 export function TabBar() {
   const location = useLocation();
-  const isScan = location.pathname === "/scan";
+  const isScan = location.pathname === "/scan" || location.pathname.startsWith("/scan/");
 
   const tabClass = ({ isActive }: { isActive: boolean }) =>
     `tab-item${isActive ? " active" : ""}`;
 
   return (
     <nav className="tab-bar">
+      <div className="tab-brand">StageFlow</div>
+
       <NavLink to="/home" className={tabClass}>
         <HomeIcon />
         Home
@@ -71,11 +73,15 @@ export function TabBar() {
         Inventory
       </NavLink>
 
-      {/* Centre scan button */}
-      <NavLink to="/scan" style={{ textDecoration: "none" }}>
+      <NavLink
+        to="/scan"
+        className={`tab-scan-link${isScan ? " active" : ""}`}
+        style={{ textDecoration: "none" }}
+      >
         <div className={`tab-scan-btn${isScan ? " ring-2 ring-white/20" : ""}`}>
           <ScanIcon />
         </div>
+        <span className="tab-scan-label">Scan</span>
       </NavLink>
 
       <NavLink to="/jobs" className={tabClass}>

@@ -4,10 +4,12 @@ import { TabBar } from "./TabBar";
 export function AppShell() {
   return (
     <div className="app-shell">
-      <div className="page-scroll">
-        <Outlet />
-      </div>
       <TabBar />
+      <div className="page-scroll">
+        <div className="page-scroll-inner">
+          <Outlet />
+        </div>
+      </div>
     </div>
   );
 }

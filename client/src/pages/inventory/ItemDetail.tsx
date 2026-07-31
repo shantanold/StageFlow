@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useItem, useItemMovements, useUpdateItem, useMarkItemFound,
-  useDisposeItem, useDeleteItem,
+  useDisposeItem, useDeleteItem, useDuplicateItem, useSetItemStatus, useJobs,
 } from "../../lib/queries";
 import { useSets } from "../../lib/queries";
 import { downloadLabels, useQRCodeUrl } from "../../lib/labels";
@@ -15,6 +15,7 @@ import {
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { ApiError } from "../../lib/api";
+import { ModalOverlay } from "../../components/ModalOverlay";
 import type { ItemDetail as ItemDetailType, Movement } from "../../types";
 
 function BackIcon() {
@@ -185,7 +186,37 @@ export function ItemDetail() {
   const markFound = useMarkItemFound(id);
   const disposeItem = useDisposeItem(id);
   const deleteItem = useDeleteItem(id);
+  const duplicateItem = useDuplicateItem();
+  const setStatus = useSetItemStatus(id);
+  const { data: jobs = [] } = useJobs();
   const [confirmAction, setConfirmAction] = useState<"dispose" | "delete" | null>(null);
+  const [showStatus, setShowStatus] = useState(false);
+  const [statusForm, setStatusForm] = useState({ status: "available", condition: "good", notes: "", job_id: "" });
+
+  async function handleDuplicate() {
+    try {
+      const copy = await duplicateItem.mutateAsync(id);
+      showToast(`Created copy ${copy.sku}`, "success");
+      navigate(`/inventory/${copy.id}`);
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : "Failed to duplicate", "error");
+    }
+  }
+
+  async function handleSetStatus() {
+    try {
+      await setStatus.mutateAsync({
+        status: statusForm.status,
+        condition: statusForm.condition,
+        notes: statusForm.notes || undefined,
+        job_id: statusForm.status === "staged" ? statusForm.job_id || undefined : undefined,
+      });
+      showToast("Status updated", "success");
+      setShowStatus(false);
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : "Failed to change status", "error");
+    }
+  }
 
   async function handleMarkFound() {
     try {
@@ -289,7 +320,7 @@ export function ItemDetail() {
         </div>
       </div>
 
-      <div style={{ padding: "0 18px" }}>
+      <div className="page-body">
         {/* Info grid */}
         <div
           className="card"
@@ -312,6 +343,18 @@ export function ItemDetail() {
             </div>
           )}
         </div>
+
+        {/* Unlabeled blank sticker */}
+        {item.is_unlabeled && (
+          <div className="card" style={{ borderColor: "rgba(245,158,11,0.35)", marginBottom: 12 }}>
+            <p style={{ fontSize: 12.5, color: "var(--text-secondary)", marginBottom: 10 }}>
+              This QR label has no furniture details yet. Claim it to fill in the name, category, and photo.
+            </p>
+            <button className="btn btn-primary" style={{ width: "100%" }} onClick={() => navigate(`/inventory/${id}/claim`)}>
+              Claim label
+            </button>
+          </div>
+        )}
 
         {/* Missing item resolution */}
         {isManager && item.status === "missing" && (
@@ -416,6 +459,26 @@ export function ItemDetail() {
           </div>
         )}
 
+        {/* Manager: duplicate + status override */}
+        {isManager && !item.is_unlabeled && (
+          <div className="card" style={{ marginBottom: 12 }}>
+            <p style={{ fontSize: 11, fontWeight: 500, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 8 }}>
+              Shortcuts
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <button className="btn btn-outline" style={{ width: "100%" }} disabled={duplicateItem.isPending} onClick={handleDuplicate}>
+                {duplicateItem.isPending ? "Duplicating…" : "Add another copy (new SKU)"}
+              </button>
+              <button className="btn btn-outline" style={{ width: "100%" }} onClick={() => {
+                setStatusForm({ status: item.status, condition: "good", notes: "", job_id: item.current_job?.id ?? "" });
+                setShowStatus(true);
+              }}>
+                Change status…
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Manager: remove / delete */}
         {isManager && item.status !== "disposed" && (
           <div className="card" style={{ marginTop: 8, marginBottom: 28, borderColor: "rgba(239,68,68,0.25)" }}>
@@ -449,7 +512,7 @@ export function ItemDetail() {
         )}
 
         {confirmAction && (
-          <div className="modal-overlay" onClick={() => setConfirmAction(null)}>
+          <ModalOverlay onClose={() => setConfirmAction(null)}>
             <div
               className="modal-sheet"
               onClick={(e) => e.stopPropagation()}
@@ -495,7 +558,70 @@ export function ItemDetail() {
                 </button>
               </div>
             </div>
-          </div>
+          </ModalOverlay>
+        )}
+
+        {showStatus && (
+          <ModalOverlay onClose={() => setShowStatus(false)}>
+            <div className="modal-sheet" onClick={(e) => e.stopPropagation()} style={{ padding: 18 }}>
+              <div className="modal-handle" />
+              <p style={{ fontSize: 16, fontWeight: 500, marginBottom: 12 }}>Change status</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <select
+                  className="input-field"
+                  value={statusForm.status}
+                  onChange={(e) => setStatusForm((f) => ({ ...f, status: e.target.value }))}
+                >
+                  <option value="available">Available</option>
+                  <option value="staged">Staged</option>
+                  <option value="missing">Missing</option>
+                  <option value="disposed">Disposed</option>
+                </select>
+                {statusForm.status === "staged" && (
+                  <select
+                    className="input-field"
+                    value={statusForm.job_id}
+                    onChange={(e) => setStatusForm((f) => ({ ...f, job_id: e.target.value }))}
+                    required
+                  >
+                    <option value="">Select job…</option>
+                    {jobs
+                      .filter((j) => j.status === "planning" || j.status === "active")
+                      .map((j) => (
+                        <option key={j.id} value={j.id}>
+                          {j.address} ({j.status})
+                        </option>
+                      ))}
+                  </select>
+                )}
+                {(statusForm.status === "available" || statusForm.status === "disposed") && (
+                  <select
+                    className="input-field"
+                    value={statusForm.condition}
+                    onChange={(e) => setStatusForm((f) => ({ ...f, condition: e.target.value }))}
+                  >
+                    <option value="good">Good</option>
+                    <option value="damaged">Damaged</option>
+                    <option value="dispose">Dispose</option>
+                  </select>
+                )}
+                <input
+                  className="input-field"
+                  placeholder="Optional note"
+                  value={statusForm.notes}
+                  onChange={(e) => setStatusForm((f) => ({ ...f, notes: e.target.value }))}
+                />
+                <button
+                  className="btn btn-primary"
+                  disabled={setStatus.isPending || (statusForm.status === "staged" && !statusForm.job_id)}
+                  onClick={handleSetStatus}
+                >
+                  {setStatus.isPending ? "Saving…" : "Update status"}
+                </button>
+                <button className="btn btn-outline" onClick={() => setShowStatus(false)}>Cancel</button>
+              </div>
+            </div>
+          </ModalOverlay>
         )}
       </div>
     </div>
@@ -596,10 +722,10 @@ function EditItemModal({ item, onClose }: { item: ItemDetailType; onClose: () =>
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <ModalOverlay onClose={onClose}>
       <div
         className="modal-sheet animate-in"
-        style={{ maxHeight: "90vh", padding: 0, display: "flex", flexDirection: "column" }}
+        style={{ maxHeight: "min(90dvh, 90vh)", padding: 0, display: "flex", flexDirection: "column" }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Fixed header */}
@@ -714,7 +840,7 @@ function EditItemModal({ item, onClose }: { item: ItemDetailType; onClose: () =>
           </div>
         </div>
       </div>
-    </div>
+    </ModalOverlay>
   );
 }
 

@@ -101,7 +101,7 @@ export function Users() {
         <p className="page-subtitle">{users.length} accounts</p>
       </div>
 
-      <div style={{ padding: "0 18px" }}>
+      <div className="page-body">
         {isLoading ? (
           <p style={{ fontSize: 13, color: "var(--text-tertiary)" }}>Loading…</p>
         ) : (

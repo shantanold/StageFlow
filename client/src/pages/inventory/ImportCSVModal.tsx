@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { useImportItems } from "../../lib/queries";
 import { CATEGORIES } from "../../lib/utils";
 import { useToast } from "../../contexts/ToastContext";
+import { ModalOverlay } from "../../components/ModalOverlay";
 
 type Category = typeof CATEGORIES[number];
 
@@ -114,21 +115,16 @@ export function ImportCSVModal({ onClose }: Props) {
   }
 
   return (
-    <div
-      style={{
-        position: "fixed", inset: 0, zIndex: 200,
-        background: "rgba(0,0,0,0.6)",
-        display: "flex", alignItems: "flex-end", justifyContent: "center",
-      }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
+    <ModalOverlay onClose={onClose}>
       <div
+        className="modal-sheet"
         style={{
-          background: "var(--bg-card)", borderRadius: "var(--radius-lg) var(--radius-lg) 0 0",
-          width: "100%", maxWidth: 480, maxHeight: "85vh",
-          display: "flex", flexDirection: "column",
-          padding: "20px 18px",
+          maxHeight: "min(90dvh, 90vh)",
+          display: "flex",
+          flexDirection: "column",
+          padding: "20px 18px calc(20px + var(--safe-bottom))",
         }}
+        onClick={(e) => e.stopPropagation()}
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <h2 style={{ fontSize: 16, fontWeight: 600 }}>Import from CSV</h2>
@@ -208,6 +204,6 @@ export function ImportCSVModal({ onClose }: Props) {
           {importItems.isPending ? "Importing…" : `Import ${validRows.length} item${validRows.length !== 1 ? "s" : ""}`}
         </button>
       </div>
-    </div>
+    </ModalOverlay>
   );
 }

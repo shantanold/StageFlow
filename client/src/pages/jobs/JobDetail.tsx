@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useJob, useJobItems, useForceCompleteJob, useUnassignItems } from "../../lib/queries";
+import { useJob, useJobItems, useForceCompleteJob, useUnassignItems, useMarkLoaded, useUndoLoad, useMarkReturned } from "../../lib/queries";
 import { getCategoryEmoji, jobStatusBadgeClass, statusBadgeClass, statusLabel } from "../../lib/utils";
 import { formatDate } from "../../lib/utils";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
+import { ModalOverlay } from "../../components/ModalOverlay";
 import type { JobItemRow } from "../../types";
 import { EditJobModal } from "./EditJobModal";
 import { AssignItemsModal } from "./AssignItemsModal";
@@ -77,6 +78,10 @@ export function JobDetail() {
   const { data: jobItems = [], isLoading: itemsLoading } = useJobItems(id);
   const forceComplete = useForceCompleteJob(id);
   const unassignItems = useUnassignItems(id);
+  const markLoaded = useMarkLoaded(id);
+  const undoLoad = useUndoLoad(id);
+  const markReturned = useMarkReturned(id);
+  const [returnTarget, setReturnTarget] = useState<JobItemRow | null>(null);
 
   if (jobLoading) {
     return (
@@ -119,6 +124,43 @@ export function JobDetail() {
     }
   }
 
+  async function handleMarkLoaded(row: JobItemRow) {
+    try {
+      await markLoaded.mutateAsync(row.item_id);
+      showToast(`Marked “${row.item.name}” loaded`, "success");
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to mark loaded", "error");
+    }
+  }
+
+  async function handleUndoLoad(row: JobItemRow) {
+    try {
+      await undoLoad.mutateAsync(row.item_id);
+      showToast(`Undid load for “${row.item.name}”`, "success");
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to undo load", "error");
+    }
+  }
+
+  async function handleMarkReturned(condition: "good" | "damaged" | "dispose") {
+    if (!returnTarget) return;
+    try {
+      const result = await markReturned.mutateAsync({
+        itemId: returnTarget.item_id,
+        condition,
+      });
+      showToast(
+        result.job_completed
+          ? `Returned — job completed`
+          : `Marked “${returnTarget.item.name}” returned`,
+        "success",
+      );
+      setReturnTarget(null);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to mark returned", "error");
+    }
+  }
+
   return (
     <div className="animate-in">
       <div className="page-header">
@@ -136,17 +178,19 @@ export function JobDetail() {
         </div>
       </div>
 
-      <div style={{ padding: "0 18px" }}>
+      <div className="page-body">
         {/* Stat cards */}
-        <div className="card" style={{ marginBottom: 14 }}>
-          <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Client</div>
-          <div style={{ fontSize: 13, fontWeight: 500 }}>{job.client_name}</div>
+        <div className="pair-grid" style={{ marginBottom: 14, maxWidth: "none" }}>
+          <div className="card" style={{ marginBottom: 0 }}>
+            <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Client</div>
+            <div style={{ fontSize: 13, fontWeight: 500 }}>{job.client_name}</div>
+          </div>
+          <div className="card" style={{ marginBottom: 0 }}>
+            <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Contact</div>
+            <div style={{ fontSize: 13, fontWeight: 500 }}>{job.client_contact}</div>
+          </div>
         </div>
-        <div className="card" style={{ marginBottom: 14 }}>
-          <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Contact</div>
-          <div style={{ fontSize: 13, fontWeight: 500 }}>{job.client_contact}</div>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
+        <div className="pair-grid" style={{ marginBottom: 14, maxWidth: "none" }}>
           <div className="card">
             <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Start date</div>
             <div style={{ fontSize: 13, fontWeight: 500 }}>{formatDate(job.start_date)}</div>
@@ -247,10 +291,14 @@ export function JobDetail() {
                 <div className="list-card">
                   {items.map((row) => {
                     const canUnassign = canEditItems && row.status === "assigned";
+                    const canMarkLoaded = canEditItems && row.status === "assigned";
+                    const canUndoLoad = canEditItems && ["loaded", "delivered", "picked_up"].includes(row.status);
+                    const canMarkReturned = canEditItems && row.status !== "returned";
                     return (
                       <div
                         key={row.id}
                         className="list-row"
+                        style={{ flexWrap: "wrap", gap: 8 }}
                         onClick={() => navigate(`/inventory/${row.item.id}`)}
                       >
                         <div
@@ -298,6 +346,25 @@ export function JobDetail() {
                             <RemoveIcon />
                           </button>
                         )}
+                        {(canMarkLoaded || canUndoLoad || canMarkReturned) && (
+                          <div style={{ width: "100%", display: "flex", gap: 6, flexWrap: "wrap" }} onClick={(e) => e.stopPropagation()}>
+                            {canMarkLoaded && (
+                              <button className="btn btn-outline" style={{ fontSize: 11, padding: "5px 10px" }} disabled={markLoaded.isPending} onClick={() => handleMarkLoaded(row)}>
+                                Mark loaded
+                              </button>
+                            )}
+                            {canUndoLoad && (
+                              <button className="btn btn-outline" style={{ fontSize: 11, padding: "5px 10px" }} disabled={undoLoad.isPending} onClick={() => handleUndoLoad(row)}>
+                                Undo load
+                              </button>
+                            )}
+                            {canMarkReturned && (
+                              <button className="btn btn-outline" style={{ fontSize: 11, padding: "5px 10px" }} onClick={() => setReturnTarget(row)}>
+                                Mark returned
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -329,6 +396,33 @@ export function JobDetail() {
           onConfirm={handleUnassign}
           onCancel={() => setUnassignTarget(null)}
         />
+      )}
+      {returnTarget && (
+        <ModalOverlay onClose={() => setReturnTarget(null)}>
+          <div className="modal-sheet" onClick={(e) => e.stopPropagation()} style={{ padding: 18 }}>
+            <div className="modal-handle" />
+            <p style={{ fontSize: 16, fontWeight: 500, marginBottom: 6 }}>Mark returned</p>
+            <p style={{ fontSize: 13, color: "var(--text-tertiary)", marginBottom: 14 }}>
+              {returnTarget.item.name} — condition?
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {(["good", "damaged", "dispose"] as const).map((c) => (
+                <button
+                  key={c}
+                  className="btn btn-outline"
+                  style={{ width: "100%", textTransform: "capitalize" }}
+                  disabled={markReturned.isPending}
+                  onClick={() => handleMarkReturned(c)}
+                >
+                  {c}
+                </button>
+              ))}
+              <button className="btn btn-outline" style={{ width: "100%" }} onClick={() => setReturnTarget(null)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </ModalOverlay>
       )}
     </div>
   );

@@ -10,7 +10,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { ImportCSVModal } from "./inventory/ImportCSVModal";
 import type { Item } from "../types";
 
-type StatusFilter = "all" | "available" | "staged" | "flagged";
+type StatusFilter = "all" | "available" | "staged" | "flagged" | "needs_details";
 type QrFilter = "all" | "printed" | "unprinted";
 type SortKey = "name" | "newest" | "sku" | "status" | "category";
 type GroupBy = "category" | "set" | "none";
@@ -245,21 +245,35 @@ export function Inventory() {
     [allItems]
   );
 
+  const claimed = useMemo(
+    () => live.filter((i) => !i.is_unlabeled),
+    [live]
+  );
+
+  const blanks = useMemo(
+    () => live.filter((i) => i.is_unlabeled),
+    [live]
+  );
+
   const categories = useMemo(() => {
-    const set = new Set(live.map((i) => i.category.trim() || "Other"));
+    const set = new Set(claimed.map((i) => i.category.trim() || "Other"));
     return [...set].sort((a, b) => a.localeCompare(b));
-  }, [live]);
+  }, [claimed]);
 
   const counts = useMemo(() => ({
-    all:       live.length,
-    available: live.filter((i) => i.status === "available").length,
-    staged:    live.filter((i) => i.status === "staged").length,
-    flagged:   live.filter((i) => i.condition === "damaged" || i.status === "missing").length,
-  }), [live]);
+    all:           claimed.length,
+    available:     claimed.filter((i) => i.status === "available").length,
+    staged:        claimed.filter((i) => i.status === "staged").length,
+    flagged:       claimed.filter((i) => i.condition === "damaged" || i.status === "missing").length,
+    needs_details: blanks.length,
+  }), [claimed, blanks]);
 
   const filtered = useMemo(() => {
     const q = debouncedSearch.trim().toLowerCase();
-    let list = live.filter((i) => matchesSearch(i, q));
+    let list =
+      filter === "needs_details"
+        ? blanks.filter((i) => matchesSearch(i, q))
+        : claimed.filter((i) => matchesSearch(i, q));
 
     if (filter === "available") list = list.filter((i) => i.status === "available");
     if (filter === "staged")    list = list.filter((i) => i.status === "staged");
@@ -277,7 +291,7 @@ export function Inventory() {
     if (qrFilter === "unprinted") list = list.filter((i) => !i.qr_printed);
 
     return sortItems(list, sort);
-  }, [live, debouncedSearch, filter, categoryFilter, setIdFilter, qrFilter, sort]);
+  }, [claimed, blanks, debouncedSearch, filter, categoryFilter, setIdFilter, qrFilter, sort]);
 
   const groups = useMemo(() => buildGroups(filtered, groupBy), [filtered, groupBy]);
 
@@ -342,10 +356,11 @@ export function Inventory() {
   }
 
   const chips: [StatusFilter, string][] = [
-    ["all",       `All (${counts.all})`],
-    ["available", `Available (${counts.available})`],
-    ["staged",    `Staged (${counts.staged})`],
-    ["flagged",   `Flagged (${counts.flagged})`],
+    ["all",           `All (${counts.all})`],
+    ["available",     `Available (${counts.available})`],
+    ["staged",        `Staged (${counts.staged})`],
+    ["flagged",       `Flagged (${counts.flagged})`],
+    ["needs_details", `Needs details (${counts.needs_details})`],
   ];
 
   return (
@@ -370,9 +385,9 @@ export function Inventory() {
             <div>
               <h1 className="page-title">Inventory</h1>
               <p className="page-subtitle">
-                {filtered.length === live.length
-                  ? `${live.length} items`
-                  : `${filtered.length} of ${live.length} items`}
+                {filtered.length === claimed.length && filter !== "needs_details"
+                  ? `${claimed.length} items`
+                  : `${filtered.length} of ${filter === "needs_details" ? blanks.length : claimed.length} items`}
               </p>
             </div>
             <div style={{ display: "flex", gap: 6 }}>
@@ -416,7 +431,7 @@ export function Inventory() {
         )}
       </div>
 
-      <div style={{ padding: "0 18px" }}>
+      <div className="page-body">
         {/* Search */}
         <div style={{ position: "relative", marginBottom: 10 }}>
           <div
@@ -450,14 +465,7 @@ export function Inventory() {
         </div>
 
         {/* Sort / group / secondary filters */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: 8,
-            marginBottom: 8,
-          }}
-        >
+        <div className="filter-row">
           <select
             className="input-field"
             style={selectStyle}
@@ -590,14 +598,7 @@ export function Inventory() {
 
                   {open && (
                     viewMode === "grid" ? (
-                      <div
-                        style={{
-                          display: "grid",
-                          gridTemplateColumns: "1fr 1fr",
-                          gap: 10,
-                          marginBottom: 4,
-                        }}
-                      >
+                      <div className="item-photo-grid">
                         {group.items.map((item) => (
                           <GridItem
                             key={item.id}
@@ -605,7 +606,7 @@ export function Inventory() {
                             selectMode={selectMode}
                             selected={selectedIds.has(item.id)}
                             onToggle={() => toggleItem(item.id)}
-                            onClick={() => !selectMode && navigate(`/inventory/${item.id}`)}
+                            onClick={() => !selectMode && navigate(item.is_unlabeled ? `/inventory/${item.id}/claim` : `/inventory/${item.id}`)}
                           />
                         ))}
                       </div>
@@ -618,7 +619,7 @@ export function Inventory() {
                             selectMode={selectMode}
                             selected={selectedIds.has(item.id)}
                             onToggle={() => toggleItem(item.id)}
-                            onClick={() => !selectMode && navigate(`/inventory/${item.id}`)}
+                            onClick={() => !selectMode && navigate(item.is_unlabeled ? `/inventory/${item.id}/claim` : `/inventory/${item.id}`)}
                             showCategory={groupBy !== "category"}
                           />
                         ))}
@@ -635,23 +636,7 @@ export function Inventory() {
       {showImport && <ImportCSVModal onClose={() => setShowImport(false)} />}
 
       {selectMode && (
-        <div
-          style={{
-            position: "fixed",
-            bottom: "calc(70px + env(safe-area-inset-bottom, 0px))",
-            left: "50%",
-            transform: "translateX(-50%)",
-            width: "100%",
-            maxWidth: 480,
-            padding: "10px 18px",
-            background: "var(--bg-card)",
-            borderTop: "1px solid var(--border)",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            zIndex: 99,
-          }}
-        >
+        <div className="sticky-action-bar">
           <p style={{ fontSize: 13, color: "var(--text-secondary)" }}>
             {selectedIds.size === 0 ? "Tap items to select" : `${selectedIds.size} item${selectedIds.size !== 1 ? "s" : ""} selected`}
           </p>
@@ -828,7 +813,7 @@ function ItemListSkeleton() {
 
 function ItemGridSkeleton() {
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+    <div className="item-photo-grid">
       {[...Array(6)].map((_, i) => (
         <div key={i} style={{ borderRadius: "var(--radius-lg)", border: "1px solid var(--border)", background: "var(--bg-card)", overflow: "hidden" }}>
           <div style={{ width: "100%", aspectRatio: "1 / 1", background: "var(--bg-surface)" }} />

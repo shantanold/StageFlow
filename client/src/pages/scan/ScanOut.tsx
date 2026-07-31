@@ -118,7 +118,7 @@ export function ScanOut() {
         )}
       </div>
 
-      <div style={{ padding: "0 18px" }}>
+      <div className="page-body">
         {/* Progress */}
         {totalItems > 0 && (
           <div style={{ marginBottom: 14 }}>

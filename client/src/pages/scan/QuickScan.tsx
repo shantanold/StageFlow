@@ -26,7 +26,11 @@ export function QuickScan() {
     if (!normalized) return;
     try {
       const item = await api.get<Item>(`/items/sku/${encodeURIComponent(normalized)}`);
-      navigate(`/inventory/${item.id}`);
+      if (item.is_unlabeled) {
+        navigate(`/inventory/${item.id}/claim`);
+      } else {
+        navigate(`/inventory/${item.id}`);
+      }
     } catch {
       showToast("No item found for that SKU", "error");
       // Resume scanner after a moment so user can try again
@@ -61,7 +65,7 @@ export function QuickScan() {
         <p className="page-subtitle">Scan any item to open its detail page</p>
       </div>
 
-      <div style={{ padding: "0 18px" }}>
+      <div className="page-body">
         <QrScannerView onScan={handleScan} paused={paused} />
 
         {/* Manual entry */}

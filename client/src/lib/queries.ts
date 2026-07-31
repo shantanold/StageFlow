@@ -11,6 +11,7 @@ interface ItemFilters {
   category?: string;
   set_id?: string;
   qr_printed?: boolean;
+  is_unlabeled?: boolean;
 }
 
 function buildItemsQS(filters: ItemFilters): string {
@@ -21,6 +22,7 @@ function buildItemsQS(filters: ItemFilters): string {
   if (filters.category)  p.set("category",  filters.category);
   if (filters.set_id)    p.set("set_id",    filters.set_id);
   if (filters.qr_printed !== undefined) p.set("qr_printed", String(filters.qr_printed));
+  if (filters.is_unlabeled !== undefined) p.set("is_unlabeled", String(filters.is_unlabeled));
   const qs = p.toString();
   return qs ? `?${qs}` : "";
 }
@@ -357,6 +359,100 @@ export function useForceCompleteJob(jobId: string) {
       qc.invalidateQueries({ queryKey: ["jobs", jobId] });
       qc.invalidateQueries({ queryKey: ["jobs", jobId, "items"] });
       qc.invalidateQueries({ queryKey: ["items"] });
+      qc.invalidateQueries({ queryKey: ["stats"] });
+    },
+  });
+}
+
+function invalidateJobAndItems(qc: ReturnType<typeof useQueryClient>, jobId: string, itemId?: string) {
+  qc.invalidateQueries({ queryKey: ["jobs"] });
+  qc.invalidateQueries({ queryKey: ["jobs", jobId] });
+  qc.invalidateQueries({ queryKey: ["jobs", jobId, "items"] });
+  qc.invalidateQueries({ queryKey: ["items"] });
+  qc.invalidateQueries({ queryKey: ["stats"] });
+  if (itemId) qc.invalidateQueries({ queryKey: ["items", itemId] });
+}
+
+export function useMarkLoaded(jobId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (itemId: string) =>
+      api.post<{ item: Item; job_activated: boolean; remaining_to_load: number }>(
+        `/jobs/${jobId}/mark-loaded`,
+        { itemId },
+      ),
+    onSuccess: (_data, itemId) => invalidateJobAndItems(qc, jobId, itemId),
+  });
+}
+
+export function useUndoLoad(jobId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (itemId: string) =>
+      api.post<{ item: Item }>(`/jobs/${jobId}/undo-load`, { itemId }),
+    onSuccess: (_data, itemId) => invalidateJobAndItems(qc, jobId, itemId),
+  });
+}
+
+export function useMarkReturned(jobId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { itemId: string; condition: string; notes?: string }) =>
+      api.post<{ item: Item; job_completed: boolean; remaining: number }>(
+        `/jobs/${jobId}/mark-returned`,
+        data,
+      ),
+    onSuccess: (_data, vars) => invalidateJobAndItems(qc, jobId, vars.itemId),
+  });
+}
+
+export function useBulkUnlabeled() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (count: number) =>
+      api.post<{ created: number; items: Item[] }>("/items/bulk-unlabeled", { count }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["items"] });
+      qc.invalidateQueries({ queryKey: ["stats"] });
+    },
+  });
+}
+
+export function useClaimItem(itemId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Partial<CreateItemInput> & { condition?: string }) =>
+      api.post<Item>(`/items/${itemId}/claim`, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["items"] });
+      qc.invalidateQueries({ queryKey: ["items", itemId] });
+      qc.invalidateQueries({ queryKey: ["sets"] });
+      qc.invalidateQueries({ queryKey: ["stats"] });
+    },
+  });
+}
+
+export function useDuplicateItem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (itemId: string) => api.post<Item>(`/items/${itemId}/duplicate`, {}),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["items"] });
+      qc.invalidateQueries({ queryKey: ["sets"] });
+      qc.invalidateQueries({ queryKey: ["stats"] });
+    },
+  });
+}
+
+export function useSetItemStatus(itemId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { status: string; condition?: string; notes?: string; job_id?: string }) =>
+      api.post<Item>(`/items/${itemId}/set-status`, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["items"] });
+      qc.invalidateQueries({ queryKey: ["items", itemId] });
+      qc.invalidateQueries({ queryKey: ["jobs"] });
       qc.invalidateQueries({ queryKey: ["stats"] });
     },
   });
