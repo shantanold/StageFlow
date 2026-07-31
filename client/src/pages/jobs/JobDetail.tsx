@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useJob, useJobItems, useForceCompleteJob, useUnassignItems } from "../../lib/queries";
+import { useJob, useJobItems, useForceCompleteJob, useUnassignItems, useMarkLoaded, useUndoLoad, useMarkReturned } from "../../lib/queries";
 import { getCategoryEmoji, jobStatusBadgeClass, statusBadgeClass, statusLabel } from "../../lib/utils";
 import { formatDate } from "../../lib/utils";
 import { useAuth } from "../../contexts/AuthContext";
@@ -77,6 +77,10 @@ export function JobDetail() {
   const { data: jobItems = [], isLoading: itemsLoading } = useJobItems(id);
   const forceComplete = useForceCompleteJob(id);
   const unassignItems = useUnassignItems(id);
+  const markLoaded = useMarkLoaded(id);
+  const undoLoad = useUndoLoad(id);
+  const markReturned = useMarkReturned(id);
+  const [returnTarget, setReturnTarget] = useState<JobItemRow | null>(null);
 
   if (jobLoading) {
     return (
@@ -116,6 +120,43 @@ export function JobDetail() {
       setUnassignTarget(null);
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to unassign item", "error");
+    }
+  }
+
+  async function handleMarkLoaded(row: JobItemRow) {
+    try {
+      await markLoaded.mutateAsync(row.item_id);
+      showToast(`Marked “${row.item.name}” loaded`, "success");
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to mark loaded", "error");
+    }
+  }
+
+  async function handleUndoLoad(row: JobItemRow) {
+    try {
+      await undoLoad.mutateAsync(row.item_id);
+      showToast(`Undid load for “${row.item.name}”`, "success");
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to undo load", "error");
+    }
+  }
+
+  async function handleMarkReturned(condition: "good" | "damaged" | "dispose") {
+    if (!returnTarget) return;
+    try {
+      const result = await markReturned.mutateAsync({
+        itemId: returnTarget.item_id,
+        condition,
+      });
+      showToast(
+        result.job_completed
+          ? `Returned — job completed`
+          : `Marked “${returnTarget.item.name}” returned`,
+        "success",
+      );
+      setReturnTarget(null);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to mark returned", "error");
     }
   }
 
@@ -247,10 +288,14 @@ export function JobDetail() {
                 <div className="list-card">
                   {items.map((row) => {
                     const canUnassign = canEditItems && row.status === "assigned";
+                    const canMarkLoaded = canEditItems && row.status === "assigned";
+                    const canUndoLoad = canEditItems && ["loaded", "delivered", "picked_up"].includes(row.status);
+                    const canMarkReturned = canEditItems && row.status !== "returned";
                     return (
                       <div
                         key={row.id}
                         className="list-row"
+                        style={{ flexWrap: "wrap", gap: 8 }}
                         onClick={() => navigate(`/inventory/${row.item.id}`)}
                       >
                         <div
@@ -298,6 +343,25 @@ export function JobDetail() {
                             <RemoveIcon />
                           </button>
                         )}
+                        {(canMarkLoaded || canUndoLoad || canMarkReturned) && (
+                          <div style={{ width: "100%", display: "flex", gap: 6, flexWrap: "wrap" }} onClick={(e) => e.stopPropagation()}>
+                            {canMarkLoaded && (
+                              <button className="btn btn-outline" style={{ fontSize: 11, padding: "5px 10px" }} disabled={markLoaded.isPending} onClick={() => handleMarkLoaded(row)}>
+                                Mark loaded
+                              </button>
+                            )}
+                            {canUndoLoad && (
+                              <button className="btn btn-outline" style={{ fontSize: 11, padding: "5px 10px" }} disabled={undoLoad.isPending} onClick={() => handleUndoLoad(row)}>
+                                Undo load
+                              </button>
+                            )}
+                            {canMarkReturned && (
+                              <button className="btn btn-outline" style={{ fontSize: 11, padding: "5px 10px" }} onClick={() => setReturnTarget(row)}>
+                                Mark returned
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -329,6 +393,33 @@ export function JobDetail() {
           onConfirm={handleUnassign}
           onCancel={() => setUnassignTarget(null)}
         />
+      )}
+      {returnTarget && (
+        <div className="modal-overlay" onClick={() => setReturnTarget(null)}>
+          <div className="modal-sheet" onClick={(e) => e.stopPropagation()} style={{ padding: 18 }}>
+            <div className="modal-handle" />
+            <p style={{ fontSize: 16, fontWeight: 500, marginBottom: 6 }}>Mark returned</p>
+            <p style={{ fontSize: 13, color: "var(--text-tertiary)", marginBottom: 14 }}>
+              {returnTarget.item.name} — condition?
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {(["good", "damaged", "dispose"] as const).map((c) => (
+                <button
+                  key={c}
+                  className="btn btn-outline"
+                  style={{ width: "100%", textTransform: "capitalize" }}
+                  disabled={markReturned.isPending}
+                  onClick={() => handleMarkReturned(c)}
+                >
+                  {c}
+                </button>
+              ))}
+              <button className="btn btn-outline" style={{ width: "100%" }} onClick={() => setReturnTarget(null)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -26,7 +26,11 @@ export function AssignItemsModal({ jobId, onClose }: AssignItemsModalProps) {
   const { data: sets = [] } = useSets();
   const { data: allItems = [] } = useItems({ status: "available" });
 
+  const selectable = allItems.filter((i) => !i.active_job_id || i.active_job_id === jobId);
+
   const toggleItem = (itemId: string) => {
+    const item = allItems.find((i) => i.id === itemId);
+    if (item?.active_job_id && item.active_job_id !== jobId) return;
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(itemId)) next.delete(itemId);
@@ -36,8 +40,8 @@ export function AssignItemsModal({ jobId, onClose }: AssignItemsModalProps) {
   };
 
   const toggleSet = (setId: string) => {
-    const setItems = allItems.filter((i) => i.set_id === setId);
-    const allSelected = setItems.every((i) => selected.has(i.id));
+    const setItems = selectable.filter((i) => i.set_id === setId);
+    const allSelected = setItems.length > 0 && setItems.every((i) => selected.has(i.id));
     setSelected((prev) => {
       const next = new Set(prev);
       setItems.forEach((i) => (allSelected ? next.delete(i.id) : next.add(i.id)));
@@ -91,7 +95,7 @@ export function AssignItemsModal({ jobId, onClose }: AssignItemsModalProps) {
           {mode === "sets" ? (
             <div>
               {sets.map((set) => {
-                const avail = allItems.filter((i) => i.set_id === set.id);
+                const avail = selectable.filter((i) => i.set_id === set.id);
                 if (avail.length === 0) return null;
                 const allSel = avail.every((i) => selected.has(i.id));
                 const someSel = avail.some((i) => selected.has(i.id));
@@ -180,7 +184,7 @@ export function AssignItemsModal({ jobId, onClose }: AssignItemsModalProps) {
               })}
               {/* Standalone items as a "set" */}
               {(() => {
-                const standalone = allItems.filter((i) => !i.set_id);
+                const standalone = selectable.filter((i) => !i.set_id);
                 if (standalone.length === 0) return null;
                 const allSel = standalone.every((i) => selected.has(i.id));
                 const someSel = standalone.some((i) => selected.has(i.id));

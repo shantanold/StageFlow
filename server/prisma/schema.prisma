@@ -118,6 +118,8 @@ model Item {
   height_in     Decimal?      @db.Decimal(6, 1)
   notes         String?
   qr_printed    Boolean       @default(false)
+  /// True for pre-printed blank QR stickers awaiting real furniture details.
+  is_unlabeled  Boolean       @default(false)
   created_at    DateTime      @default(now())
 
   org           Organization  @relation(fields: [org_id], references: [id])
@@ -127,6 +129,7 @@ model Item {
 
   @@unique([org_id, sku])
   @@index([org_id, status])
+  @@index([org_id, is_unlabeled])
   @@map("items")
 }
 

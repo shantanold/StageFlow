@@ -4,6 +4,12 @@ import QRCode from "qrcode";
 import { prisma, rawPrisma } from "../lib/prisma";
 import { authenticate } from "../middleware/auth";
 import { requireManager } from "../middleware/role";
+import {
+  loadAssignedItem,
+  returnItemFromJob,
+  maybeCompleteJob,
+  type ReturnCond,
+} from "../lib/itemTransitions";
 
 const router = Router();
 
@@ -52,7 +58,7 @@ async function generateSku(): Promise<string> {
 
 router.get("/", async (req, res) => {
   try {
-    const { search, status, condition, category, set_id, qr_printed } = req.query as Record<string, string>;
+    const { search, status, condition, category, set_id, qr_printed, is_unlabeled } = req.query as Record<string, string>;
 
     const where: Prisma.ItemWhereInput = {};
 
@@ -80,6 +86,12 @@ router.get("/", async (req, res) => {
       where.qr_printed = true;
     } else if (qr_printed === "false") {
       where.qr_printed = false;
+    }
+
+    if (is_unlabeled === "true") {
+      where.is_unlabeled = true;
+    } else if (is_unlabeled === "false") {
+      where.is_unlabeled = false;
     }
 
     if (search) {
@@ -248,6 +260,7 @@ router.post("/bulk-unlabeled", requireManager, async (req, res) => {
           purchase_cost: 0,
           purchase_date: null,
           notes: "Placeholder — fill in details after sticking the QR label",
+          is_unlabeled: true,
         },
         include: { set: { select: { id: true, name: true } } },
       });
@@ -357,6 +370,10 @@ router.put("/:id", requireManager, async (req, res) => {
         ...(depth_in !== undefined && { depth_in }),
         ...(height_in !== undefined && { height_in }),
         ...(qr_printed !== undefined && { qr_printed: Boolean(qr_printed) }),
+        // Editing details on a blank sticker claims it
+        ...(existing.is_unlabeled && name !== undefined && category !== undefined && {
+          is_unlabeled: false,
+        }),
       },
       include: { set: { select: { id: true, name: true } } },
     });
@@ -494,6 +511,326 @@ router.get("/:id/movements", async (req, res) => {
     });
 
     return res.json(movements);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
+// ─── POST /items/:id/claim ───────────────────────────────────────────────────
+// Fill in details for a pre-printed blank QR sticker. Staff or manager.
+// Clears is_unlabeled once name + category are set.
+
+router.post("/:id/claim", async (req, res) => {
+  try {
+    const existing = await prisma.item.findUnique({ where: { id: req.params.id } });
+    if (!existing) return res.status(404).json({ message: "Item not found" });
+    if (!existing.is_unlabeled) {
+      return res.status(400).json({ message: "Item is already claimed — edit it instead" });
+    }
+
+    const body = req.body as Partial<{
+      name: string;
+      category: string;
+      set_id: string | null;
+      notes: string | null;
+      photo_url: string | null;
+      purchase_cost: number;
+      purchase_date: string | null;
+      width_in: number | null;
+      depth_in: number | null;
+      height_in: number | null;
+      condition: ItemCondition;
+    }>;
+
+    if (!body.name?.trim() || !body.category?.trim()) {
+      return res.status(400).json({ message: "name and category are required" });
+    }
+
+    const item = await prisma.item.update({
+      where: { id: req.params.id },
+      data: {
+        name: body.name.trim(),
+        category: body.category.trim(),
+        is_unlabeled: false,
+        notes: body.notes !== undefined ? body.notes : null,
+        ...(body.set_id !== undefined && { set_id: body.set_id || null }),
+        ...(body.photo_url !== undefined && { photo_url: body.photo_url }),
+        ...(body.purchase_cost !== undefined && { purchase_cost: body.purchase_cost }),
+        ...(body.purchase_date !== undefined && {
+          purchase_date: body.purchase_date ? new Date(body.purchase_date) : null,
+        }),
+        ...(body.width_in !== undefined && { width_in: body.width_in }),
+        ...(body.depth_in !== undefined && { depth_in: body.depth_in }),
+        ...(body.height_in !== undefined && { height_in: body.height_in }),
+        ...(body.condition !== undefined && { condition: body.condition }),
+      },
+      include: { set: { select: { id: true, name: true } } },
+    });
+
+    return res.json(item);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
+// ─── POST /items/:id/duplicate ───────────────────────────────────────────────
+// Create another copy with a new SKU. Copies description fields + photo;
+// leaves purchase cost/date blank; starts available and unlabeled=false.
+
+router.post("/:id/duplicate", requireManager, async (req, res) => {
+  try {
+    const source = await prisma.item.findUnique({ where: { id: req.params.id } });
+    if (!source) return res.status(404).json({ message: "Item not found" });
+
+    const sku = await generateSku();
+    const item = await prisma.item.create({
+      data: {
+        org_id: req.user!.org_id,
+        sku,
+        name: source.name,
+        category: source.category,
+        set_id: source.set_id,
+        condition: "good",
+        status: "available",
+        photo_url: source.photo_url,
+        purchase_cost: 0,
+        purchase_date: null,
+        width_in: source.width_in,
+        depth_in: source.depth_in,
+        height_in: source.height_in,
+        notes: source.notes,
+        qr_printed: false,
+        is_unlabeled: false,
+      },
+      include: { set: { select: { id: true, name: true } } },
+    });
+
+    return res.status(201).json(item);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
+// ─── POST /items/:id/set-status ──────────────────────────────────────────────
+// Manager override: change item status without scanning. Keeps job_items in sync.
+
+router.post("/:id/set-status", requireManager, async (req, res) => {
+  try {
+    const { status, condition, notes, job_id } = req.body as {
+      status?: ItemStatus;
+      condition?: ReturnCond | ItemCondition;
+      notes?: string;
+      job_id?: string;
+    };
+
+    const valid: ItemStatus[] = ["available", "staged", "missing", "disposed"];
+    if (!status || !valid.includes(status)) {
+      return res.status(400).json({ message: "status must be available, staged, missing, or disposed" });
+    }
+
+    const existing = await prisma.item.findUnique({ where: { id: req.params.id } });
+    if (!existing) return res.status(404).json({ message: "Item not found" });
+    if (existing.status === status) {
+      return res.status(400).json({ message: `Item is already ${status}` });
+    }
+
+    const openJobItem = await prisma.jobItem.findFirst({
+      where: { item_id: req.params.id, status: { not: "returned" } },
+      include: { job: { select: { id: true, status: true } } },
+    });
+
+    const userId = req.user!.userId;
+    const orgId = req.user!.org_id;
+    const movementNote = notes?.trim() || "Manual status override";
+
+    if (status === "staged") {
+      const targetJobId = job_id || openJobItem?.job_id;
+      if (!targetJobId) {
+        return res.status(400).json({ message: "job_id is required to mark an item staged" });
+      }
+      if (openJobItem && openJobItem.job_id !== targetJobId) {
+        return res.status(400).json({ message: "Item is already on a different job" });
+      }
+
+      const job = await prisma.job.findUnique({ where: { id: targetJobId } });
+      if (!job) return res.status(404).json({ message: "Job not found" });
+      if (job.status !== "planning" && job.status !== "active") {
+        return res.status(400).json({ message: "Job must be planning or active" });
+      }
+
+      await prisma.$transaction(async (tx) => {
+        let jobItemId = openJobItem?.id;
+        if (!jobItemId) {
+          const created = await tx.jobItem.create({
+            data: { org_id: orgId, job_id: targetJobId, item_id: req.params.id, status: "assigned" },
+          });
+          jobItemId = created.id;
+        } else if (openJobItem!.status !== "assigned" && openJobItem!.status !== "loaded") {
+          // already loaded-ish — just ensure item is staged
+        }
+
+        const ji = await tx.jobItem.findUnique({ where: { id: jobItemId } });
+        if (ji && ji.status === "assigned") {
+          await loadAssignedItem(tx, {
+            orgId,
+            jobId: targetJobId,
+            itemId: req.params.id,
+            jobItemId,
+            userId,
+            activateJob: job.status === "planning",
+            notes: movementNote,
+          });
+        } else {
+          await tx.item.update({ where: { id: req.params.id }, data: { status: "staged" } });
+          await tx.movement.create({
+            data: {
+              org_id: orgId,
+              item_id: req.params.id,
+              job_id: targetJobId,
+              from_status: existing.status,
+              to_status: "staged",
+              performed_by: userId,
+              notes: movementNote,
+            },
+          });
+        }
+      });
+    } else if (status === "available") {
+      await prisma.$transaction(async (tx) => {
+        if (openJobItem) {
+          if (openJobItem.status === "assigned") {
+            await tx.jobItem.delete({ where: { id: openJobItem.id } });
+            await tx.item.update({ where: { id: req.params.id }, data: { status: "available" } });
+            await tx.movement.create({
+              data: {
+                org_id: orgId,
+                item_id: req.params.id,
+                job_id: openJobItem.job_id,
+                from_status: existing.status,
+                to_status: "available",
+                performed_by: userId,
+                notes: movementNote,
+              },
+            });
+          } else {
+            const returnCond = (["good", "damaged", "dispose"].includes(String(condition))
+              ? condition
+              : "good") as ReturnCond;
+            await returnItemFromJob(tx, {
+              orgId,
+              jobId: openJobItem.job_id,
+              itemId: req.params.id,
+              jobItemId: openJobItem.id,
+              userId,
+              condition: returnCond,
+              notes: notes ?? null,
+              movementNotes: movementNote,
+            });
+            await maybeCompleteJob(tx, openJobItem.job_id);
+          }
+        } else {
+          await tx.item.update({ where: { id: req.params.id }, data: { status: "available" } });
+          await tx.movement.create({
+            data: {
+              org_id: orgId,
+              item_id: req.params.id,
+              from_status: existing.status,
+              to_status: "available",
+              performed_by: userId,
+              notes: movementNote,
+            },
+          });
+        }
+      });
+    } else if (status === "missing") {
+      await prisma.$transaction(async (tx) => {
+        if (openJobItem) {
+          await tx.jobItem.update({ where: { id: openJobItem.id }, data: { status: "missing" } });
+        }
+        await tx.item.update({ where: { id: req.params.id }, data: { status: "missing" } });
+        await tx.movement.create({
+          data: {
+            org_id: orgId,
+            item_id: req.params.id,
+            job_id: openJobItem?.job_id ?? null,
+            from_status: existing.status,
+            to_status: "missing",
+            performed_by: userId,
+            notes: movementNote,
+          },
+        });
+      });
+    } else if (status === "disposed") {
+      if (existing.status === "staged" || openJobItem?.status === "loaded") {
+        // Close out the job row first, then dispose
+        await prisma.$transaction(async (tx) => {
+          if (openJobItem) {
+            await returnItemFromJob(tx, {
+              orgId,
+              jobId: openJobItem.job_id,
+              itemId: req.params.id,
+              jobItemId: openJobItem.id,
+              userId,
+              condition: "dispose",
+              notes: notes ?? null,
+              movementNotes: movementNote,
+            });
+            await maybeCompleteJob(tx, openJobItem.job_id);
+          } else {
+            await tx.item.update({ where: { id: req.params.id }, data: { status: "disposed" } });
+            await tx.movement.create({
+              data: {
+                org_id: orgId,
+                item_id: req.params.id,
+                from_status: existing.status,
+                to_status: "disposed",
+                performed_by: userId,
+                notes: movementNote,
+              },
+            });
+          }
+        });
+      } else if (openJobItem?.status === "assigned") {
+        await prisma.$transaction(async (tx) => {
+          await tx.jobItem.delete({ where: { id: openJobItem.id } });
+          await tx.item.update({ where: { id: req.params.id }, data: { status: "disposed" } });
+          await tx.movement.create({
+            data: {
+              org_id: orgId,
+              item_id: req.params.id,
+              job_id: openJobItem.job_id,
+              from_status: existing.status,
+              to_status: "disposed",
+              performed_by: userId,
+              notes: movementNote,
+            },
+          });
+        });
+      } else {
+        await prisma.$transaction(async (tx) => {
+          await tx.item.update({ where: { id: req.params.id }, data: { status: "disposed" } });
+          await tx.movement.create({
+            data: {
+              org_id: orgId,
+              item_id: req.params.id,
+              from_status: existing.status,
+              to_status: "disposed",
+              performed_by: userId,
+              notes: movementNote,
+            },
+          });
+        });
+      }
+    }
+
+    const updated = await prisma.item.findUnique({
+      where: { id: req.params.id },
+      include: { set: { select: { id: true, name: true } } },
+    });
+    return res.json(updated);
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: "Server error" });

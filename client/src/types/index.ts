@@ -49,6 +49,9 @@ export interface Item {
   height_in: string | null;
   notes: string | null;
   qr_printed: boolean;
+  is_unlabeled: boolean;
+  /** Present on list responses when the item is on a not-yet-returned job */
+  active_job_id?: string | null;
   created_at: string;
 }
 

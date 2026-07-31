@@ -30,6 +30,13 @@ export function More() {
       description: "Manage furniture set groupings",
       route: "/sets",
     },
+    ...(user?.role === "manager"
+      ? [{
+          label: "Prep Labels",
+          description: "Create blank QR stickers to print before a job",
+          route: "/labels/prep",
+        }]
+      : []),
     {
       label: "Print QR Labels",
       description: "Generate printable label sheets",

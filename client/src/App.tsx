@@ -29,6 +29,7 @@ import { CreateJob }   from "./pages/jobs/CreateJob";
 import { JobDetail }   from "./pages/jobs/JobDetail";
 
 // Labels
+import { PrepLabels } from "./pages/labels/PrepLabels";
 import { PrintLabels } from "./pages/labels/PrintLabels";
 
 // Reports
@@ -41,6 +42,9 @@ import { Users } from "./pages/Users";
 import { QuickScan }  from "./pages/scan/QuickScan";
 import { ScanOut }    from "./pages/scan/ScanOut";
 import { ScanReturn } from "./pages/scan/ScanReturn";
+
+// Inventory sub-pages (claim)
+import { ClaimItem } from "./pages/inventory/ClaimItem";
 
 export default function App() {
   return (
@@ -59,6 +63,7 @@ export default function App() {
               <Route path="/home"                  element={<Home />} />
               <Route path="/inventory"             element={<Inventory />} />
               <Route path="/inventory/new"         element={<AddItem />} />
+              <Route path="/inventory/:id/claim"   element={<ClaimItem />} />
               <Route path="/inventory/:id"         element={<ItemDetail />} />
               <Route path="/scan"                  element={<Scan />} />
               <Route path="/scan/quick"            element={<QuickScan />} />
@@ -71,6 +76,7 @@ export default function App() {
               <Route path="/sets"                  element={<Sets />} />
               <Route path="/sets/:id"              element={<SetDetail />} />
               <Route path="/labels"                element={<PrintLabels />} />
+              <Route path="/labels/prep"           element={<PrepLabels />} />
               <Route path="/reports"               element={<Reports />} />
               <Route path="/users"                 element={<Users />} />
             </Route>
