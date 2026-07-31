@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useJob, useJobItems, useForceCompleteJob, useUnassignItems, useMarkLoaded, useUndoLoad, useMarkReturned } from "../../lib/queries";
 import { getCategoryEmoji, jobStatusBadgeClass, statusBadgeClass, statusLabel } from "../../lib/utils";
 import { formatDate } from "../../lib/utils";
+import { displayPhotoUrl } from "../../lib/cloudinary";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
@@ -312,9 +313,18 @@ export function JobDetail() {
                             alignItems: "center",
                             justifyContent: "center",
                             fontSize: 20,
+                            overflow: "hidden",
                           }}
                         >
-                          {getCategoryEmoji(row.item.category)}
+                          {displayPhotoUrl(row.item.photo_url) ? (
+                            <img
+                              src={displayPhotoUrl(row.item.photo_url)}
+                              alt={row.item.name}
+                              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                            />
+                          ) : (
+                            getCategoryEmoji(row.item.category)
+                          )}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <p style={{ fontSize: 13.5, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
