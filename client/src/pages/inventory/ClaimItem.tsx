@@ -196,7 +196,9 @@ export function ClaimItem() {
             <label style={{ display: "block", fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Photo</label>
             <input ref={fileInputRef} type="file" accept="image/*" capture="environment" onChange={handlePhotoChange} />
             {photoPreview && (
-              <img src={photoPreview} alt="" style={{ marginTop: 8, width: "100%", maxHeight: 180, objectFit: "cover", borderRadius: 8 }} />
+              <div className="photo-preview-frame" style={{ marginTop: 8 }}>
+                <img src={photoPreview} alt="" />
+              </div>
             )}
             {uploadProgress !== null && (
               <p style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 4 }}>Uploading {uploadProgress}%</p>

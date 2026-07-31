@@ -743,20 +743,16 @@ function GridItem({
       }}
     >
       <div
+        className="photo-frame"
         style={{
           width: "100%",
           aspectRatio: "1 / 1",
-          background: "var(--bg-surface)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
           fontSize: 44,
-          overflow: "hidden",
           position: "relative",
         }}
       >
         {displayPhotoUrl(item.photo_url) ? (
-          <img src={displayPhotoUrl(item.photo_url)} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          <img src={displayPhotoUrl(item.photo_url)} alt={item.name} className="photo-contain" />
         ) : (
           getCategoryEmoji(item.category)
         )}
