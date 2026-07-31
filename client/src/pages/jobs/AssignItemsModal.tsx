@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useSets, useItems, useAssignItems } from "../../lib/queries";
 import { getCategoryEmoji } from "../../lib/utils";
+import { displayPhotoUrl } from "../../lib/cloudinary";
 import { useToast } from "../../contexts/ToastContext";
 import { ModalOverlay } from "../../components/ModalOverlay";
 import type { Item } from "../../types";
@@ -302,8 +303,29 @@ export function AssignItemsModal({ jobId, onClose }: AssignItemsModalProps) {
                       </span>
                     )}
                   </div>
-                  <div style={{ width: 32, height: 32, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    {getCategoryEmoji(item.category)}
+                  <div
+                    style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 6,
+                      fontSize: 14,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      background: "var(--bg-surface)",
+                      overflow: "hidden",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {displayPhotoUrl(item.photo_url) ? (
+                      <img
+                        src={displayPhotoUrl(item.photo_url)}
+                        alt={item.name}
+                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                      />
+                    ) : (
+                      getCategoryEmoji(item.category)
+                    )}
                   </div>
                   <div className="list-row-content" style={{ flex: 1 }}>
                     <div className="list-row-title" style={{ fontSize: 13 }}>
