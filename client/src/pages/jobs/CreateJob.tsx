@@ -81,7 +81,7 @@ export function CreateJob() {
         </button>
         <div className="page-title">Create job</div>
       </div>
-      <div style={{ padding: "0 18px" }}>
+      <div className="page-body form-narrow">
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: 14 }}>
             <label className="form-label">Street address</label>

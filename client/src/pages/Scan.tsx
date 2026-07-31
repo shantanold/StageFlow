@@ -43,7 +43,7 @@ export function Scan() {
         <p className="page-subtitle">Quick scan or job scan</p>
       </div>
 
-      <div style={{ padding: "0 18px" }}>
+      <div className="page-body">
         {/* Quick Scan card */}
         <div
           className="card"

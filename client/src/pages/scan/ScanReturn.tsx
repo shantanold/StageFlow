@@ -153,7 +153,7 @@ export function ScanReturn() {
         )}
       </div>
 
-      <div style={{ padding: "0 18px" }}>
+      <div className="page-body">
         {/* Progress bar */}
         {totalExpected > 0 && (
           <div style={{ marginBottom: 14 }}>

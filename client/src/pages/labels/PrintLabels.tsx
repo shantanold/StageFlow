@@ -126,7 +126,7 @@ export function PrintLabels() {
         </div>
       </div>
 
-      <div style={{ padding: "0 18px" }}>
+      <div className="page-body">
         {/* Search */}
         <div style={{ position: "relative", marginBottom: 10 }}>
           <div style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", display: "flex" }}>
@@ -252,23 +252,7 @@ export function PrintLabels() {
       </div>
 
       {/* Sticky print bar */}
-      <div
-        style={{
-          position: "fixed",
-          bottom: "calc(70px + env(safe-area-inset-bottom, 0px))",
-          left: "50%",
-          transform: "translateX(-50%)",
-          width: "100%",
-          maxWidth: 480,
-          padding: "10px 18px",
-          background: "var(--bg-card)",
-          borderTop: "1px solid var(--border)",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          zIndex: 99,
-        }}
-      >
+      <div className="sticky-action-bar">
         <div>
           <p style={{ fontSize: 13, fontWeight: 500 }}>
             {selectedIds.size === 0

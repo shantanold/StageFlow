@@ -178,17 +178,19 @@ export function JobDetail() {
         </div>
       </div>
 
-      <div style={{ padding: "0 18px" }}>
+      <div className="page-body">
         {/* Stat cards */}
-        <div className="card" style={{ marginBottom: 14 }}>
-          <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Client</div>
-          <div style={{ fontSize: 13, fontWeight: 500 }}>{job.client_name}</div>
+        <div className="pair-grid" style={{ marginBottom: 14, maxWidth: "none" }}>
+          <div className="card" style={{ marginBottom: 0 }}>
+            <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Client</div>
+            <div style={{ fontSize: 13, fontWeight: 500 }}>{job.client_name}</div>
+          </div>
+          <div className="card" style={{ marginBottom: 0 }}>
+            <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Contact</div>
+            <div style={{ fontSize: 13, fontWeight: 500 }}>{job.client_contact}</div>
+          </div>
         </div>
-        <div className="card" style={{ marginBottom: 14 }}>
-          <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Contact</div>
-          <div style={{ fontSize: 13, fontWeight: 500 }}>{job.client_contact}</div>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
+        <div className="pair-grid" style={{ marginBottom: 14, maxWidth: "none" }}>
           <div className="card">
             <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Start date</div>
             <div style={{ fontSize: 13, fontWeight: 500 }}>{formatDate(job.start_date)}</div>

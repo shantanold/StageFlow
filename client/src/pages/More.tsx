@@ -58,7 +58,7 @@ export function More() {
         <h1 className="page-title">More</h1>
       </div>
 
-      <div style={{ padding: "0 18px" }}>
+      <div className="page-body">
         {/* Account card */}
         <div
           className="card"
@@ -90,7 +90,7 @@ export function More() {
         >
           Quick stats
         </p>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 16 }}>
+        <div className="pair-grid" style={{ marginBottom: 16 }}>
           <div className="card" style={{ padding: 14 }}>
             <p style={{ fontSize: 11, color: "var(--text-tertiary)", marginBottom: 4 }}>Utilization</p>
             <p style={{ fontSize: 24, fontWeight: 700, color: "var(--accent)", letterSpacing: "-0.5px", marginBottom: 2 }}>

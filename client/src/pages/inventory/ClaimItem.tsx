@@ -137,7 +137,7 @@ export function ClaimItem() {
         <p className="page-subtitle" style={{ fontFamily: "var(--font-mono)" }}>{item.sku}</p>
       </div>
 
-      <form onSubmit={handleSubmit} style={{ padding: "0 18px 40px" }}>
+      <form onSubmit={handleSubmit} className="page-body form-narrow" style={{ paddingBottom: 40 }}>
         <div className="card" style={{ marginBottom: 14 }}>
           <label style={{ display: "block", fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>
             Copy from existing item

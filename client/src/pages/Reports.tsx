@@ -446,7 +446,7 @@ export function Reports() {
         <p className="page-subtitle">Inventory analytics</p>
       </div>
 
-      <div style={{ padding: "0 18px" }}>
+      <div className="page-body">
         {/* Tab strip */}
         <div className="chip-row" style={{ marginBottom: 16 }}>
           {TABS.map((t) => (

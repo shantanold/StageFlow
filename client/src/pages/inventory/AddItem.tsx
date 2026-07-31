@@ -115,7 +115,7 @@ export function AddItem() {
         <h1 className="page-title">Add item</h1>
       </div>
 
-      <div style={{ padding: "0 18px" }}>
+      <div className="page-body form-narrow">
         {error && (
           <div
             style={{

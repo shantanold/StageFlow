@@ -71,7 +71,7 @@ export function PrepLabels() {
         </p>
       </div>
 
-      <div style={{ padding: "0 18px" }}>
+      <div className="page-body form-narrow">
         <form onSubmit={handleCreate} className="card" style={{ marginBottom: 14 }}>
           <label style={{ display: "block", fontSize: 12, color: "var(--text-tertiary)", marginBottom: 8 }}>
             How many blank labels?

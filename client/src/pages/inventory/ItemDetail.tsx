@@ -320,7 +320,7 @@ export function ItemDetail() {
         </div>
       </div>
 
-      <div style={{ padding: "0 18px" }}>
+      <div className="page-body">
         {/* Info grid */}
         <div
           className="card"

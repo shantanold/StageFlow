@@ -65,7 +65,7 @@ export function QuickScan() {
         <p className="page-subtitle">Scan any item to open its detail page</p>
       </div>
 
-      <div style={{ padding: "0 18px" }}>
+      <div className="page-body">
         <QrScannerView onScan={handleScan} paused={paused} />
 
         {/* Manual entry */}

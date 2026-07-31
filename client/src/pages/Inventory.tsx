@@ -431,7 +431,7 @@ export function Inventory() {
         )}
       </div>
 
-      <div style={{ padding: "0 18px" }}>
+      <div className="page-body">
         {/* Search */}
         <div style={{ position: "relative", marginBottom: 10 }}>
           <div
@@ -465,14 +465,7 @@ export function Inventory() {
         </div>
 
         {/* Sort / group / secondary filters */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: 8,
-            marginBottom: 8,
-          }}
-        >
+        <div className="filter-row">
           <select
             className="input-field"
             style={selectStyle}
@@ -605,14 +598,7 @@ export function Inventory() {
 
                   {open && (
                     viewMode === "grid" ? (
-                      <div
-                        style={{
-                          display: "grid",
-                          gridTemplateColumns: "1fr 1fr",
-                          gap: 10,
-                          marginBottom: 4,
-                        }}
-                      >
+                      <div className="item-photo-grid">
                         {group.items.map((item) => (
                           <GridItem
                             key={item.id}
@@ -650,23 +636,7 @@ export function Inventory() {
       {showImport && <ImportCSVModal onClose={() => setShowImport(false)} />}
 
       {selectMode && (
-        <div
-          style={{
-            position: "fixed",
-            bottom: "calc(70px + env(safe-area-inset-bottom, 0px))",
-            left: "50%",
-            transform: "translateX(-50%)",
-            width: "100%",
-            maxWidth: 480,
-            padding: "10px 18px",
-            background: "var(--bg-card)",
-            borderTop: "1px solid var(--border)",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            zIndex: 99,
-          }}
-        >
+        <div className="sticky-action-bar">
           <p style={{ fontSize: 13, color: "var(--text-secondary)" }}>
             {selectedIds.size === 0 ? "Tap items to select" : `${selectedIds.size} item${selectedIds.size !== 1 ? "s" : ""} selected`}
           </p>
@@ -843,7 +813,7 @@ function ItemListSkeleton() {
 
 function ItemGridSkeleton() {
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+    <div className="item-photo-grid">
       {[...Array(6)].map((_, i) => (
         <div key={i} style={{ borderRadius: "var(--radius-lg)", border: "1px solid var(--border)", background: "var(--bg-card)", overflow: "hidden" }}>
           <div style={{ width: "100%", aspectRatio: "1 / 1", background: "var(--bg-surface)" }} />

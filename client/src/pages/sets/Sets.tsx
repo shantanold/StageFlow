@@ -50,15 +50,17 @@ export function Sets() {
         )}
       </div>
 
-      <div style={{ padding: "0 18px" }}>
+      <div className="page-body">
         {isLoading ? (
           <SetListSkeleton />
         ) : sets.length === 0 ? (
           <EmptyState onCreateClick={() => setShowCreate(true)} />
         ) : (
-          sets.map((s) => (
-            <SetCard key={s.id} set={s} onClick={() => navigate(`/sets/${s.id}`)} />
-          ))
+          <div className="card-stack">
+            {sets.map((s) => (
+              <SetCard key={s.id} set={s} onClick={() => navigate(`/sets/${s.id}`)} />
+            ))}
+          </div>
         )}
       </div>
 
