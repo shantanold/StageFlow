@@ -6,6 +6,7 @@ import { formatDate } from "../../lib/utils";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
+import { ModalOverlay } from "../../components/ModalOverlay";
 import type { JobItemRow } from "../../types";
 import { EditJobModal } from "./EditJobModal";
 import { AssignItemsModal } from "./AssignItemsModal";
@@ -395,7 +396,7 @@ export function JobDetail() {
         />
       )}
       {returnTarget && (
-        <div className="modal-overlay" onClick={() => setReturnTarget(null)}>
+        <ModalOverlay onClose={() => setReturnTarget(null)}>
           <div className="modal-sheet" onClick={(e) => e.stopPropagation()} style={{ padding: 18 }}>
             <div className="modal-handle" />
             <p style={{ fontSize: 16, fontWeight: 500, marginBottom: 6 }}>Mark returned</p>
@@ -419,7 +420,7 @@ export function JobDetail() {
               </button>
             </div>
           </div>
-        </div>
+        </ModalOverlay>
       )}
     </div>
   );

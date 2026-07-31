@@ -15,6 +15,7 @@ import {
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { ApiError } from "../../lib/api";
+import { ModalOverlay } from "../../components/ModalOverlay";
 import type { ItemDetail as ItemDetailType, Movement } from "../../types";
 
 function BackIcon() {
@@ -511,7 +512,7 @@ export function ItemDetail() {
         )}
 
         {confirmAction && (
-          <div className="modal-overlay" onClick={() => setConfirmAction(null)}>
+          <ModalOverlay onClose={() => setConfirmAction(null)}>
             <div
               className="modal-sheet"
               onClick={(e) => e.stopPropagation()}
@@ -557,11 +558,11 @@ export function ItemDetail() {
                 </button>
               </div>
             </div>
-          </div>
+          </ModalOverlay>
         )}
 
         {showStatus && (
-          <div className="modal-overlay" onClick={() => setShowStatus(false)}>
+          <ModalOverlay onClose={() => setShowStatus(false)}>
             <div className="modal-sheet" onClick={(e) => e.stopPropagation()} style={{ padding: 18 }}>
               <div className="modal-handle" />
               <p style={{ fontSize: 16, fontWeight: 500, marginBottom: 12 }}>Change status</p>
@@ -620,7 +621,7 @@ export function ItemDetail() {
                 <button className="btn btn-outline" onClick={() => setShowStatus(false)}>Cancel</button>
               </div>
             </div>
-          </div>
+          </ModalOverlay>
         )}
       </div>
     </div>
@@ -721,10 +722,10 @@ function EditItemModal({ item, onClose }: { item: ItemDetailType; onClose: () =>
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <ModalOverlay onClose={onClose}>
       <div
         className="modal-sheet animate-in"
-        style={{ maxHeight: "90vh", padding: 0, display: "flex", flexDirection: "column" }}
+        style={{ maxHeight: "min(90dvh, 90vh)", padding: 0, display: "flex", flexDirection: "column" }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Fixed header */}
@@ -839,7 +840,7 @@ function EditItemModal({ item, onClose }: { item: ItemDetailType; onClose: () =>
           </div>
         </div>
       </div>
-    </div>
+    </ModalOverlay>
   );
 }
 

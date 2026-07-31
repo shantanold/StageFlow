@@ -1,6 +1,7 @@
 import { useState, FormEvent } from "react";
 import { useUpdateJob } from "../../lib/queries";
 import { ApiError } from "../../lib/api";
+import { ModalOverlay } from "../../components/ModalOverlay";
 import type { Job } from "../../types";
 
 interface EditJobModalProps {
@@ -51,7 +52,7 @@ export function EditJobModal({ job, onClose }: EditJobModalProps) {
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <ModalOverlay onClose={onClose}>
       <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="modal-handle" />
         <div style={{ fontSize: 17, fontWeight: 500, marginBottom: 16 }}>Edit job</div>
@@ -112,6 +113,6 @@ export function EditJobModal({ job, onClose }: EditJobModalProps) {
           </div>
         </form>
       </div>
-    </div>
+    </ModalOverlay>
   );
 }

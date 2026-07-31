@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useSets, useItems, useAssignItems } from "../../lib/queries";
 import { getCategoryEmoji } from "../../lib/utils";
 import { useToast } from "../../contexts/ToastContext";
+import { ModalOverlay } from "../../components/ModalOverlay";
 import type { Item } from "../../types";
 
 function CheckIcon() {
@@ -61,12 +62,12 @@ export function AssignItemsModal({ jobId, onClose }: AssignItemsModalProps) {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <ModalOverlay onClose={onClose}>
       <div
         className="modal-sheet"
         onClick={(e) => e.stopPropagation()}
         style={{
-          maxHeight: "90vh",
+          maxHeight: "min(90dvh, 90vh)",
           padding: 0,
           display: "flex",
           flexDirection: "column",
@@ -341,6 +342,6 @@ export function AssignItemsModal({ jobId, onClose }: AssignItemsModalProps) {
           </button>
         </div>
       </div>
-    </div>
+    </ModalOverlay>
   );
 }

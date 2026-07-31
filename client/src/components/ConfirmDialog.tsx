@@ -1,3 +1,5 @@
+import { ModalOverlay } from "./ModalOverlay";
+
 interface Props {
   title: string;
   message: string;
@@ -16,7 +18,7 @@ export function ConfirmDialog({
   onCancel,
 }: Props) {
   return (
-    <div className="modal-overlay" onClick={onCancel}>
+    <ModalOverlay onClose={onCancel}>
       <div
         className="modal-sheet"
         style={{ padding: "24px 20px calc(24px + env(safe-area-inset-bottom, 0px))" }}
@@ -43,6 +45,6 @@ export function ConfirmDialog({
           </button>
         </div>
       </div>
-    </div>
+    </ModalOverlay>
   );
 }

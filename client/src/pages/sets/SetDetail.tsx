@@ -7,6 +7,7 @@ import { getCategoryEmoji, statusBadgeClass, statusLabel } from "../../lib/utils
 import { useToast } from "../../contexts/ToastContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { ApiError } from "../../lib/api";
+import { ModalOverlay } from "../../components/ModalOverlay";
 import type { Item, ItemSet } from "../../types";
 
 function BackIcon() {
@@ -179,7 +180,7 @@ function EditSetModal({ set, onClose }: { set: ItemSet; onClose: () => void }) {
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <ModalOverlay onClose={onClose}>
       <div className="modal-sheet animate-in" style={{ padding: 0, display: "flex", flexDirection: "column" }} onClick={(e) => e.stopPropagation()}>
         <div style={{ padding: "20px 18px 0", flexShrink: 0 }}>
           <div className="modal-handle" style={{ margin: "0 auto 16px" }} />
@@ -211,7 +212,7 @@ function EditSetModal({ set, onClose }: { set: ItemSet; onClose: () => void }) {
           </div>
         </div>
       </div>
-    </div>
+    </ModalOverlay>
   );
 }
 
