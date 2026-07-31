@@ -255,7 +255,7 @@ router.post("/bulk-unlabeled", requireManager, async (req, res) => {
         data: {
           org_id: req.user!.org_id,
           sku,
-          name: `Unlabeled ${sku}`,
+          name: "Red Dot Home Services",
           category: "Other",
           purchase_cost: 0,
           purchase_date: null,

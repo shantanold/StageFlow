@@ -21,6 +21,7 @@ describe("unlabeled blanks, claim, duplicate, manual status", () => {
     expect(bulk.status).toBe(201);
     expect(bulk.body.created).toBe(2);
     expect(bulk.body.items.every((i: { is_unlabeled: boolean }) => i.is_unlabeled)).toBe(true);
+    expect(bulk.body.items.every((i: { name: string }) => i.name === "Red Dot Home Services")).toBe(true);
 
     const list = await request(app)
       .get("/api/v1/items?is_unlabeled=true")
