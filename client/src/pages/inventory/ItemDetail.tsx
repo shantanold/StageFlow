@@ -375,11 +375,10 @@ export function ItemDetail() {
 
         {/* Photo */}
         {item.photo_url && (
-          <div style={{ borderRadius: "var(--radius-lg)", overflow: "hidden", marginBottom: 12 }}>
+          <div className="item-hero-photo">
             <img
               src={displayPhotoUrl(item.photo_url)}
               alt={item.name}
-              style={{ width: "100%", maxHeight: 220, objectFit: "cover", display: "block" }}
             />
           </div>
         )}
@@ -806,8 +805,8 @@ function EditItemModal({ item, onClose }: { item: ItemDetailType; onClose: () =>
                 <span style={{ fontSize: 12 }}>Add photo</span>
               </button>
             ) : (
-              <div style={{ position: "relative", borderRadius: "var(--radius-md)", overflow: "hidden" }}>
-                <img src={photoPreview} alt="Preview" style={{ width: "100%", height: 130, objectFit: "cover", display: "block" }} />
+              <div className="photo-preview-frame">
+                <img src={photoPreview} alt="Preview" />
                 {uploadProgress !== null && (
                   <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
                     <div style={{ width: "60%", height: 4, background: "rgba(255,255,255,0.3)", borderRadius: 2 }}>
