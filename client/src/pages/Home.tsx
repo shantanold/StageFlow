@@ -20,14 +20,14 @@ export function Home() {
 
   const statCards = [
     {
-      label:  "Available",
+      label:  "Unstaged",
       value:  stats?.available_count ?? "—",
       sub:    stats ? `of ${stats.total_items} total` : "",
       color:  "var(--green-text)",
       onClick: () => navigate("/inventory?filter=available"),
     },
     {
-      label:  "Staged out",
+      label:  "Staged",
       value:  stats?.staged_count ?? "—",
       sub:    stats ? `across ${stats.active_jobs_count} house${stats.active_jobs_count !== 1 ? "s" : ""}` : "",
       color:  "#60a5fa",
@@ -112,7 +112,7 @@ export function Home() {
                           color: low ? "var(--red-text)" : "var(--text-tertiary)",
                         }}
                       >
-                        {piece.available} available · {piece.staged} staged
+                        {piece.available} unstaged · {piece.staged} staged
                         {low ? " · low stock" : ""}
                       </p>
                     </div>

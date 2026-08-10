@@ -91,7 +91,7 @@ function SetCard({ set, onClick }: { set: ItemSet; onClick: () => void }) {
       </div>
       <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
         <span className="badge badge-gray">{set.item_count} item{set.item_count !== 1 ? "s" : ""}</span>
-        <span className={avBadge}>{set.available_count} available</span>
+        <span className={avBadge}>{set.available_count} unstaged</span>
         {set.staged_count > 0 && (
           <span className="badge badge-blue">{set.staged_count} staged</span>
         )}

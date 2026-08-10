@@ -82,10 +82,28 @@ export function statusBadgeClass(status: string, condition?: string): string {
 export function statusLabel(status: string, condition?: string): string {
   if (status === "missing")   return "Missing";
   if (condition === "damaged") return "Damaged";
-  if (status === "available") return "Available";
+  if (status === "available") return "Unstaged";
   if (status === "staged")    return "Staged";
   if (status === "disposed")  return "Disposed";
   return status;
+}
+
+/** User-facing label for a job-item lifecycle status. */
+export function jobItemStatusLabel(status: string): string {
+  switch (status) {
+    case "assigned":
+      return "Unstaged";
+    case "loaded":
+    case "delivered":
+    case "picked_up":
+      return "Staged";
+    case "returned":
+      return "Returned";
+    case "missing":
+      return "Missing";
+    default:
+      return status;
+  }
 }
 
 export function movementDotColor(toStatus: string): string {

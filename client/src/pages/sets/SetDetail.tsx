@@ -115,7 +115,7 @@ export function SetDetail() {
             {set.item_count} item{set.item_count !== 1 ? "s" : ""}
           </span>
           {set.available_count > 0 && (
-            <span className="badge badge-green">{set.available_count} available</span>
+            <span className="badge badge-green">{set.available_count} unstaged</span>
           )}
           {set.staged_count > 0 && (
             <span className="badge badge-blue">{set.staged_count} staged</span>
