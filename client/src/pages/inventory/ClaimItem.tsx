@@ -1,7 +1,7 @@
-import { useState, FormEvent, useRef } from "react";
+import { useState, FormEvent, useRef, useMemo } from "react";
 import { useNavigate, useParams, Navigate } from "react-router-dom";
-import { useItem, useClaimItem, useSets, useItems } from "../../lib/queries";
-import { CATEGORIES } from "../../lib/utils";
+import { useItem, useClaimItem, useSets, useItems, useJobs } from "../../lib/queries";
+import { CATEGORIES, uniqueItemTemplates } from "../../lib/utils";
 import { displayPhotoUrl, uploadImage } from "../../lib/cloudinary";
 import { useToast } from "../../contexts/ToastContext";
 import { ApiError } from "../../lib/api";
@@ -24,6 +24,7 @@ export function ClaimItem() {
   const claim = useClaimItem(id);
   const { data: sets = [] } = useSets();
   const { data: templates = [] } = useItems({ is_unlabeled: false });
+  const { data: allJobs = [] } = useJobs();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({
@@ -40,13 +41,25 @@ export function ClaimItem() {
   const [photoPreview, setPhotoPreview] = useState("");
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [templateId, setTemplateId] = useState("");
+  const [jobId, setJobId] = useState("");
   const [error, setError] = useState("");
+
+  const claimedTemplates = useMemo(
+    () => uniqueItemTemplates(templates.filter((t) => t.id !== id)),
+    [templates, id]
+  );
+
+  const openJobs = useMemo(
+    () => allJobs.filter((j) => j.status === "planning" || j.status === "active"),
+    [allJobs]
+  );
 
   function set<K extends keyof typeof form>(key: K, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
   function applyTemplate(source: Item) {
+    setTemplateId(source.id);
     setForm({
       name: source.name,
       category: source.category,
@@ -60,6 +73,9 @@ export function ClaimItem() {
     if (source.photo_url) {
       setPhotoUrl(source.photo_url);
       setPhotoPreview(displayPhotoUrl(source.photo_url) ?? source.photo_url);
+    } else {
+      setPhotoUrl("");
+      setPhotoPreview("");
     }
   }
 
@@ -97,8 +113,9 @@ export function ClaimItem() {
         height_in: form.height_in ? Number(form.height_in) : null,
         notes: form.notes || undefined,
         photo_url: photoUrl || undefined,
+        job_id: jobId || null,
       });
-      showToast("Item claimed", "success");
+      showToast(jobId ? "Item claimed and assigned to job" : "Item claimed", "success");
       navigate(`/inventory/${id}`, { replace: true });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to claim item");
@@ -125,8 +142,6 @@ export function ClaimItem() {
     return <Navigate to={`/inventory/${id}`} replace />;
   }
 
-  const claimedTemplates = templates.filter((t) => t.status !== "disposed");
-
   return (
     <div className="animate-in">
       <div className="page-header">
@@ -139,26 +154,75 @@ export function ClaimItem() {
 
       <form onSubmit={handleSubmit} className="page-body form-narrow" style={{ paddingBottom: 40 }}>
         <div className="card" style={{ marginBottom: 14 }}>
-          <label style={{ display: "block", fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>
+          <label style={{ display: "block", fontSize: 12, color: "var(--text-tertiary)", marginBottom: 8 }}>
             Copy from existing item
           </label>
-          <select
-            className="input-field"
-            value={templateId}
-            onChange={(e) => {
-              const next = e.target.value;
-              setTemplateId(next);
-              const source = claimedTemplates.find((t) => t.id === next);
-              if (source) applyTemplate(source);
-            }}
-          >
-            <option value="">— Start blank or pick a match —</option>
-            {claimedTemplates.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name} ({t.sku})
-              </option>
-            ))}
-          </select>
+          <p style={{ fontSize: 11.5, color: "var(--text-tertiary)", marginBottom: 10 }}>
+            Duplicates with the same name, category, and set are hidden. Tap a row to reuse its details.
+          </p>
+          {claimedTemplates.length === 0 ? (
+            <p style={{ fontSize: 13, color: "var(--text-tertiary)" }}>No existing items to copy from.</p>
+          ) : (
+            <div
+              className="list-card"
+              style={{
+                marginBottom: 0,
+                maxHeight: 280,
+                overflowY: "auto",
+              }}
+            >
+              {claimedTemplates.map((t) => {
+                const selected = templateId === t.id;
+                const thumb = displayPhotoUrl(t.photo_url);
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    className="list-row"
+                    onClick={() => applyTemplate(t)}
+                    style={{
+                      width: "100%",
+                      textAlign: "left",
+                      border: "none",
+                      background: selected ? "rgba(59,130,246,0.12)" : "transparent",
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                      color: "inherit",
+                    }}
+                  >
+                    <div
+                      className="photo-frame"
+                      style={{
+                        width: 48,
+                        height: 48,
+                        borderRadius: 8,
+                        flexShrink: 0,
+                        fontSize: 18,
+                      }}
+                    >
+                      {thumb ? (
+                        <img src={thumb} alt="" className="photo-contain" />
+                      ) : (
+                        <span style={{ color: "var(--text-tertiary)" }}>📦</span>
+                      )}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13.5, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {t.name}
+                      </div>
+                      <div style={{ fontSize: 11.5, color: "var(--text-tertiary)", marginTop: 2 }}>
+                        {t.category}
+                        {t.set?.name ? ` · ${t.set.name}` : ""}
+                      </div>
+                    </div>
+                    {selected && (
+                      <span style={{ fontSize: 11, color: "var(--accent)", fontWeight: 600 }}>Selected</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         <div className="card" style={{ marginBottom: 14, display: "flex", flexDirection: "column", gap: 12 }}>
@@ -189,6 +253,17 @@ export function ClaimItem() {
             <input className="input-field" type="number" step="0.1" placeholder="H" value={form.height_in} onChange={(e) => set("height_in", e.target.value)} />
           </div>
           <div>
+            <label style={{ display: "block", fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Assign to job (optional)</label>
+            <select className="input-field" value={jobId} onChange={(e) => setJobId(e.target.value)}>
+              <option value="">— Don’t assign yet —</option>
+              {openJobs.map((j) => (
+                <option key={j.id} value={j.id}>
+                  {j.address} ({j.status})
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
             <label style={{ display: "block", fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Notes</label>
             <textarea className="input-field" rows={2} value={form.notes} onChange={(e) => set("notes", e.target.value)} />
           </div>
@@ -209,7 +284,7 @@ export function ClaimItem() {
         {error && <p style={{ color: "var(--red-text)", fontSize: 13, marginBottom: 10 }}>{error}</p>}
 
         <button className="btn btn-primary" type="submit" style={{ width: "100%" }} disabled={claim.isPending}>
-          {claim.isPending ? "Saving…" : "Claim item"}
+          {claim.isPending ? "Saving…" : jobId ? "Claim & assign" : "Claim item"}
         </button>
       </form>
     </div>
