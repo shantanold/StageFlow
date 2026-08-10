@@ -284,7 +284,7 @@ function InventoryValueTab() {
         <div style={{ display: "flex", gap: 14 }}>
           <span style={{ fontSize: 11, color: "var(--text-tertiary)", display: "flex", alignItems: "center", gap: 4 }}>
             <span style={{ width: 8, height: 8, borderRadius: 2, background: "var(--green)", display: "inline-block" }} />
-            Available {fmt$(data.available_value)}
+            Unstaged {fmt$(data.available_value)}
           </span>
           <span style={{ fontSize: 11, color: "var(--text-tertiary)", display: "flex", alignItems: "center", gap: 4 }}>
             <span style={{ width: 8, height: 8, borderRadius: 2, background: "var(--accent)", display: "inline-block" }} />

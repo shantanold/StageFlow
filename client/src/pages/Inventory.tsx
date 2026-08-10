@@ -358,7 +358,7 @@ export function Inventory() {
 
   const chips: [StatusFilter, string][] = [
     ["all",           `All (${counts.all})`],
-    ["available",     `Available (${counts.available})`],
+    ["available",     `Unstaged (${counts.available})`],
     ["staged",        `Staged (${counts.staged})`],
     ["flagged",       `Flagged (${counts.flagged})`],
     ["needs_details", `Needs details (${counts.needs_details})`],
@@ -578,7 +578,7 @@ export function Inventory() {
                           </span>
                         </p>
                         <p style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 1 }}>
-                          {group.available} avail · {group.staged} staged
+                          {group.available} unstaged · {group.staged} staged
                           {group.flagged > 0 ? ` · ${group.flagged} flagged` : ""}
                         </p>
                       </div>

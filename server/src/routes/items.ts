@@ -541,35 +541,77 @@ router.post("/:id/claim", async (req, res) => {
       depth_in: number | null;
       height_in: number | null;
       condition: ItemCondition;
+      job_id: string | null;
     }>;
 
     if (!body.name?.trim() || !body.category?.trim()) {
       return res.status(400).json({ message: "name and category are required" });
     }
 
-    const item = await prisma.item.update({
-      where: { id: req.params.id },
-      data: {
-        name: body.name.trim(),
-        category: body.category.trim(),
-        is_unlabeled: false,
-        notes: body.notes !== undefined ? body.notes : null,
-        ...(body.set_id !== undefined && { set_id: body.set_id || null }),
-        ...(body.photo_url !== undefined && { photo_url: body.photo_url }),
-        ...(body.purchase_cost !== undefined && { purchase_cost: body.purchase_cost }),
-        ...(body.purchase_date !== undefined && {
-          purchase_date: body.purchase_date ? new Date(body.purchase_date) : null,
-        }),
-        ...(body.width_in !== undefined && { width_in: body.width_in }),
-        ...(body.depth_in !== undefined && { depth_in: body.depth_in }),
-        ...(body.height_in !== undefined && { height_in: body.height_in }),
-        ...(body.condition !== undefined && { condition: body.condition }),
-      },
-      include: { set: { select: { id: true, name: true } } },
+    let assignJobId: string | null = null;
+    if (body.job_id) {
+      const job = await prisma.job.findUnique({ where: { id: body.job_id } });
+      if (!job) return res.status(404).json({ message: "Job not found" });
+      if (job.status !== "planning" && job.status !== "active") {
+        return res.status(400).json({ message: "Can only assign to planning or active jobs" });
+      }
+      assignJobId = job.id;
+    }
+
+    const item = await prisma.$transaction(async (tx) => {
+      const updated = await tx.item.update({
+        where: { id: req.params.id },
+        data: {
+          name: body.name!.trim(),
+          category: body.category!.trim(),
+          is_unlabeled: false,
+          notes: body.notes !== undefined ? body.notes : null,
+          ...(body.set_id !== undefined && { set_id: body.set_id || null }),
+          ...(body.photo_url !== undefined && { photo_url: body.photo_url }),
+          ...(body.purchase_cost !== undefined && { purchase_cost: body.purchase_cost }),
+          ...(body.purchase_date !== undefined && {
+            purchase_date: body.purchase_date ? new Date(body.purchase_date) : null,
+          }),
+          ...(body.width_in !== undefined && { width_in: body.width_in }),
+          ...(body.depth_in !== undefined && { depth_in: body.depth_in }),
+          ...(body.height_in !== undefined && { height_in: body.height_in }),
+          ...(body.condition !== undefined && { condition: body.condition }),
+        },
+        include: { set: { select: { id: true, name: true } } },
+      });
+
+      if (assignJobId) {
+        const openAssignment = await tx.jobItem.findFirst({
+          where: { item_id: updated.id, status: { not: "returned" } },
+          select: { id: true, job_id: true },
+        });
+        if (openAssignment && openAssignment.job_id !== assignJobId) {
+          throw Object.assign(new Error("Item is already assigned to another job"), { status: 400 });
+        }
+        if (!openAssignment) {
+          await tx.jobItem.create({
+            data: {
+              org_id: req.user!.org_id,
+              job_id: assignJobId,
+              item_id: updated.id,
+              status: "assigned",
+            },
+          });
+        }
+      }
+
+      return updated;
     });
 
     return res.json(item);
   } catch (err) {
+    if (
+      err instanceof Error &&
+      "status" in err &&
+      (err as Error & { status: number }).status === 400
+    ) {
+      return res.status(400).json({ message: err.message });
+    }
     console.error(err);
     return res.status(500).json({ message: "Server error" });
   }

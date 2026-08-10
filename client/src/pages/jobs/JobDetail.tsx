@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useJob, useJobItems, useForceCompleteJob, useUnassignItems, useMarkLoaded, useUndoLoad, useMarkReturned } from "../../lib/queries";
-import { getCategoryEmoji, jobStatusBadgeClass, statusBadgeClass, statusLabel } from "../../lib/utils";
+import { getCategoryEmoji, jobStatusBadgeClass, statusBadgeClass, statusLabel, jobItemStatusLabel } from "../../lib/utils";
 import { formatDate } from "../../lib/utils";
 import { displayPhotoUrl } from "../../lib/cloudinary";
 import { useAuth } from "../../contexts/AuthContext";
@@ -50,18 +50,6 @@ function groupBySet(rows: JobItemRow[]): { setId: string | null; setName: string
     setName: setNames.get(setId) ?? "Standalone",
     items,
   }));
-}
-
-function jobItemStatusLabel(status: string): string {
-  switch (status) {
-    case "assigned": return "Assigned";
-    case "loaded":
-    case "delivered":
-    case "picked_up": return "Staged out";
-    case "returned": return "Returned";
-    case "missing": return "Missing";
-    default: return status;
-  }
 }
 
 export function JobDetail() {
@@ -128,18 +116,18 @@ export function JobDetail() {
   async function handleMarkLoaded(row: JobItemRow) {
     try {
       await markLoaded.mutateAsync(row.item_id);
-      showToast(`Marked “${row.item.name}” loaded`, "success");
+      showToast(`Marked “${row.item.name}” staged`, "success");
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to mark loaded", "error");
+      showToast(err instanceof Error ? err.message : "Failed to mark staged", "error");
     }
   }
 
   async function handleUndoLoad(row: JobItemRow) {
     try {
       await undoLoad.mutateAsync(row.item_id);
-      showToast(`Undid load for “${row.item.name}”`, "success");
+      showToast(`Marked “${row.item.name}” unstaged`, "success");
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to undo load", "error");
+      showToast(err instanceof Error ? err.message : "Failed to mark unstaged", "error");
     }
   }
 
@@ -360,12 +348,12 @@ export function JobDetail() {
                           <div style={{ width: "100%", display: "flex", gap: 6, flexWrap: "wrap" }} onClick={(e) => e.stopPropagation()}>
                             {canMarkLoaded && (
                               <button className="btn btn-outline" style={{ fontSize: 11, padding: "5px 10px" }} disabled={markLoaded.isPending} onClick={() => handleMarkLoaded(row)}>
-                                Mark loaded
+                                Mark staged
                               </button>
                             )}
                             {canUndoLoad && (
                               <button className="btn btn-outline" style={{ fontSize: 11, padding: "5px 10px" }} disabled={undoLoad.isPending} onClick={() => handleUndoLoad(row)}>
-                                Undo load
+                                Mark unstaged
                               </button>
                             )}
                             {canMarkReturned && (
@@ -400,7 +388,7 @@ export function JobDetail() {
       {unassignTarget && (
         <ConfirmDialog
           title="Remove from this job?"
-          message={`“${unassignTarget.item.name}” will be unassigned and go back into available inventory. Only do this if it hasn’t been loaded onto the truck yet.`}
+          message={`“${unassignTarget.item.name}” will be removed from this job and stay unstaged. Only do this if it hasn’t been staged out yet.`}
           confirmLabel={unassignItems.isPending ? "Removing…" : "Remove"}
           confirmDanger
           onConfirm={handleUnassign}

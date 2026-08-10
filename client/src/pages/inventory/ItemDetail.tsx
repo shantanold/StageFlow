@@ -221,7 +221,7 @@ export function ItemDetail() {
   async function handleMarkFound() {
     try {
       await markFound.mutateAsync();
-      showToast("Item marked available", "success");
+      showToast("Item marked unstaged", "success");
     } catch (err) {
       showToast(err instanceof ApiError ? err.message : "Failed to update item", "error");
     }
@@ -360,7 +360,7 @@ export function ItemDetail() {
         {isManager && item.status === "missing" && (
           <div className="card" style={{ borderColor: "rgba(239,68,68,0.3)", marginBottom: 12 }}>
             <p style={{ fontSize: 12.5, color: "var(--text-secondary)", marginBottom: 10 }}>
-              This item was marked missing when a job was force-completed with it unreturned. If it's turned up, mark it found to put it back in available inventory.
+              This item was marked missing when a job was force-completed with it unreturned. If it's turned up, mark it found to put it back in unstaged inventory.
             </p>
             <button
               className="btn btn-primary"
@@ -571,7 +571,7 @@ export function ItemDetail() {
                   value={statusForm.status}
                   onChange={(e) => setStatusForm((f) => ({ ...f, status: e.target.value }))}
                 >
-                  <option value="available">Available</option>
+                  <option value="available">Unstaged</option>
                   <option value="staged">Staged</option>
                   <option value="missing">Missing</option>
                   <option value="disposed">Disposed</option>

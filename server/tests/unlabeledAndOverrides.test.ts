@@ -44,6 +44,48 @@ describe("unlabeled blanks, claim, duplicate, manual status", () => {
     expect(filtered.body).toHaveLength(1);
   });
 
+  it("claim can optionally assign the item to a planning job", async () => {
+    const manager = await registerUser(app, { role: "manager" });
+
+    const bulk = await request(app)
+      .post("/api/v1/items/bulk-unlabeled")
+      .set(authHeader(manager.token))
+      .send({ count: 1 });
+    expect(bulk.status).toBe(201);
+    const id = bulk.body.items[0].id as string;
+
+    const job = await request(app)
+      .post("/api/v1/jobs")
+      .set(authHeader(manager.token))
+      .send({
+        address: "9 Claim St",
+        city: "Houston",
+        state: "TX",
+        zip: "77002",
+        client_name: "Client",
+        client_contact: "555",
+        start_date: "2025-02-01",
+        expected_end_date: "2025-05-01",
+      });
+    expect(job.status).toBe(201);
+    const jobId = job.body.id as string;
+
+    const claim = await request(app)
+      .post(`/api/v1/items/${id}/claim`)
+      .set(authHeader(manager.token))
+      .send({ name: "Claimed Sofa", category: "Sofa", job_id: jobId });
+    expect(claim.status).toBe(200);
+    expect(claim.body.is_unlabeled).toBe(false);
+
+    const rows = await request(app)
+      .get(`/api/v1/jobs/${jobId}/items`)
+      .set(authHeader(manager.token));
+    expect(rows.status).toBe(200);
+    expect(rows.body).toHaveLength(1);
+    expect(rows.body[0].item_id).toBe(id);
+    expect(rows.body[0].status).toBe("assigned");
+  });
+
   it("duplicate copies description fields with a new SKU", async () => {
     const manager = await registerUser(app, { role: "manager" });
 

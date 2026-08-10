@@ -421,13 +421,14 @@ export function useBulkUnlabeled() {
 export function useClaimItem(itemId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: Partial<CreateItemInput> & { condition?: string }) =>
+    mutationFn: (data: Partial<CreateItemInput> & { condition?: string; job_id?: string | null }) =>
       api.post<Item>(`/items/${itemId}/claim`, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["items"] });
       qc.invalidateQueries({ queryKey: ["items", itemId] });
       qc.invalidateQueries({ queryKey: ["sets"] });
       qc.invalidateQueries({ queryKey: ["stats"] });
+      qc.invalidateQueries({ queryKey: ["jobs"] });
     },
   });
 }

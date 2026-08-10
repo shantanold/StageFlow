@@ -76,11 +76,11 @@ export function ScanOut() {
       if (res.job_activated) {
         showToast("Job is now active!", "success");
       } else {
-        showToast(`${item.name} loaded`, "success");
+        showToast(`${item.name} staged`, "success");
       }
 
       if (res.remaining_to_load === 0) {
-        showToast("All items loaded!", "success");
+        showToast("All items staged!", "success");
       }
     } catch (err) {
       const msg = err instanceof ApiError ? err.message : "Scan failed";
@@ -124,7 +124,7 @@ export function ScanOut() {
         {totalItems > 0 && (
           <div style={{ marginBottom: 14 }}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-              <span style={{ fontSize: 12, color: "var(--text-tertiary)" }}>Items loaded</span>
+              <span style={{ fontSize: 12, color: "var(--text-tertiary)" }}>Items staged</span>
               <span style={{ fontSize: 12, fontWeight: 600 }}>{loadedCount} / {totalItems}</span>
             </div>
             <div style={{ height: 6, borderRadius: 3, background: "var(--bg-surface)" }}>
@@ -174,7 +174,7 @@ export function ScanOut() {
             {loadedIds.size > 0 && (
               <>
                 <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.6px" }}>
-                  Loaded this session ({loadedIds.size})
+                  Staged this session ({loadedIds.size})
                 </div>
                 <div className="list-card" style={{ marginBottom: 24 }}>
                   {jobItems

@@ -133,7 +133,7 @@ export function AssignItemsModal({ jobId, onClose }: AssignItemsModalProps) {
                         </div>
                         <div>
                           <div style={{ fontSize: 14, fontWeight: 500 }}>{set.name}</div>
-                          <div style={{ fontSize: 11.5, color: "var(--text-tertiary)" }}>{avail.length} items available</div>
+                          <div style={{ fontSize: 11.5, color: "var(--text-tertiary)" }}>{avail.length} unstaged</div>
                         </div>
                       </div>
                     </div>
@@ -228,7 +228,7 @@ export function AssignItemsModal({ jobId, onClose }: AssignItemsModalProps) {
                         </div>
                         <div>
                           <div style={{ fontSize: 14, fontWeight: 500 }}>Standalone items</div>
-                          <div style={{ fontSize: 11.5, color: "var(--text-tertiary)" }}>{standalone.length} items available</div>
+                          <div style={{ fontSize: 11.5, color: "var(--text-tertiary)" }}>{standalone.length} unstaged</div>
                         </div>
                       </div>
                     </div>
