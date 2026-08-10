@@ -605,8 +605,12 @@ router.post("/:id/claim", async (req, res) => {
 
     return res.json(item);
   } catch (err) {
-    if (err && typeof err === "object" && "status" in err && (err as { status: number }).status === 400) {
-      return res.status(400).json({ message: (err as Error).message });
+    if (
+      err instanceof Error &&
+      "status" in err &&
+      (err as Error & { status: number }).status === 400
+    ) {
+      return res.status(400).json({ message: err.message });
     }
     console.error(err);
     return res.status(500).json({ message: "Server error" });
