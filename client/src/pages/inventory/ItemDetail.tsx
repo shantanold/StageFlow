@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   useItem, useItemMovements, useUpdateItem, useMarkItemFound,
   useDisposeItem, useDeleteItem, useDuplicateItem, useSetItemStatus, useJobs,
+  useAssignToJob,
 } from "../../lib/queries";
 import { useSets } from "../../lib/queries";
 import { downloadLabels, useQRCodeUrl } from "../../lib/labels";
@@ -188,10 +189,15 @@ export function ItemDetail() {
   const deleteItem = useDeleteItem(id);
   const duplicateItem = useDuplicateItem();
   const setStatus = useSetItemStatus(id);
+  const assignToJob = useAssignToJob();
   const { data: jobs = [] } = useJobs();
   const [confirmAction, setConfirmAction] = useState<"dispose" | "delete" | null>(null);
   const [showStatus, setShowStatus] = useState(false);
+  const [showAssignJob, setShowAssignJob] = useState(false);
+  const [assignJobId, setAssignJobId] = useState("");
   const [statusForm, setStatusForm] = useState({ status: "available", condition: "good", notes: "", job_id: "" });
+
+  const activeJobs = jobs.filter((j) => j.status === "planning" || j.status === "active");
 
   async function handleDuplicate() {
     try {
@@ -215,6 +221,18 @@ export function ItemDetail() {
       setShowStatus(false);
     } catch (err) {
       showToast(err instanceof ApiError ? err.message : "Failed to change status", "error");
+    }
+  }
+
+  async function handleAssignToJob() {
+    if (!assignJobId) return;
+    try {
+      await assignToJob.mutateAsync({ jobId: assignJobId, itemIds: [id] });
+      showToast("Assigned to job and marked staged", "success");
+      setShowAssignJob(false);
+      setAssignJobId("");
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : "Failed to assign item", "error");
     }
   }
 
@@ -264,6 +282,13 @@ export function ItemDetail() {
       </div>
     );
   }
+
+  const canAssignToJob =
+    isManager &&
+    !item.is_unlabeled &&
+    item.name.trim().toLowerCase() !== "red dot home services" &&
+    item.status === "available" &&
+    !item.current_job;
 
   return (
     <div className="animate-in">
@@ -422,6 +447,28 @@ export function ItemDetail() {
                 <ChevronRightIcon />
               </span>
             </div>
+          </div>
+        )}
+
+        {canAssignToJob && (
+          <div className="card" style={{ marginBottom: 12, marginTop: 12 }}>
+            <p style={{ fontSize: 11, fontWeight: 500, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 8 }}>
+              Staging job
+            </p>
+            <p style={{ fontSize: 12.5, color: "var(--text-secondary)", marginBottom: 10 }}>
+              Assign this item to a planning or active job. It will be marked staged.
+            </p>
+            <button
+              className="btn btn-primary"
+              style={{ width: "100%" }}
+              disabled={activeJobs.length === 0}
+              onClick={() => {
+                setAssignJobId(activeJobs[0]?.id ?? "");
+                setShowAssignJob(true);
+              }}
+            >
+              {activeJobs.length === 0 ? "No active jobs" : "Assign to job…"}
+            </button>
           </div>
         )}
 
@@ -618,6 +665,40 @@ export function ItemDetail() {
                   {setStatus.isPending ? "Saving…" : "Update status"}
                 </button>
                 <button className="btn btn-outline" onClick={() => setShowStatus(false)}>Cancel</button>
+              </div>
+            </div>
+          </ModalOverlay>
+        )}
+
+        {showAssignJob && (
+          <ModalOverlay onClose={() => setShowAssignJob(false)}>
+            <div className="modal-sheet" onClick={(e) => e.stopPropagation()} style={{ padding: 18 }}>
+              <div className="modal-handle" />
+              <p style={{ fontSize: 16, fontWeight: 500, marginBottom: 8 }}>Assign to job</p>
+              <p style={{ fontSize: 12.5, color: "var(--text-secondary)", marginBottom: 12 }}>
+                This item will be added to the job and marked staged.
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <select
+                  className="input-field"
+                  value={assignJobId}
+                  onChange={(e) => setAssignJobId(e.target.value)}
+                >
+                  <option value="">Select job…</option>
+                  {activeJobs.map((j) => (
+                    <option key={j.id} value={j.id}>
+                      {j.address} ({j.status})
+                    </option>
+                  ))}
+                </select>
+                <button
+                  className="btn btn-primary"
+                  disabled={!assignJobId || assignToJob.isPending}
+                  onClick={handleAssignToJob}
+                >
+                  {assignToJob.isPending ? "Assigning…" : "Assign & stage"}
+                </button>
+                <button className="btn btn-outline" onClick={() => setShowAssignJob(false)}>Cancel</button>
               </div>
             </div>
           </ModalOverlay>

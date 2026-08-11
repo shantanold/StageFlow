@@ -102,11 +102,6 @@ describe("dashboard major pieces + active jobs", () => {
       .set(authHeader(manager.token))
       .send({ itemIds: [sofaRes.body.id] });
 
-    await request(app)
-      .post(`/api/v1/jobs/${jobId}/scan-out`)
-      .set(authHeader(manager.token))
-      .send({ itemId: sofaRes.body.id });
-
     const res = await request(app)
       .get("/api/v1/stats/dashboard")
       .set(authHeader(manager.token));
