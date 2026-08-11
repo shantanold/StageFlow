@@ -4,9 +4,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   useItem, useItemMovements, useUpdateItem, useMarkItemFound,
   useDisposeItem, useDeleteItem, useDuplicateItem, useSetItemStatus, useJobs,
-  useAssignToJob,
+  useAssignToJob, useSets, useCreateSet,
 } from "../../lib/queries";
-import { useSets } from "../../lib/queries";
 import { downloadLabels, useQRCodeUrl } from "../../lib/labels";
 import { displayPhotoUrl, uploadImage } from "../../lib/cloudinary";
 import {
@@ -730,6 +729,7 @@ const selectStyle = { backgroundImage: SelectArrow, backgroundRepeat: "no-repeat
 function EditItemModal({ item, onClose }: { item: ItemDetailType; onClose: () => void }) {
   const { showToast } = useToast();
   const updateItem = useUpdateItem(item.id);
+  const createSet = useCreateSet();
   const { data: sets = [] } = useSets();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -749,9 +749,34 @@ function EditItemModal({ item, onClose }: { item: ItemDetailType; onClose: () =>
   const [photoPreview, setPhotoPreview] = useState(displayPhotoUrl(item.photo_url) ?? "");
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [error, setError] = useState("");
+  const [showNewSet, setShowNewSet] = useState(false);
+  const [newSetName, setNewSetName] = useState("");
+  const [newSetDescription, setNewSetDescription] = useState("");
+  const [newSetError, setNewSetError] = useState("");
 
   function set<K extends keyof typeof form>(key: K, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  async function handleCreateSet() {
+    if (!newSetName.trim()) {
+      setNewSetError("Name is required");
+      return;
+    }
+    setNewSetError("");
+    try {
+      const created = await createSet.mutateAsync({
+        name: newSetName.trim(),
+        description: newSetDescription.trim(),
+      });
+      set("set_id", created.id);
+      setShowNewSet(false);
+      setNewSetName("");
+      setNewSetDescription("");
+      showToast(`Created set “${created.name}”`, "success");
+    } catch (err) {
+      setNewSetError(err instanceof ApiError ? err.message : "Failed to create set");
+    }
   }
 
   async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -848,10 +873,28 @@ function EditItemModal({ item, onClose }: { item: ItemDetailType; onClose: () =>
           {/* Set */}
           <div style={{ marginBottom: 12 }}>
             <label className="form-label">Set</label>
-            <select className="input-field" style={selectStyle} value={form.set_id} onChange={(e) => set("set_id", e.target.value)}>
-              <option value="">No set</option>
-              {sets.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
+            <div style={{ display: "flex", gap: 8 }}>
+              <select
+                className="input-field"
+                style={{ ...selectStyle, flex: 1 }}
+                value={form.set_id}
+                onChange={(e) => set("set_id", e.target.value)}
+              >
+                <option value="">No set</option>
+                {sets.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+              <button
+                type="button"
+                className="btn btn-outline"
+                style={{ flexShrink: 0, whiteSpace: "nowrap", padding: "0 12px", fontSize: 12 }}
+                onClick={() => {
+                  setNewSetError("");
+                  setShowNewSet(true);
+                }}
+              >
+                New set
+              </button>
+            </div>
           </div>
 
           {/* Cost + Date */}
@@ -920,6 +963,89 @@ function EditItemModal({ item, onClose }: { item: ItemDetailType; onClose: () =>
           </div>
         </div>
       </div>
+
+      {showNewSet && (
+        <ModalOverlay
+          onClose={() => {
+            if (!createSet.isPending) setShowNewSet(false);
+          }}
+        >
+          <div
+            className="modal-sheet animate-in"
+            style={{ padding: 0, display: "flex", flexDirection: "column" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ padding: "20px 18px 0", flexShrink: 0 }}>
+              <div className="modal-handle" style={{ margin: "0 auto 16px" }} />
+              <p style={{ fontSize: 17, fontWeight: 500, marginBottom: 16 }}>Create new set</p>
+              {newSetError && (
+                <div
+                  style={{
+                    padding: "9px 12px",
+                    borderRadius: "var(--radius-md)",
+                    background: "var(--red-dim)",
+                    color: "var(--red-text)",
+                    fontSize: 12.5,
+                    marginBottom: 12,
+                  }}
+                >
+                  {newSetError}
+                </div>
+              )}
+            </div>
+            <div style={{ flex: 1, overflowY: "auto", padding: "0 18px 8px" }}>
+              <div style={{ marginBottom: 14 }}>
+                <label className="form-label" htmlFor="edit-new-set-name">Set name</label>
+                <input
+                  id="edit-new-set-name"
+                  className="input-field"
+                  placeholder="e.g. Boho Master Bedroom"
+                  value={newSetName}
+                  onChange={(e) => setNewSetName(e.target.value)}
+                  autoFocus
+                />
+              </div>
+              <div style={{ marginBottom: 8 }}>
+                <label className="form-label" htmlFor="edit-new-set-desc">Description</label>
+                <input
+                  id="edit-new-set-desc"
+                  className="input-field"
+                  placeholder="Short description…"
+                  value={newSetDescription}
+                  onChange={(e) => setNewSetDescription(e.target.value)}
+                />
+              </div>
+            </div>
+            <div
+              style={{
+                padding: "12px 18px",
+                paddingBottom: "calc(12px + var(--safe-bottom))",
+                borderTop: "1px solid var(--border)",
+                flexShrink: 0,
+              }}
+            >
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  className="btn btn-outline"
+                  style={{ flex: 1 }}
+                  onClick={() => setShowNewSet(false)}
+                  disabled={createSet.isPending}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="btn btn-primary"
+                  style={{ flex: 1 }}
+                  onClick={handleCreateSet}
+                  disabled={createSet.isPending}
+                >
+                  {createSet.isPending ? "Creating…" : "Create"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </ModalOverlay>
+      )}
     </ModalOverlay>
   );
 }
