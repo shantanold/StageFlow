@@ -331,6 +331,27 @@ export function useAssignItems(jobId: string) {
       qc.invalidateQueries({ queryKey: ["jobs", jobId, "items"] });
       qc.invalidateQueries({ queryKey: ["items"] });
       qc.invalidateQueries({ queryKey: ["sets"] });
+      qc.invalidateQueries({ queryKey: ["stats"] });
+    },
+  });
+}
+
+/** Assign one or more items to a job chosen at call time (e.g. from item detail). */
+export function useAssignToJob() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ jobId, itemIds }: { jobId: string; itemIds: string[] }) =>
+      api.post<Job>(`/jobs/${jobId}/assign`, { itemIds }),
+    onSuccess: (_data, { jobId, itemIds }) => {
+      qc.invalidateQueries({ queryKey: ["jobs"] });
+      qc.invalidateQueries({ queryKey: ["jobs", jobId] });
+      qc.invalidateQueries({ queryKey: ["jobs", jobId, "items"] });
+      qc.invalidateQueries({ queryKey: ["items"] });
+      qc.invalidateQueries({ queryKey: ["sets"] });
+      qc.invalidateQueries({ queryKey: ["stats"] });
+      for (const itemId of itemIds) {
+        qc.invalidateQueries({ queryKey: ["items", itemId] });
+      }
     },
   });
 }

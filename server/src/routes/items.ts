@@ -115,8 +115,7 @@ router.get("/", async (req, res) => {
       orderBy: { created_at: "desc" },
     });
 
-    // Flatten to active_job_id so clients can tell an "available" item is
-    // already planned onto a job (items stay available until scan-out).
+    // Flatten to active_job_id so clients can tell if an item is already on a job.
     const rows = items.map(({ job_items, ...item }) => ({
       ...item,
       active_job_id: job_items[0]?.job_id ?? null,
@@ -589,14 +588,38 @@ router.post("/:id/claim", async (req, res) => {
           throw Object.assign(new Error("Item is already assigned to another job"), { status: 400 });
         }
         if (!openAssignment) {
+          const job = await tx.job.findUnique({
+            where: { id: assignJobId },
+            select: { status: true },
+          });
           await tx.jobItem.create({
             data: {
               org_id: req.user!.org_id,
               job_id: assignJobId,
               item_id: updated.id,
-              status: "assigned",
+              status: "loaded",
             },
           });
+          const staged = await tx.item.update({
+            where: { id: updated.id },
+            data: { status: "staged" },
+            include: { set: { select: { id: true, name: true } } },
+          });
+          await tx.movement.create({
+            data: {
+              org_id: req.user!.org_id,
+              item_id: updated.id,
+              job_id: assignJobId,
+              from_status: "available",
+              to_status: "staged",
+              performed_by: req.user!.userId,
+              notes: "Claimed and assigned to job",
+            },
+          });
+          if (job?.status === "planning") {
+            await tx.job.update({ where: { id: assignJobId }, data: { status: "active" } });
+          }
+          return staged;
         }
       }
 

@@ -8,6 +8,7 @@ import { useToast } from "../../contexts/ToastContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { ApiError } from "../../lib/api";
 import { ModalOverlay } from "../../components/ModalOverlay";
+import { SetPhotoCollage } from "./Sets";
 import type { Item, ItemSet } from "../../types";
 
 function BackIcon() {
@@ -100,9 +101,12 @@ export function SetDetail() {
             )}
           </div>
         </div>
-        <div>
-          <h1 className="page-title" style={{ fontSize: 18 }}>{set.name}</h1>
-          {set.description && <p className="page-subtitle">{set.description}</p>}
+        <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+          <SetPhotoCollage urls={set.preview_photo_urls} size={64} />
+          <div style={{ minWidth: 0 }}>
+            <h1 className="page-title" style={{ fontSize: 18 }}>{set.name}</h1>
+            {set.description && <p className="page-subtitle">{set.description}</p>}
+          </div>
         </div>
       </div>
 

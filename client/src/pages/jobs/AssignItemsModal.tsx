@@ -28,7 +28,12 @@ export function AssignItemsModal({ jobId, onClose }: AssignItemsModalProps) {
   const { data: sets = [] } = useSets();
   const { data: allItems = [] } = useItems({ status: "available" });
 
-  const selectable = allItems.filter((i) => !i.active_job_id || i.active_job_id === jobId);
+  const selectable = allItems.filter(
+    (i) =>
+      (!i.active_job_id || i.active_job_id === jobId) &&
+      !i.is_unlabeled &&
+      i.name.trim().toLowerCase() !== "red dot home services"
+  );
 
   const toggleItem = (itemId: string) => {
     const item = allItems.find((i) => i.id === itemId);
@@ -55,7 +60,7 @@ export function AssignItemsModal({ jobId, onClose }: AssignItemsModalProps) {
     if (selected.size === 0) return;
     try {
       await assignItems.mutateAsync([...selected]);
-      showToast(`${selected.size} item${selected.size !== 1 ? "s" : ""} assigned`, "success");
+      showToast(`${selected.size} item${selected.size !== 1 ? "s" : ""} assigned and staged`, "success");
       onClose();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Assign failed", "error");
@@ -282,7 +287,7 @@ export function AssignItemsModal({ jobId, onClose }: AssignItemsModalProps) {
             </div>
           ) : (
             <div className="list-card" style={{ marginBottom: 8 }}>
-              {allItems.map((item: Item) => (
+              {selectable.map((item: Item) => (
                 <div key={item.id} className="list-row" onClick={() => toggleItem(item.id)}>
                   <div
                     style={{

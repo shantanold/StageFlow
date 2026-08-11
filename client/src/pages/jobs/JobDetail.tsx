@@ -279,7 +279,7 @@ export function JobDetail() {
                 </div>
                 <div className="list-card">
                   {items.map((row) => {
-                    const canUnassign = canEditItems && row.status === "assigned";
+                    const canUnassign = canEditItems && (row.status === "assigned" || row.status === "loaded" || row.status === "staged");
                     const canMarkLoaded = canEditItems && row.status === "assigned";
                     const canUndoLoad = canEditItems && ["loaded", "delivered", "picked_up"].includes(row.status);
                     const canMarkReturned = canEditItems && row.status !== "returned";
@@ -388,7 +388,7 @@ export function JobDetail() {
       {unassignTarget && (
         <ConfirmDialog
           title="Remove from this job?"
-          message={`“${unassignTarget.item.name}” will be removed from this job and stay unstaged. Only do this if it hasn’t been staged out yet.`}
+          message={`“${unassignTarget.item.name}” will be removed from this job and marked unstaged.`}
           confirmLabel={unassignItems.isPending ? "Removing…" : "Remove"}
           confirmDanger
           onConfirm={handleUnassign}

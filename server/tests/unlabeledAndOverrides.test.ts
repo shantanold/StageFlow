@@ -29,6 +29,25 @@ describe("unlabeled blanks, claim, duplicate, manual status", () => {
     expect(list.status).toBe(200);
     expect(list.body).toHaveLength(2);
 
+    const job = await request(app)
+      .post("/api/v1/jobs")
+      .set(authHeader(manager.token))
+      .send({
+        address: "1 Placeholder St",
+        city: "Pearland",
+        state: "TX",
+        zip: "77584",
+        client_name: "Client",
+        client_contact: "555",
+        start_date: "2025-02-01",
+        expected_end_date: "2025-05-01",
+      });
+    const blocked = await request(app)
+      .post(`/api/v1/jobs/${job.body.id}/assign`)
+      .set(authHeader(manager.token))
+      .send({ itemIds: [bulk.body.items[0].id] });
+    expect(blocked.status).toBe(400);
+
     const id = bulk.body.items[0].id as string;
     const claim = await request(app)
       .post(`/api/v1/items/${id}/claim`)
@@ -76,6 +95,7 @@ describe("unlabeled blanks, claim, duplicate, manual status", () => {
       .send({ name: "Claimed Sofa", category: "Sofa", job_id: jobId });
     expect(claim.status).toBe(200);
     expect(claim.body.is_unlabeled).toBe(false);
+    expect(claim.body.status).toBe("staged");
 
     const rows = await request(app)
       .get(`/api/v1/jobs/${jobId}/items`)
@@ -83,7 +103,7 @@ describe("unlabeled blanks, claim, duplicate, manual status", () => {
     expect(rows.status).toBe(200);
     expect(rows.body).toHaveLength(1);
     expect(rows.body[0].item_id).toBe(id);
-    expect(rows.body[0].status).toBe("assigned");
+    expect(rows.body[0].status).toBe("loaded");
   });
 
   it("duplicate copies description fields with a new SKU", async () => {
@@ -118,7 +138,7 @@ describe("unlabeled blanks, claim, duplicate, manual status", () => {
     expect(dup.body.purchase_date).toBeNull();
   });
 
-  it("mark-loaded and undo-load match scan-out without camera", async () => {
+  it("assign stages the item immediately; undo-load returns it to assigned", async () => {
     const manager = await registerUser(app, { role: "manager" });
 
     const item = await request(app)
@@ -142,18 +162,22 @@ describe("unlabeled blanks, claim, duplicate, manual status", () => {
       });
     const jobId = job.body.id as string;
 
-    await request(app)
+    const assigned = await request(app)
       .post(`/api/v1/jobs/${jobId}/assign`)
       .set(authHeader(manager.token))
       .send({ itemIds: [itemId] });
+    expect(assigned.status).toBe(200);
+    expect(assigned.body.status).toBe("active");
 
-    const loaded = await request(app)
-      .post(`/api/v1/jobs/${jobId}/mark-loaded`)
-      .set(authHeader(manager.token))
-      .send({ itemId });
-    expect(loaded.status).toBe(200);
-    expect(loaded.body.item.status).toBe("staged");
-    expect(loaded.body.job_activated).toBe(true);
+    const afterAssign = await request(app)
+      .get(`/api/v1/items/${itemId}`)
+      .set(authHeader(manager.token));
+    expect(afterAssign.body.status).toBe("staged");
+
+    const rowsAfterAssign = await request(app)
+      .get(`/api/v1/jobs/${jobId}/items`)
+      .set(authHeader(manager.token));
+    expect(rowsAfterAssign.body.find((r: { item_id: string }) => r.item_id === itemId).status).toBe("loaded");
 
     const undone = await request(app)
       .post(`/api/v1/jobs/${jobId}/undo-load`)
@@ -196,10 +220,6 @@ describe("unlabeled blanks, claim, duplicate, manual status", () => {
       .post(`/api/v1/jobs/${jobId}/assign`)
       .set(authHeader(manager.token))
       .send({ itemIds: [itemId] });
-    await request(app)
-      .post(`/api/v1/jobs/${jobId}/mark-loaded`)
-      .set(authHeader(manager.token))
-      .send({ itemId });
 
     const override = await request(app)
       .post(`/api/v1/items/${itemId}/set-status`)
