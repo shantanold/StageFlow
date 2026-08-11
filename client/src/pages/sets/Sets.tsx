@@ -193,6 +193,16 @@ function SetCard({ set, onClick }: { set: ItemSet; onClick: () => void }) {
             )}
           </div>
         </div>
+        <span style={{ color: "var(--text-tertiary)", flexShrink: 0 }}>
+          <ChevronRightIcon />
+        </span>
+      </div>
+      <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
+        <span className="badge badge-gray">{set.item_count} item{set.item_count !== 1 ? "s" : ""}</span>
+        <span className={avBadge}>{set.available_count} unstaged</span>
+        {set.staged_count > 0 && (
+          <span className="badge badge-blue">{set.staged_count} staged</span>
+        )}
       </div>
     </div>
   );
