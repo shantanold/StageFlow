@@ -15,6 +15,30 @@ function computeSetStats(items: { status: string }[]) {
   };
 }
 
+/** First up to 4 item photos for Spotify-style set collage previews. */
+function previewPhotoUrls(items: { status: string; photo_url: string | null }[]) {
+  return items
+    .filter((i) => i.status !== "disposed" && i.photo_url)
+    .map((i) => i.photo_url as string)
+    .slice(0, 4);
+}
+
+const setItemsSelect = {
+  select: { status: true, photo_url: true },
+  orderBy: { name: "asc" as const },
+};
+
+function serializeSet<T extends { items: { status: string; photo_url: string | null }[] }>(
+  set: T
+) {
+  const { items, ...rest } = set;
+  return {
+    ...rest,
+    ...computeSetStats(items),
+    preview_photo_urls: previewPhotoUrls(items),
+  };
+}
+
 // ─── GET /sets ────────────────────────────────────────────────────────────────
 
 router.get("/", async (_req, res) => {
@@ -22,18 +46,11 @@ router.get("/", async (_req, res) => {
     const sets = await prisma.set.findMany({
       orderBy: { name: "asc" },
       include: {
-        items: {
-          select: { status: true },
-        },
+        items: setItemsSelect,
       },
     });
 
-    const result = sets.map(({ items, ...s }) => ({
-      ...s,
-      ...computeSetStats(items),
-    }));
-
-    return res.json(result);
+    return res.json(sets.map(serializeSet));
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: "Server error" });
@@ -53,7 +70,13 @@ router.post("/", requireManager, async (req, res) => {
       data: { org_id: req.user!.org_id, name: name.trim(), description: description?.trim() ?? "" },
     });
 
-    return res.status(201).json({ ...set, item_count: 0, available_count: 0, staged_count: 0 });
+    return res.status(201).json({
+      ...set,
+      item_count: 0,
+      available_count: 0,
+      staged_count: 0,
+      preview_photo_urls: [],
+    });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: "Server error" });
@@ -66,12 +89,11 @@ router.get("/:id", async (req, res) => {
   try {
     const set = await prisma.set.findUnique({
       where: { id: req.params.id },
-      include: { items: { select: { status: true } } },
+      include: { items: setItemsSelect },
     });
     if (!set) return res.status(404).json({ message: "Set not found" });
 
-    const { items, ...rest } = set;
-    return res.json({ ...rest, ...computeSetStats(items) });
+    return res.json(serializeSet(set));
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: "Server error" });
@@ -93,11 +115,10 @@ router.put("/:id", requireManager, async (req, res) => {
         ...(name !== undefined && { name: name.trim() }),
         ...(description !== undefined && { description: description.trim() }),
       },
-      include: { items: { select: { status: true } } },
+      include: { items: setItemsSelect },
     });
 
-    const { items, ...rest } = set;
-    return res.json({ ...rest, ...computeSetStats(items) });
+    return res.json(serializeSet(set));
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: "Server error" });
