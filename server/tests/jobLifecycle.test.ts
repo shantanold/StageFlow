@@ -46,30 +46,24 @@ describe("core job lifecycle", () => {
     const jobId = jobRes.body.id as string;
     expect(jobRes.body.status).toBe("planning");
 
-    // Assign item to job
+    // Assign item to job — stages immediately and activates planning jobs
     const assignRes = await request(app)
       .post(`/api/v1/jobs/${jobId}/assign`)
       .set(authHeader(manager.token))
       .send({ itemIds: [itemId] });
     expect(assignRes.status).toBe(200);
+    expect(assignRes.body.status).toBe("active");
 
-    // Scan out — stages the item, activates the job
-    const scanOutRes = await request(app)
-      .post(`/api/v1/jobs/${jobId}/scan-out`)
-      .set(authHeader(manager.token))
-      .send({ itemId });
-    expect(scanOutRes.status).toBe(200);
-
-    const jobAfterScanOut = await request(app)
+    const jobAfterAssign = await request(app)
       .get(`/api/v1/jobs/${jobId}`)
       .set(authHeader(manager.token));
-    expect(jobAfterScanOut.body.status).toBe("active");
+    expect(jobAfterAssign.body.status).toBe("active");
 
-    const itemAfterScanOut = await request(app)
+    const itemAfterAssign = await request(app)
       .get(`/api/v1/items/${itemId}`)
       .set(authHeader(manager.token));
-    expect(itemAfterScanOut.body.status).toBe("staged");
-    expect(itemAfterScanOut.body.current_job.id).toBe(jobId);
+    expect(itemAfterAssign.body.status).toBe("staged");
+    expect(itemAfterAssign.body.current_job.id).toBe(jobId);
 
     // Dashboard reflects the staged item
     const dashboardMidway = await request(app)
@@ -116,9 +110,8 @@ describe("core job lifecycle", () => {
     const jobId = jobRes.body.id as string;
 
     await request(app).post(`/api/v1/jobs/${jobId}/assign`).set(authHeader(manager.token)).send({ itemIds: [itemId] });
-    await request(app).post(`/api/v1/jobs/${jobId}/scan-out`).set(authHeader(manager.token)).send({ itemId });
 
-    // Never scanned back — force complete instead
+    // Never returned — force complete instead
     const forceRes = await request(app)
       .post(`/api/v1/jobs/${jobId}/force-complete`)
       .set(authHeader(manager.token));
@@ -152,7 +145,7 @@ describe("core job lifecycle", () => {
     expect(jobRes.status).toBe(403);
   });
 
-  it("manager can unassign items that have not been scanned out", async () => {
+  it("manager can unassign staged items from a job", async () => {
     const manager = await registerUser(app, { role: "manager" });
 
     const itemA = await request(app)
@@ -179,20 +172,6 @@ describe("core job lifecycle", () => {
       .set(authHeader(manager.token))
       .send({ itemIds: [itemA.body.id, itemB.body.id] });
 
-    // Scan out only B — A stays "assigned"
-    await request(app)
-      .post(`/api/v1/jobs/${job.body.id}/scan-out`)
-      .set(authHeader(manager.token))
-      .send({ itemId: itemB.body.id });
-
-    // Cannot unassign a loaded item
-    const blocked = await request(app)
-      .post(`/api/v1/jobs/${job.body.id}/unassign`)
-      .set(authHeader(manager.token))
-      .send({ itemIds: [itemB.body.id] });
-    expect(blocked.status).toBe(400);
-
-    // Can unassign the still-assigned item
     const unassign = await request(app)
       .post(`/api/v1/jobs/${job.body.id}/unassign`)
       .set(authHeader(manager.token))
@@ -207,7 +186,6 @@ describe("core job lifecycle", () => {
     expect(items.body).toHaveLength(1);
     expect(items.body[0].item_id).toBe(itemB.body.id);
 
-    // Item A is still available and free to assign elsewhere
     const a = await request(app)
       .get(`/api/v1/items/${itemA.body.id}`)
       .set(authHeader(manager.token));

@@ -4,10 +4,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   useItem, useItemMovements, useUpdateItem, useMarkItemFound,
   useDisposeItem, useDeleteItem, useDuplicateItem, useSetItemStatus, useJobs,
+  useAssignToJob, useSets, useCreateSet,
 } from "../../lib/queries";
-import { useSets } from "../../lib/queries";
 import { downloadLabels, useQRCodeUrl } from "../../lib/labels";
-import { uploadImage } from "../../lib/cloudinary";
+import { displayPhotoUrl, uploadImage } from "../../lib/cloudinary";
 import {
   getCategoryEmoji, statusBadgeClass, statusLabel,
   formatDate, formatCurrency, formatDimensions, movementDotColor, CATEGORIES,
@@ -188,10 +188,15 @@ export function ItemDetail() {
   const deleteItem = useDeleteItem(id);
   const duplicateItem = useDuplicateItem();
   const setStatus = useSetItemStatus(id);
+  const assignToJob = useAssignToJob();
   const { data: jobs = [] } = useJobs();
   const [confirmAction, setConfirmAction] = useState<"dispose" | "delete" | null>(null);
   const [showStatus, setShowStatus] = useState(false);
+  const [showAssignJob, setShowAssignJob] = useState(false);
+  const [assignJobId, setAssignJobId] = useState("");
   const [statusForm, setStatusForm] = useState({ status: "available", condition: "good", notes: "", job_id: "" });
+
+  const activeJobs = jobs.filter((j) => j.status === "planning" || j.status === "active");
 
   async function handleDuplicate() {
     try {
@@ -218,10 +223,22 @@ export function ItemDetail() {
     }
   }
 
+  async function handleAssignToJob() {
+    if (!assignJobId) return;
+    try {
+      await assignToJob.mutateAsync({ jobId: assignJobId, itemIds: [id] });
+      showToast("Assigned to job and marked staged", "success");
+      setShowAssignJob(false);
+      setAssignJobId("");
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : "Failed to assign item", "error");
+    }
+  }
+
   async function handleMarkFound() {
     try {
       await markFound.mutateAsync();
-      showToast("Item marked available", "success");
+      showToast("Item marked unstaged", "success");
     } catch (err) {
       showToast(err instanceof ApiError ? err.message : "Failed to update item", "error");
     }
@@ -265,6 +282,13 @@ export function ItemDetail() {
     );
   }
 
+  const canAssignToJob =
+    isManager &&
+    !item.is_unlabeled &&
+    item.name.trim().toLowerCase() !== "red dot home services" &&
+    item.status === "available" &&
+    !item.current_job;
+
   return (
     <div className="animate-in">
       {/* Header */}
@@ -292,8 +316,8 @@ export function ItemDetail() {
               fontSize: 28, overflow: "hidden",
             }}
           >
-            {item.photo_url ? (
-              <img src={item.photo_url} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            {displayPhotoUrl(item.photo_url) ? (
+              <img src={displayPhotoUrl(item.photo_url)} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
             ) : (
               getCategoryEmoji(item.category)
             )}
@@ -360,7 +384,7 @@ export function ItemDetail() {
         {isManager && item.status === "missing" && (
           <div className="card" style={{ borderColor: "rgba(239,68,68,0.3)", marginBottom: 12 }}>
             <p style={{ fontSize: 12.5, color: "var(--text-secondary)", marginBottom: 10 }}>
-              This item was marked missing when a job was force-completed with it unreturned. If it's turned up, mark it found to put it back in available inventory.
+              This item was marked missing when a job was force-completed with it unreturned. If it's turned up, mark it found to put it back in unstaged inventory.
             </p>
             <button
               className="btn btn-primary"
@@ -375,11 +399,10 @@ export function ItemDetail() {
 
         {/* Photo */}
         {item.photo_url && (
-          <div style={{ borderRadius: "var(--radius-lg)", overflow: "hidden", marginBottom: 12 }}>
+          <div className="item-hero-photo">
             <img
-              src={item.photo_url}
+              src={displayPhotoUrl(item.photo_url)}
               alt={item.name}
-              style={{ width: "100%", maxHeight: 220, objectFit: "cover", display: "block" }}
             />
           </div>
         )}
@@ -423,6 +446,28 @@ export function ItemDetail() {
                 <ChevronRightIcon />
               </span>
             </div>
+          </div>
+        )}
+
+        {canAssignToJob && (
+          <div className="card" style={{ marginBottom: 12, marginTop: 12 }}>
+            <p style={{ fontSize: 11, fontWeight: 500, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 8 }}>
+              Staging job
+            </p>
+            <p style={{ fontSize: 12.5, color: "var(--text-secondary)", marginBottom: 10 }}>
+              Assign this item to a planning or active job. It will be marked staged.
+            </p>
+            <button
+              className="btn btn-primary"
+              style={{ width: "100%" }}
+              disabled={activeJobs.length === 0}
+              onClick={() => {
+                setAssignJobId(activeJobs[0]?.id ?? "");
+                setShowAssignJob(true);
+              }}
+            >
+              {activeJobs.length === 0 ? "No active jobs" : "Assign to job…"}
+            </button>
           </div>
         )}
 
@@ -572,7 +617,7 @@ export function ItemDetail() {
                   value={statusForm.status}
                   onChange={(e) => setStatusForm((f) => ({ ...f, status: e.target.value }))}
                 >
-                  <option value="available">Available</option>
+                  <option value="available">Unstaged</option>
                   <option value="staged">Staged</option>
                   <option value="missing">Missing</option>
                   <option value="disposed">Disposed</option>
@@ -623,6 +668,40 @@ export function ItemDetail() {
             </div>
           </ModalOverlay>
         )}
+
+        {showAssignJob && (
+          <ModalOverlay onClose={() => setShowAssignJob(false)}>
+            <div className="modal-sheet" onClick={(e) => e.stopPropagation()} style={{ padding: 18 }}>
+              <div className="modal-handle" />
+              <p style={{ fontSize: 16, fontWeight: 500, marginBottom: 8 }}>Assign to job</p>
+              <p style={{ fontSize: 12.5, color: "var(--text-secondary)", marginBottom: 12 }}>
+                This item will be added to the job and marked staged.
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <select
+                  className="input-field"
+                  value={assignJobId}
+                  onChange={(e) => setAssignJobId(e.target.value)}
+                >
+                  <option value="">Select job…</option>
+                  {activeJobs.map((j) => (
+                    <option key={j.id} value={j.id}>
+                      {j.address} ({j.status})
+                    </option>
+                  ))}
+                </select>
+                <button
+                  className="btn btn-primary"
+                  disabled={!assignJobId || assignToJob.isPending}
+                  onClick={handleAssignToJob}
+                >
+                  {assignToJob.isPending ? "Assigning…" : "Assign & stage"}
+                </button>
+                <button className="btn btn-outline" onClick={() => setShowAssignJob(false)}>Cancel</button>
+              </div>
+            </div>
+          </ModalOverlay>
+        )}
       </div>
     </div>
   );
@@ -650,6 +729,7 @@ const selectStyle = { backgroundImage: SelectArrow, backgroundRepeat: "no-repeat
 function EditItemModal({ item, onClose }: { item: ItemDetailType; onClose: () => void }) {
   const { showToast } = useToast();
   const updateItem = useUpdateItem(item.id);
+  const createSet = useCreateSet();
   const { data: sets = [] } = useSets();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -666,12 +746,37 @@ function EditItemModal({ item, onClose }: { item: ItemDetailType; onClose: () =>
     notes: item.notes ?? "",
   });
   const [photoUrl, setPhotoUrl] = useState(item.photo_url ?? "");
-  const [photoPreview, setPhotoPreview] = useState(item.photo_url ?? "");
+  const [photoPreview, setPhotoPreview] = useState(displayPhotoUrl(item.photo_url) ?? "");
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [error, setError] = useState("");
+  const [showNewSet, setShowNewSet] = useState(false);
+  const [newSetName, setNewSetName] = useState("");
+  const [newSetDescription, setNewSetDescription] = useState("");
+  const [newSetError, setNewSetError] = useState("");
 
   function set<K extends keyof typeof form>(key: K, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  async function handleCreateSet() {
+    if (!newSetName.trim()) {
+      setNewSetError("Name is required");
+      return;
+    }
+    setNewSetError("");
+    try {
+      const created = await createSet.mutateAsync({
+        name: newSetName.trim(),
+        description: newSetDescription.trim(),
+      });
+      set("set_id", created.id);
+      setShowNewSet(false);
+      setNewSetName("");
+      setNewSetDescription("");
+      showToast(`Created set “${created.name}”`, "success");
+    } catch (err) {
+      setNewSetError(err instanceof ApiError ? err.message : "Failed to create set");
+    }
   }
 
   async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -684,7 +789,7 @@ function EditItemModal({ item, onClose }: { item: ItemDetailType; onClose: () =>
       setPhotoUrl(url);
     } catch {
       showToast("Photo upload failed", "error");
-      setPhotoPreview(item.photo_url ?? "");
+      setPhotoPreview(displayPhotoUrl(item.photo_url) ?? "");
     } finally {
       setUploadProgress(null);
     }
@@ -768,10 +873,28 @@ function EditItemModal({ item, onClose }: { item: ItemDetailType; onClose: () =>
           {/* Set */}
           <div style={{ marginBottom: 12 }}>
             <label className="form-label">Set</label>
-            <select className="input-field" style={selectStyle} value={form.set_id} onChange={(e) => set("set_id", e.target.value)}>
-              <option value="">No set</option>
-              {sets.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
+            <div style={{ display: "flex", gap: 8 }}>
+              <select
+                className="input-field"
+                style={{ ...selectStyle, flex: 1 }}
+                value={form.set_id}
+                onChange={(e) => set("set_id", e.target.value)}
+              >
+                <option value="">No set</option>
+                {sets.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+              <button
+                type="button"
+                className="btn btn-outline"
+                style={{ flexShrink: 0, whiteSpace: "nowrap", padding: "0 12px", fontSize: 12 }}
+                onClick={() => {
+                  setNewSetError("");
+                  setShowNewSet(true);
+                }}
+              >
+                New set
+              </button>
+            </div>
           </div>
 
           {/* Cost + Date */}
@@ -806,8 +929,8 @@ function EditItemModal({ item, onClose }: { item: ItemDetailType; onClose: () =>
                 <span style={{ fontSize: 12 }}>Add photo</span>
               </button>
             ) : (
-              <div style={{ position: "relative", borderRadius: "var(--radius-md)", overflow: "hidden" }}>
-                <img src={photoPreview} alt="Preview" style={{ width: "100%", height: 130, objectFit: "cover", display: "block" }} />
+              <div className="photo-preview-frame">
+                <img src={photoPreview} alt="Preview" />
                 {uploadProgress !== null && (
                   <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
                     <div style={{ width: "60%", height: 4, background: "rgba(255,255,255,0.3)", borderRadius: 2 }}>
@@ -840,6 +963,89 @@ function EditItemModal({ item, onClose }: { item: ItemDetailType; onClose: () =>
           </div>
         </div>
       </div>
+
+      {showNewSet && (
+        <ModalOverlay
+          onClose={() => {
+            if (!createSet.isPending) setShowNewSet(false);
+          }}
+        >
+          <div
+            className="modal-sheet animate-in"
+            style={{ padding: 0, display: "flex", flexDirection: "column" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ padding: "20px 18px 0", flexShrink: 0 }}>
+              <div className="modal-handle" style={{ margin: "0 auto 16px" }} />
+              <p style={{ fontSize: 17, fontWeight: 500, marginBottom: 16 }}>Create new set</p>
+              {newSetError && (
+                <div
+                  style={{
+                    padding: "9px 12px",
+                    borderRadius: "var(--radius-md)",
+                    background: "var(--red-dim)",
+                    color: "var(--red-text)",
+                    fontSize: 12.5,
+                    marginBottom: 12,
+                  }}
+                >
+                  {newSetError}
+                </div>
+              )}
+            </div>
+            <div style={{ flex: 1, overflowY: "auto", padding: "0 18px 8px" }}>
+              <div style={{ marginBottom: 14 }}>
+                <label className="form-label" htmlFor="edit-new-set-name">Set name</label>
+                <input
+                  id="edit-new-set-name"
+                  className="input-field"
+                  placeholder="e.g. Boho Master Bedroom"
+                  value={newSetName}
+                  onChange={(e) => setNewSetName(e.target.value)}
+                  autoFocus
+                />
+              </div>
+              <div style={{ marginBottom: 8 }}>
+                <label className="form-label" htmlFor="edit-new-set-desc">Description</label>
+                <input
+                  id="edit-new-set-desc"
+                  className="input-field"
+                  placeholder="Short description…"
+                  value={newSetDescription}
+                  onChange={(e) => setNewSetDescription(e.target.value)}
+                />
+              </div>
+            </div>
+            <div
+              style={{
+                padding: "12px 18px",
+                paddingBottom: "calc(12px + var(--safe-bottom))",
+                borderTop: "1px solid var(--border)",
+                flexShrink: 0,
+              }}
+            >
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  className="btn btn-outline"
+                  style={{ flex: 1 }}
+                  onClick={() => setShowNewSet(false)}
+                  disabled={createSet.isPending}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="btn btn-primary"
+                  style={{ flex: 1 }}
+                  onClick={handleCreateSet}
+                  disabled={createSet.isPending}
+                >
+                  {createSet.isPending ? "Creating…" : "Create"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </ModalOverlay>
+      )}
     </ModalOverlay>
   );
 }

@@ -93,6 +93,8 @@ export interface ItemSet {
   item_count: number;
   available_count: number;
   staged_count: number;
+  /** Up to 4 item photo URLs for list collage previews. */
+  preview_photo_urls?: string[];
 }
 
 // ─── Jobs ────────────────────────────────────────────────────────────────────

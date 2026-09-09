@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useSets, useItems, useAssignItems } from "../../lib/queries";
 import { getCategoryEmoji } from "../../lib/utils";
+import { displayPhotoUrl } from "../../lib/cloudinary";
 import { useToast } from "../../contexts/ToastContext";
 import { ModalOverlay } from "../../components/ModalOverlay";
 import type { Item } from "../../types";
@@ -27,7 +28,12 @@ export function AssignItemsModal({ jobId, onClose }: AssignItemsModalProps) {
   const { data: sets = [] } = useSets();
   const { data: allItems = [] } = useItems({ status: "available" });
 
-  const selectable = allItems.filter((i) => !i.active_job_id || i.active_job_id === jobId);
+  const selectable = allItems.filter(
+    (i) =>
+      (!i.active_job_id || i.active_job_id === jobId) &&
+      !i.is_unlabeled &&
+      i.name.trim().toLowerCase() !== "red dot home services"
+  );
 
   const toggleItem = (itemId: string) => {
     const item = allItems.find((i) => i.id === itemId);
@@ -54,7 +60,7 @@ export function AssignItemsModal({ jobId, onClose }: AssignItemsModalProps) {
     if (selected.size === 0) return;
     try {
       await assignItems.mutateAsync([...selected]);
-      showToast(`${selected.size} item${selected.size !== 1 ? "s" : ""} assigned`, "success");
+      showToast(`${selected.size} item${selected.size !== 1 ? "s" : ""} assigned and staged`, "success");
       onClose();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Assign failed", "error");
@@ -132,7 +138,7 @@ export function AssignItemsModal({ jobId, onClose }: AssignItemsModalProps) {
                         </div>
                         <div>
                           <div style={{ fontSize: 14, fontWeight: 500 }}>{set.name}</div>
-                          <div style={{ fontSize: 11.5, color: "var(--text-tertiary)" }}>{avail.length} items available</div>
+                          <div style={{ fontSize: 11.5, color: "var(--text-tertiary)" }}>{avail.length} unstaged</div>
                         </div>
                       </div>
                     </div>
@@ -227,7 +233,7 @@ export function AssignItemsModal({ jobId, onClose }: AssignItemsModalProps) {
                         </div>
                         <div>
                           <div style={{ fontSize: 14, fontWeight: 500 }}>Standalone items</div>
-                          <div style={{ fontSize: 11.5, color: "var(--text-tertiary)" }}>{standalone.length} items available</div>
+                          <div style={{ fontSize: 11.5, color: "var(--text-tertiary)" }}>{standalone.length} unstaged</div>
                         </div>
                       </div>
                     </div>
@@ -281,7 +287,7 @@ export function AssignItemsModal({ jobId, onClose }: AssignItemsModalProps) {
             </div>
           ) : (
             <div className="list-card" style={{ marginBottom: 8 }}>
-              {allItems.map((item: Item) => (
+              {selectable.map((item: Item) => (
                 <div key={item.id} className="list-row" onClick={() => toggleItem(item.id)}>
                   <div
                     style={{
@@ -302,8 +308,29 @@ export function AssignItemsModal({ jobId, onClose }: AssignItemsModalProps) {
                       </span>
                     )}
                   </div>
-                  <div style={{ width: 32, height: 32, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    {getCategoryEmoji(item.category)}
+                  <div
+                    style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 6,
+                      fontSize: 14,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      background: "var(--bg-surface)",
+                      overflow: "hidden",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {displayPhotoUrl(item.photo_url) ? (
+                      <img
+                        src={displayPhotoUrl(item.photo_url)}
+                        alt={item.name}
+                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                      />
+                    ) : (
+                      getCategoryEmoji(item.category)
+                    )}
                   </div>
                   <div className="list-row-content" style={{ flex: 1 }}>
                     <div className="list-row-title" style={{ fontSize: 13 }}>

@@ -331,6 +331,27 @@ export function useAssignItems(jobId: string) {
       qc.invalidateQueries({ queryKey: ["jobs", jobId, "items"] });
       qc.invalidateQueries({ queryKey: ["items"] });
       qc.invalidateQueries({ queryKey: ["sets"] });
+      qc.invalidateQueries({ queryKey: ["stats"] });
+    },
+  });
+}
+
+/** Assign one or more items to a job chosen at call time (e.g. from item detail). */
+export function useAssignToJob() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ jobId, itemIds }: { jobId: string; itemIds: string[] }) =>
+      api.post<Job>(`/jobs/${jobId}/assign`, { itemIds }),
+    onSuccess: (_data, { jobId, itemIds }) => {
+      qc.invalidateQueries({ queryKey: ["jobs"] });
+      qc.invalidateQueries({ queryKey: ["jobs", jobId] });
+      qc.invalidateQueries({ queryKey: ["jobs", jobId, "items"] });
+      qc.invalidateQueries({ queryKey: ["items"] });
+      qc.invalidateQueries({ queryKey: ["sets"] });
+      qc.invalidateQueries({ queryKey: ["stats"] });
+      for (const itemId of itemIds) {
+        qc.invalidateQueries({ queryKey: ["items", itemId] });
+      }
     },
   });
 }
@@ -421,13 +442,14 @@ export function useBulkUnlabeled() {
 export function useClaimItem(itemId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: Partial<CreateItemInput> & { condition?: string }) =>
+    mutationFn: (data: Partial<CreateItemInput> & { condition?: string; job_id?: string | null }) =>
       api.post<Item>(`/items/${itemId}/claim`, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["items"] });
       qc.invalidateQueries({ queryKey: ["items", itemId] });
       qc.invalidateQueries({ queryKey: ["sets"] });
       qc.invalidateQueries({ queryKey: ["stats"] });
+      qc.invalidateQueries({ queryKey: ["jobs"] });
     },
   });
 }

@@ -255,11 +255,10 @@ export function AddItem() {
                 <span style={{ fontSize: 12 }}>Take photo or choose from library</span>
               </button>
             ) : (
-              <div style={{ position: "relative", borderRadius: "var(--radius-md)", overflow: "hidden" }}>
+              <div className="photo-preview-frame">
                 <img
                   src={photoPreview}
                   alt="Preview"
-                  style={{ width: "100%", height: 160, objectFit: "cover", display: "block" }}
                 />
                 {/* Upload progress overlay */}
                 {uploadProgress !== null && (

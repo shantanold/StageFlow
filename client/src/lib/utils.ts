@@ -1,5 +1,7 @@
 // ─── Category emoji ───────────────────────────────────────────────────────────
 
+import type { Item } from "../types";
+
 const EMOJI_MAP: Record<string, string> = {
   sofa:    "🛋️",
   chair:   "🪑",
@@ -80,10 +82,28 @@ export function statusBadgeClass(status: string, condition?: string): string {
 export function statusLabel(status: string, condition?: string): string {
   if (status === "missing")   return "Missing";
   if (condition === "damaged") return "Damaged";
-  if (status === "available") return "Available";
+  if (status === "available") return "Unstaged";
   if (status === "staged")    return "Staged";
   if (status === "disposed")  return "Disposed";
   return status;
+}
+
+/** User-facing label for a job-item lifecycle status. */
+export function jobItemStatusLabel(status: string): string {
+  switch (status) {
+    case "assigned":
+      return "Unstaged";
+    case "loaded":
+    case "delivered":
+    case "picked_up":
+      return "Staged";
+    case "returned":
+      return "Returned";
+    case "missing":
+      return "Missing";
+    default:
+      return status;
+  }
 }
 
 export function movementDotColor(toStatus: string): string {
@@ -100,4 +120,32 @@ export function jobStatusBadgeClass(status: string): string {
   if (status === "completed") return "badge badge-gray";
   if (status === "cancelled") return "badge badge-gray";
   return "badge badge-gray";
+}
+
+/** Collapse duplicate catalog copies (same name/category/set) into one template. Prefer photo, then newest. */
+export function uniqueItemTemplates(items: Item[]): Item[] {
+  const byKey = new Map<string, Item>();
+  for (const item of items) {
+    if (item.status === "disposed") continue;
+    const key = [
+      item.name.trim().toLowerCase(),
+      item.category.trim().toLowerCase(),
+      item.set_id ?? "",
+    ].join("|");
+    const prev = byKey.get(key);
+    if (!prev) {
+      byKey.set(key, item);
+      continue;
+    }
+    const prevPhoto = Boolean(prev.photo_url);
+    const nextPhoto = Boolean(item.photo_url);
+    if (nextPhoto !== prevPhoto) {
+      if (nextPhoto) byKey.set(key, item);
+      continue;
+    }
+    if (new Date(item.created_at).getTime() > new Date(prev.created_at).getTime()) {
+      byKey.set(key, item);
+    }
+  }
+  return [...byKey.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
