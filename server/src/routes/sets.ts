@@ -125,6 +125,55 @@ router.put("/:id", requireManager, async (req, res) => {
   }
 });
 
+// ─── POST /sets/:id/assign ────────────────────────────────────────────────────
+// Bulk-add existing inventory items into this set (sets are just a grouping
+// label, so an item already in another set is simply moved).
+
+router.post("/:id/assign", requireManager, async (req, res) => {
+  try {
+    const existing = await prisma.set.findUnique({ where: { id: req.params.id } });
+    if (!existing) return res.status(404).json({ message: "Set not found" });
+
+    const { itemIds } = req.body as { itemIds?: string[] };
+    if (!Array.isArray(itemIds) || itemIds.length === 0) {
+      return res.status(400).json({ message: "itemIds is required" });
+    }
+
+    await prisma.item.updateMany({
+      where: { id: { in: itemIds } },
+      data: { set_id: req.params.id },
+    });
+
+    const set = await prisma.set.findUnique({
+      where: { id: req.params.id },
+      include: { items: setItemsSelect },
+    });
+
+    return res.json(serializeSet(set!));
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
+// ─── DELETE /sets/:id ─────────────────────────────────────────────────────────
+// Items in the set are detached (set_id → null), not deleted — see the
+// items_set_id_fkey ON DELETE SET NULL constraint.
+
+router.delete("/:id", requireManager, async (req, res) => {
+  try {
+    const existing = await prisma.set.findUnique({ where: { id: req.params.id } });
+    if (!existing) return res.status(404).json({ message: "Set not found" });
+
+    await prisma.set.delete({ where: { id: req.params.id } });
+
+    return res.json({ message: "Set deleted", id: req.params.id });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
 // ─── GET /sets/:id/items ──────────────────────────────────────────────────────
 
 router.get("/:id/items", async (req, res) => {
