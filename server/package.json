@@ -11,6 +11,7 @@
     "generate": "prisma generate",
     "studio": "prisma studio",
     "seed": "ts-node --transpile-only prisma/seed.ts",
+    "admin:setup": "ts-node --transpile-only scripts/setupPlatformAdmin.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",

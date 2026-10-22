@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api";
-import type { Item, ItemDetail, ItemSet, Movement, Job, JobItemRow, ManagedUser, AdminOrganization, AdminOrganizationDetail } from "../types";
+import type { Item, ItemDetail, ItemSet, Movement, Job, JobItemRow, ManagedUser, AdminOrganization, AdminOrganizationDetail, AdminItemsResponse } from "../types";
 
 // ─── Items ────────────────────────────────────────────────────────────────────
 
@@ -551,5 +551,23 @@ export function useAdminOrganization(id: string) {
     queryKey: ["admin", "organizations", id],
     queryFn: () => api.get<AdminOrganizationDetail>(`/admin/organizations/${id}`),
     enabled: !!id,
+  });
+}
+
+export interface AdminItemFilters {
+  org_id?: string;
+  search?: string;
+  status?: string;
+}
+
+export function useAdminItems(filters: AdminItemFilters) {
+  const p = new URLSearchParams();
+  if (filters.org_id) p.set("org_id", filters.org_id);
+  if (filters.search?.trim()) p.set("search", filters.search.trim());
+  if (filters.status) p.set("status", filters.status);
+  const qs = p.toString();
+  return useQuery({
+    queryKey: ["admin", "items", filters],
+    queryFn: () => api.get<AdminItemsResponse>(`/admin/items${qs ? `?${qs}` : ""}`),
   });
 }

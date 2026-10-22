@@ -104,6 +104,14 @@ export function OrganizationDetail() {
       </div>
 
       <div className="page-body">
+        <button
+          className="btn btn-outline"
+          style={{ fontSize: 12.5, padding: "8px 14px", marginBottom: 16 }}
+          onClick={() => navigate(`/admin/items?org=${org.id}`)}
+        >
+          View this org's furniture
+        </button>
+
         <p style={labelStyle}>Organization</p>
         <div className="list-card" style={{ marginBottom: 20 }}>
           <InfoRow label="Invite code" value={org.invite_code} />

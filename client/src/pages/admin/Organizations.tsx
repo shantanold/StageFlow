@@ -69,8 +69,15 @@ export function Organizations() {
   return (
     <div className="animate-in">
       <div className="page-header">
-        <h1 className="page-title">Organizations</h1>
-        <p className="page-subtitle">Platform admin · every org on StageFlow</p>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+          <div>
+            <h1 className="page-title">Organizations</h1>
+            <p className="page-subtitle">Platform admin · every org on StageFlow</p>
+          </div>
+          <button className="btn btn-outline" style={{ fontSize: 12, padding: "7px 12px", flexShrink: 0 }} onClick={() => navigate("/admin/items")}>
+            All furniture
+          </button>
+        </div>
       </div>
 
       <div className="page-body">
