@@ -1,5 +1,7 @@
 import { Router } from "express";
+import { ItemStatus, Prisma } from "@prisma/client";
 import { rawPrisma } from "../lib/prisma";
+import { PLATFORM_ORG_SLUG } from "../lib/platformAdmin";
 import { authenticate } from "../middleware/auth";
 import { requirePlatformAdmin } from "../middleware/role";
 
@@ -21,7 +23,9 @@ function countsByOrg(rows: { org_id: string; _count: { _all: number } }[]) {
 router.get("/organizations", async (_req, res) => {
   try {
     const [orgs, activeJobs, lastMovements] = await Promise.all([
+      // The platform org holds only admins and never any furniture; it isn't a customer.
       rawPrisma.organization.findMany({
+        where: { slug: { not: PLATFORM_ORG_SLUG } },
         orderBy: { created_at: "asc" },
         include: { _count: { select: { users: true, items: true, jobs: true } } },
       }),
@@ -86,6 +90,53 @@ router.get("/organizations/:id", async (req, res) => {
       jobs_by_status: Object.fromEntries(jobsByStatus.map((r) => [r.status, r._count._all])),
       users: org.users,
     });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
+// ─── GET /admin/items ───────────────────────────────────────────────────────
+// Furniture across every org (or one, with ?org_id=). Optional ?search= (name
+// or SKU) and ?status=. Capped at ?limit= (default 200, max 500), newest
+// first; `total` is the full match count so the client can say "showing N of M".
+
+const ITEM_STATUSES: ItemStatus[] = ["available", "staged", "disposed", "missing"];
+
+router.get("/items", async (req, res) => {
+  try {
+    const { org_id, search, status, limit } = req.query as Record<string, string | undefined>;
+
+    const where: Prisma.ItemWhereInput = {};
+    if (org_id) where.org_id = org_id;
+    if (status && ITEM_STATUSES.includes(status as ItemStatus)) where.status = status as ItemStatus;
+    const q = search?.trim();
+    if (q) {
+      where.OR = [
+        { name: { contains: q, mode: "insensitive" } },
+        { sku: { contains: q, mode: "insensitive" } },
+      ];
+    }
+
+    const parsed = Number.parseInt(limit ?? "", 10);
+    const take = Number.isFinite(parsed) ? Math.min(Math.max(parsed, 1), 500) : 200;
+
+    const [items, total] = await Promise.all([
+      rawPrisma.item.findMany({
+        where,
+        orderBy: { created_at: "desc" },
+        take,
+        select: {
+          id: true, sku: true, name: true, category: true, status: true, condition: true,
+          photo_url: true, purchase_cost: true, created_at: true,
+          org: { select: { id: true, name: true } },
+          set: { select: { id: true, name: true } },
+        },
+      }),
+      rawPrisma.item.count({ where }),
+    ]);
+
+    return res.json({ items, total });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: "Server error" });
