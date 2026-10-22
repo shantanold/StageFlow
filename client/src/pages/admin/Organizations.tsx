@@ -1,7 +1,10 @@
 import { useMemo, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
-import { useAdminOrganizations } from "../../lib/queries";
+import { useAdminOrganizations, useCreateOrganization } from "../../lib/queries";
+import { useToast } from "../../contexts/ToastContext";
+import { ApiError } from "../../lib/api";
+import { ModalOverlay } from "../../components/ModalOverlay";
 import { formatDate } from "../../lib/utils";
 import type { AdminOrganization } from "../../types";
 
@@ -33,6 +36,46 @@ function plural(n: number, word: string) {
   return `${n} ${word}${n === 1 ? "" : "s"}`;
 }
 
+function NewOrgModal({ onClose }: { onClose: () => void }) {
+  const navigate = useNavigate();
+  const { showToast } = useToast();
+  const create = useCreateOrganization();
+  const [name, setName] = useState("");
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    try {
+      const org = await create.mutateAsync(name);
+      showToast(`${org.name} created`, "success");
+      navigate(`/admin/organizations/${org.id}`);
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : "Failed to create organization", "error");
+    }
+  }
+
+  return (
+    <ModalOverlay onClose={onClose}>
+      <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-handle" />
+        <div style={{ fontSize: 17, fontWeight: 500, marginBottom: 6 }}>New organization</div>
+        <p style={{ fontSize: 12.5, color: "var(--text-tertiary)", marginBottom: 16 }}>
+          You'll get an invite code to share; anyone who signs up with it joins this org.
+        </p>
+        <form onSubmit={submit}>
+          <label className="form-label">Name</label>
+          <input className="input-field" autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Bluebird Staging" />
+          <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+            <button type="button" className="btn btn-outline" style={{ flex: 1 }} onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={name.trim().length < 2 || create.isPending}>
+              {create.isPending ? "Creating…" : "Create"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </ModalOverlay>
+  );
+}
+
 const labelStyle = {
   fontSize: 11, fontWeight: 500, color: "var(--text-tertiary)",
   textTransform: "uppercase" as const, letterSpacing: "0.8px", marginBottom: 6,
@@ -43,6 +86,7 @@ export function Organizations() {
   const navigate = useNavigate();
   const { data: orgs = [], isLoading, error } = useAdminOrganizations();
   const [search, setSearch] = useState("");
+  const [showNew, setShowNew] = useState(false);
 
   const filtered = useMemo(() => filterOrganizations(orgs, search), [orgs, search]);
 
@@ -74,8 +118,8 @@ export function Organizations() {
             <h1 className="page-title">Organizations</h1>
             <p className="page-subtitle">Platform admin · every org on StageFlow</p>
           </div>
-          <button className="btn btn-outline" style={{ fontSize: 12, padding: "7px 12px", flexShrink: 0 }} onClick={() => navigate("/admin/items")}>
-            All furniture
+          <button className="btn btn-primary" style={{ fontSize: 12, padding: "7px 12px", flexShrink: 0 }} onClick={() => setShowNew(true)}>
+            + New org
           </button>
         </div>
       </div>
@@ -151,6 +195,7 @@ export function Organizations() {
           </div>
         )}
       </div>
+      {showNew && <NewOrgModal onClose={() => setShowNew(false)} />}
     </div>
   );
 }

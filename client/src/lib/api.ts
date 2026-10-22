@@ -9,8 +9,8 @@ class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const token = localStorage.getItem("sf_token");
+async function request<T>(path: string, options: RequestInit = {}, tokenOverride?: string): Promise<T> {
+  const token = tokenOverride ?? localStorage.getItem("sf_token");
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -35,5 +35,18 @@ export const api = {
   patch:  <T>(path: string, body: unknown)   => request<T>(path, { method: "PATCH",  body: JSON.stringify(body) }),
   delete: <T>(path: string)                  => request<T>(path, { method: "DELETE" }),
 };
+
+/**
+ * Same calls, sent with an explicit token instead of the signed-in one. Platform
+ * admins use it with a short-lived org-scoped token to change one org's data
+ * (e.g. an item from All Furniture) without switching the whole app into that org.
+ */
+export function apiWithToken(token: string) {
+  return {
+    get:   <T>(path: string)                => request<T>(path, {}, token),
+    post:  <T>(path: string, body: unknown) => request<T>(path, { method: "POST", body: JSON.stringify(body) }, token),
+    put:   <T>(path: string, body: unknown) => request<T>(path, { method: "PUT",  body: JSON.stringify(body) }, token),
+  };
+}
 
 export { ApiError };

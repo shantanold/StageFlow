@@ -15,13 +15,13 @@ function greeting(): string {
 const LOW_STOCK_THRESHOLD = 5;
 
 export function Home() {
-  const { user } = useAuth();
+  const { user, isAdminMode } = useAuth();
   const navigate  = useNavigate();
   const { data: stats, isLoading } = useDashboard();
 
   // Platform admins sit in a furniture-free org, so their own dashboard would be
   // all zeros; they get a cross-org landing page instead.
-  if (user?.is_platform_admin) {
+  if (isAdminMode && user) {
     return <AdminHome greeting={greeting()} name={user.name} />;
   }
 

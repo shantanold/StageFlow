@@ -108,10 +108,13 @@ router.post("/login", async (req, res) => {
 // GET /api/v1/auth/me
 router.get("/me", authenticate, async (req, res) => {
   try {
-    const user = await prisma.user.findUnique({
-      where: { id: req.user!.userId },
-      select: { id: true, name: true, email: true, role: true, is_active: true, created_at: true },
-    });
+    // An acting platform admin isn't a member of the org their token is scoped
+    // to, so look them up unscoped (authenticate already re-verified them).
+    const acting = !!req.user!.acting;
+    const select = { id: true, name: true, email: true, role: true, is_active: true, created_at: true } as const;
+    const user = acting
+      ? await rawPrisma.user.findUnique({ where: { id: req.user!.userId }, select })
+      : await prisma.user.findUnique({ where: { id: req.user!.userId }, select });
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -122,7 +125,16 @@ router.get("/me", authenticate, async (req, res) => {
     }
 
     const { is_active, ...rest } = user;
-    return res.json({ ...rest, is_platform_admin: isPlatformAdminEmail(user.email) });
+    const acting_org = acting
+      ? await rawPrisma.organization.findUnique({ where: { id: req.user!.org_id }, select: { id: true, name: true } })
+      : null;
+    return res.json({
+      ...rest,
+      // While acting, the admin has manager rights in that org.
+      role: acting ? "manager" : rest.role,
+      is_platform_admin: isPlatformAdminEmail(user.email),
+      acting_org,
+    });
   } catch (err) {
     console.error("me error", err);
     return res.status(500).json({ message: "Server error" });
