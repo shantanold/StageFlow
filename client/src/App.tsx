@@ -42,6 +42,7 @@ import { Users } from "./pages/Users";
 import { Organizations }      from "./pages/admin/Organizations";
 import { OrganizationDetail } from "./pages/admin/OrganizationDetail";
 import { AdminFurniture }     from "./pages/admin/Furniture";
+import { AdminJobs }          from "./pages/admin/AdminJobs";
 
 // Scan sub-pages
 import { QuickScan }  from "./pages/scan/QuickScan";
@@ -87,6 +88,7 @@ export default function App() {
               <Route path="/admin/organizations"     element={<Organizations />} />
               <Route path="/admin/organizations/:id" element={<OrganizationDetail />} />
               <Route path="/admin/items"             element={<AdminFurniture />} />
+              <Route path="/admin/jobs"              element={<AdminJobs />} />
             </Route>
           </Route>
 
