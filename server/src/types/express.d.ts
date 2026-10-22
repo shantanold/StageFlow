@@ -8,6 +8,8 @@ declare global {
         email: string;
         role: string;
         org_id: string;
+        /** Platform admin working inside a customer org (see signActingToken). */
+        acting?: boolean;
       };
     }
   }

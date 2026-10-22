@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { rawPrisma } from "../lib/prisma";
-import { isPlatformAdminEmail } from "../lib/platformAdmin";
+import { isActivePlatformAdmin } from "../lib/platformAdmin";
 
 /** Restrict a route to managers only. Must be used after `authenticate`. */
 export function requireManager(req: Request, res: Response, next: NextFunction) {
@@ -23,11 +22,7 @@ export async function requirePlatformAdmin(req: Request, res: Response, next: Ne
     return res.status(401).json({ message: "Unauthorized" });
   }
   try {
-    const user = await rawPrisma.user.findUnique({
-      where: { id: req.user.userId },
-      select: { email: true, is_active: true },
-    });
-    if (!user?.is_active || !isPlatformAdminEmail(user.email)) {
+    if (!(await isActivePlatformAdmin(req.user.userId))) {
       return res.status(403).json({ message: "Platform admin access required" });
     }
     next();

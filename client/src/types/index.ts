@@ -8,6 +8,8 @@ export interface User {
   created_at?: string;
   /** Runs StageFlow itself and can see every organization. */
   is_platform_admin?: boolean;
+  /** Set while a platform admin is working inside a customer org. */
+  acting_org?: { id: string; name: string } | null;
 }
 
 export interface AuthResponse {
@@ -146,6 +148,41 @@ export interface AdminOrganization {
   job_count: number;
   active_job_count: number;
   last_activity_at: string | null;
+}
+
+export interface AdminOrgSummary {
+  id: string;
+  name: string;
+  slug: string;
+  invite_code: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface AdminUserUpdate {
+  role?: "staff" | "manager";
+  is_active?: boolean;
+  org_id?: string;
+}
+
+export interface AdminJob {
+  id: string;
+  address: string;
+  city: string;
+  state: string;
+  client_name: string;
+  status: string;
+  start_date: string | null;
+  expected_end_date: string | null;
+  actual_end_date: string | null;
+  created_at: string;
+  item_count: number;
+  org: { id: string; name: string };
+}
+
+export interface AdminJobsResponse {
+  jobs: AdminJob[];
+  total: number;
 }
 
 export interface AdminOrganizationDetail {

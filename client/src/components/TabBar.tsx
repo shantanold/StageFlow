@@ -1,4 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
 
 // ─── Inline SVG icons ────────────────────────────────────────────────────────
 
@@ -50,14 +51,55 @@ function MoreIcon() {
   );
 }
 
+function OrgsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 21h18M5 21V7l7-4 7 4v14" />
+      <path d="M9 9h1M14 9h1M9 13h1M14 13h1M10 21v-4h4v4" />
+    </svg>
+  );
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function TabBar() {
   const location = useLocation();
   const isScan = location.pathname === "/scan" || location.pathname.startsWith("/scan/");
 
+  const { isAdminMode } = useAuth();
+
   const tabClass = ({ isActive }: { isActive: boolean }) =>
     `tab-item${isActive ? " active" : ""}`;
+
+  // Platform admins (outside any org) get a birds-eye set of tabs instead of
+  // one org's Inventory / Scan / Jobs.
+  if (isAdminMode) {
+    return (
+      <nav className="tab-bar">
+        <div className="tab-brand">StageFlow Admin</div>
+        <NavLink to="/home" className={tabClass}>
+          <HomeIcon />
+          Overview
+        </NavLink>
+        <NavLink to="/admin/organizations" className={tabClass}>
+          <OrgsIcon />
+          Orgs
+        </NavLink>
+        <NavLink to="/admin/items" className={tabClass}>
+          <InventoryIcon />
+          Furniture
+        </NavLink>
+        <NavLink to="/admin/jobs" className={tabClass}>
+          <JobsIcon />
+          Jobs
+        </NavLink>
+        <NavLink to="/more" className={tabClass}>
+          <MoreIcon />
+          More
+        </NavLink>
+      </nav>
+    );
+  }
 
   return (
     <nav className="tab-bar">
