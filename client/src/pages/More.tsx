@@ -50,6 +50,9 @@ export function More() {
     ...(user?.role === "manager"
       ? [{ label: "Users", description: "Manage roles & access", route: "/users" }]
       : []),
+    ...(user?.is_platform_admin
+      ? [{ label: "All Organizations", description: "Platform admin: every org on StageFlow", route: "/admin/organizations", badge: "Admin" }]
+      : []),
   ];
 
   return (

@@ -38,6 +38,10 @@ import { Reports } from "./pages/Reports";
 // Users
 import { Users } from "./pages/Users";
 
+// Platform admin
+import { Organizations }      from "./pages/admin/Organizations";
+import { OrganizationDetail } from "./pages/admin/OrganizationDetail";
+
 // Scan sub-pages
 import { QuickScan }  from "./pages/scan/QuickScan";
 import { ScanOut }    from "./pages/scan/ScanOut";
@@ -79,6 +83,8 @@ export default function App() {
               <Route path="/labels/prep"           element={<PrepLabels />} />
               <Route path="/reports"               element={<Reports />} />
               <Route path="/users"                 element={<Users />} />
+              <Route path="/admin/organizations"     element={<Organizations />} />
+              <Route path="/admin/organizations/:id" element={<OrganizationDetail />} />
             </Route>
           </Route>
 
