@@ -6,6 +6,8 @@ export interface User {
   email: string;
   role: "staff" | "manager";
   created_at?: string;
+  /** Runs StageFlow itself and can see every organization. */
+  is_platform_admin?: boolean;
 }
 
 export interface AuthResponse {
@@ -129,4 +131,32 @@ export interface JobItemRow {
   assigned_at: string;
   returned_at: string | null;
   item: Item;
+}
+
+// ─── Platform admin ───────────────────────────────────────────────────────────
+
+export interface AdminOrganization {
+  id: string;
+  name: string;
+  slug: string;
+  is_active: boolean;
+  created_at: string;
+  user_count: number;
+  item_count: number;
+  job_count: number;
+  active_job_count: number;
+  last_activity_at: string | null;
+}
+
+export interface AdminOrganizationDetail {
+  id: string;
+  name: string;
+  slug: string;
+  invite_code: string;
+  is_active: boolean;
+  created_at: string;
+  last_activity_at: string | null;
+  items_by_status: Record<string, number>;
+  jobs_by_status: Record<string, number>;
+  users: ManagedUser[];
 }

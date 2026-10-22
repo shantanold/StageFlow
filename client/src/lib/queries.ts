@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api";
-import type { Item, ItemDetail, ItemSet, Movement, Job, JobItemRow, ManagedUser } from "../types";
+import type { Item, ItemDetail, ItemSet, Movement, Job, JobItemRow, ManagedUser, AdminOrganization, AdminOrganizationDetail } from "../types";
 
 // ─── Items ────────────────────────────────────────────────────────────────────
 
@@ -534,5 +534,22 @@ export function useUpdateUserAccess(id: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["users"] });
     },
+  });
+}
+
+// ─── Platform admin ───────────────────────────────────────────────────────────
+
+export function useAdminOrganizations() {
+  return useQuery({
+    queryKey: ["admin", "organizations"],
+    queryFn: () => api.get<AdminOrganization[]>("/admin/organizations"),
+  });
+}
+
+export function useAdminOrganization(id: string) {
+  return useQuery({
+    queryKey: ["admin", "organizations", id],
+    queryFn: () => api.get<AdminOrganizationDetail>(`/admin/organizations/${id}`),
+    enabled: !!id,
   });
 }
