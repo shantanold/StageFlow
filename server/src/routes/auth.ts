@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { prisma, rawPrisma } from "../lib/prisma";
 import { authenticate } from "../middleware/auth";
+import { isPlatformAdminEmail } from "../lib/platformAdmin";
 
 const router = Router();
 
@@ -19,6 +20,7 @@ const safeUser = (u: { id: string; name: string; email: string; role: string }) 
   name: u.name,
   email: u.email,
   role: u.role,
+  is_platform_admin: isPlatformAdminEmail(u.email),
 });
 
 // POST /api/v1/auth/register
@@ -120,7 +122,7 @@ router.get("/me", authenticate, async (req, res) => {
     }
 
     const { is_active, ...rest } = user;
-    return res.json(rest);
+    return res.json({ ...rest, is_platform_admin: isPlatformAdminEmail(user.email) });
   } catch (err) {
     console.error("me error", err);
     return res.status(500).json({ message: "Server error" });
