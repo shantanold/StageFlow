@@ -3,6 +3,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useDashboard } from "../lib/queries";
 import { formatDateShort } from "../lib/utils";
 import type { Job } from "../types";
+import { AdminHome } from "./admin/AdminHome";
 
 function greeting(): string {
   const h = new Date().getHours();
@@ -17,6 +18,12 @@ export function Home() {
   const { user } = useAuth();
   const navigate  = useNavigate();
   const { data: stats, isLoading } = useDashboard();
+
+  // Platform admins sit in a furniture-free org, so their own dashboard would be
+  // all zeros; they get a cross-org landing page instead.
+  if (user?.is_platform_admin) {
+    return <AdminHome greeting={greeting()} name={user.name} />;
+  }
 
   const statCards = [
     {

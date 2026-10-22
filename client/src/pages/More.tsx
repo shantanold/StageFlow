@@ -51,7 +51,10 @@ export function More() {
       ? [{ label: "Users", description: "Manage roles & access", route: "/users" }]
       : []),
     ...(user?.is_platform_admin
-      ? [{ label: "All Organizations", description: "Platform admin: every org on StageFlow", route: "/admin/organizations", badge: "Admin" }]
+      ? [
+          { label: "All Organizations", description: "Platform admin: every org on StageFlow", route: "/admin/organizations", badge: "Admin" },
+          { label: "All Furniture", description: "Platform admin: inventory across every org", route: "/admin/items", badge: "Admin" },
+        ]
       : []),
   ];
 

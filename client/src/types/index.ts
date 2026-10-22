@@ -160,3 +160,22 @@ export interface AdminOrganizationDetail {
   jobs_by_status: Record<string, number>;
   users: ManagedUser[];
 }
+
+export interface AdminItem {
+  id: string;
+  sku: string;
+  name: string;
+  category: string;
+  status: string;
+  condition: string;
+  photo_url: string | null;
+  purchase_cost: string;
+  created_at: string;
+  org: { id: string; name: string };
+  set: { id: string; name: string } | null;
+}
+
+export interface AdminItemsResponse {
+  items: AdminItem[];
+  total: number;
+}
