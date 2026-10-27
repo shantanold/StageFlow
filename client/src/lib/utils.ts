@@ -47,6 +47,15 @@ export function formatDateShort(d: string | null | undefined): string {
   return dt.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
+/**
+ * Date-only fields (start/end dates) are stored as UTC midnight of the chosen
+ * day, so format them in UTC; local time shows the previous day west of UTC.
+ */
+export function formatCalendarDayShort(d: string | null | undefined): string {
+  if (!d) return "—";
+  return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+}
+
 // ─── Currency ─────────────────────────────────────────────────────────────────
 
 export function formatCurrency(v: string | number | null | undefined): string {

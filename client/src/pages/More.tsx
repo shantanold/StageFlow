@@ -20,11 +20,18 @@ interface MenuItem {
 }
 
 export function More() {
-  const { user, logout } = useAuth();
+  const { user, logout, isAdminMode, exitOrg } = useAuth();
   const navigate = useNavigate();
   const { data: stats } = useDashboard();
 
-  const menuItems: MenuItem[] = [
+  // Platform admins outside any org: only cross-org tools; the org screens below would be empty.
+  const adminItems: MenuItem[] = [
+    { label: "Organizations", description: "Create, rename, deactivate, manage users, enter an org", route: "/admin/organizations", badge: "Admin" },
+    { label: "All Furniture", description: "Inventory across every org, with status and condition edits", route: "/admin/items", badge: "Admin" },
+    { label: "All Jobs", description: "Jobs across every org", route: "/admin/jobs", badge: "Admin" },
+  ];
+
+  const orgItems: MenuItem[] = [
     {
       label: "Sets",
       description: "Manage furniture set groupings",
@@ -50,13 +57,17 @@ export function More() {
     ...(user?.role === "manager"
       ? [{ label: "Users", description: "Manage roles & access", route: "/users" }]
       : []),
-    ...(user?.is_platform_admin
-      ? [
-          { label: "All Organizations", description: "Platform admin: every org on StageFlow", route: "/admin/organizations", badge: "Admin" },
-          { label: "All Furniture", description: "Platform admin: inventory across every org", route: "/admin/items", badge: "Admin" },
-        ]
+    ...(user?.acting_org
+      ? [{
+          label: `Exit ${user.acting_org.name}`,
+          description: "Back to the platform admin view",
+          badge: "Admin",
+          onClick: () => { void exitOrg().then(() => navigate("/home")); },
+        }]
       : []),
   ];
+
+  const menuItems = isAdminMode ? adminItems : orgItems;
 
   return (
     <div className="animate-in">
@@ -82,11 +93,17 @@ export function More() {
           <p style={{ fontSize: 12.5, color: "var(--text-tertiary)", marginBottom: 8 }}>
             {user?.email}
           </p>
-          <span className={`badge ${user?.role === "manager" ? "badge-blue" : "badge-gray"}`}>
-            {user?.role}
-          </span>
+          {isAdminMode ? (
+            <span className="badge badge-amber">platform admin</span>
+          ) : (
+            <span className={`badge ${user?.role === "manager" ? "badge-blue" : "badge-gray"}`}>
+              {user?.role}
+            </span>
+          )}
         </div>
 
+        {!isAdminMode && (
+          <>
         {/* Quick stats */}
         <p
           style={{
@@ -116,6 +133,8 @@ export function More() {
             </p>
           </div>
         </div>
+          </>
+        )}
 
         {/* Navigation */}
         <div className="list-card" style={{ marginBottom: 12 }}>

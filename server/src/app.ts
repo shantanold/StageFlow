@@ -54,7 +54,11 @@ app.get("/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-app.use("/api/v1/auth",   authLimiter, authRouter);
+// The strict limit guards the brute-forceable endpoints only. /auth/me runs on
+// every page load (and when an admin enters or leaves an org), so it gets the
+// general limit instead of locking people out after a few reloads.
+app.use(["/api/v1/auth/login", "/api/v1/auth/register"], authLimiter);
+app.use("/api/v1/auth",   apiLimiter,  authRouter);
 app.use("/api/v1/items",  apiLimiter,  itemsRouter);
 app.use("/api/v1/sets",   apiLimiter,  setsRouter);
 app.use("/api/v1/labels", apiLimiter,  labelsRouter);

@@ -1,24 +1,119 @@
 import { useState } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
-import { useAdminItems, useAdminOrganizations } from "../../lib/queries";
+import { useAdminItemAction, useAdminItems, useAdminOrganizations, type AdminItemAction } from "../../lib/queries";
+import { useToast } from "../../contexts/ToastContext";
+import { ApiError } from "../../lib/api";
+import { ModalOverlay } from "../../components/ModalOverlay";
+import type { AdminItem } from "../../types";
 import { useDebounce } from "../../hooks/useDebounce";
 import { displayPhotoUrl } from "../../lib/cloudinary";
 import { formatCurrency, getCategoryEmoji, statusBadgeClass, statusLabel } from "../../lib/utils";
-
-function BackIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="15 18 9 12 15 6" />
-    </svg>
-  );
-}
 
 function SearchIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
     </svg>
+  );
+}
+
+/** Actions offered for an item, given its status (the item routes enforce the same rules). */
+export function itemActionsFor(item: Pick<AdminItem, "status">): { label: string; action: AdminItemAction; danger?: boolean }[] {
+  switch (item.status) {
+    case "available":
+      return [
+        { label: "Mark missing", action: { kind: "status", status: "missing" }, danger: true },
+        { label: "Dispose", action: { kind: "dispose" }, danger: true },
+      ];
+    case "staged":
+      return [
+        { label: "Return to unstaged", action: { kind: "status", status: "available" } },
+        { label: "Mark missing", action: { kind: "status", status: "missing" }, danger: true },
+      ];
+    case "missing":
+      return [
+        { label: "Mark found", action: { kind: "found" } },
+        { label: "Dispose", action: { kind: "dispose" }, danger: true },
+      ];
+    case "disposed":
+      return [{ label: "Restore to unstaged", action: { kind: "status", status: "available" } }];
+    default:
+      return [];
+  }
+}
+
+function ItemSheet({ item, onClose }: { item: AdminItem; onClose: () => void }) {
+  const { enterOrg } = useAuth();
+  const navigate = useNavigate();
+  const { showToast } = useToast();
+  const act = useAdminItemAction();
+
+  async function run(action: AdminItemAction, done: string) {
+    try {
+      await act.mutateAsync({ orgId: item.org.id, itemId: item.id, action });
+      showToast(done, "success");
+      onClose();
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : "Failed to update item", "error");
+    }
+  }
+
+  async function openInOrg() {
+    try {
+      await enterOrg(item.org.id);
+      navigate(`/inventory/${item.id}`);
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : "Couldn't enter this organization", "error");
+    }
+  }
+
+  return (
+    <ModalOverlay onClose={onClose}>
+      <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-handle" />
+        <p style={{ fontSize: 17, fontWeight: 500 }}>{item.name}</p>
+        <p style={{ fontSize: 12.5, color: "var(--text-tertiary)", marginTop: 2, marginBottom: 14 }}>
+          {item.sku} · {item.org.name}
+        </p>
+
+        <label className="form-label">Condition</label>
+        <select
+          className="input-field"
+          value={item.condition}
+          disabled={act.isPending}
+          onChange={(e) => run({ kind: "condition", condition: e.target.value as "good" | "fair" | "damaged" }, "Condition updated")}
+          style={{ marginBottom: 16 }}
+        >
+          <option value="good">Good</option>
+          <option value="fair">Fair</option>
+          <option value="damaged">Damaged</option>
+        </select>
+
+        <label className="form-label">Status · {statusLabel(item.status)}</label>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
+          {itemActionsFor(item).map(({ label, action, danger }) => (
+            <button
+              key={label}
+              className="btn btn-outline"
+              style={{ fontSize: 12.5, padding: "8px 14px", ...(danger && { borderColor: "rgba(239,68,68,0.4)", color: "var(--red-text)" }) }}
+              disabled={act.isPending}
+              onClick={() => run(action, `${item.name}: ${label.toLowerCase()}`)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        <div style={{ display: "flex", gap: 10 }}>
+          <button className="btn btn-outline" style={{ flex: 1 }} onClick={onClose}>Close</button>
+          <button className="btn btn-primary" style={{ flex: 1 }} onClick={openInOrg}>Open in {item.org.name}</button>
+        </div>
+        <p style={{ fontSize: 11.5, color: "var(--text-tertiary)", marginTop: 12 }}>
+          Changes are recorded in the item's history under your name.
+        </p>
+      </div>
+    </ModalOverlay>
   );
 }
 
@@ -36,12 +131,12 @@ const STATUS_CHIPS: [string, string][] = [
  */
 export function AdminFurniture() {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const orgId = searchParams.get("org") ?? "";
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const debouncedSearch = useDebounce(search, 250);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const { data: orgs = [] } = useAdminOrganizations();
   const { data, isLoading, error } = useAdminItems({ org_id: orgId, search: debouncedSearch, status });
@@ -63,9 +158,6 @@ export function AdminFurniture() {
   return (
     <div className="animate-in">
       <div className="page-header">
-        <button className="back-btn" onClick={() => navigate("/admin/organizations")} style={{ marginBottom: 8 }}>
-          <BackIcon /> Organizations
-        </button>
         <h1 className="page-title">All Furniture</h1>
         <p className="page-subtitle">
           Platform admin · {isLoading ? "loading…" : items.length < total ? `showing ${items.length} of ${total.toLocaleString()}` : `${total.toLocaleString()} items`}
@@ -124,7 +216,7 @@ export function AdminFurniture() {
         ) : (
           <div className="list-card">
             {items.map((item) => (
-              <div key={item.id} className="list-row" style={{ cursor: "default" }}>
+              <div key={item.id} className="list-row" onClick={() => setSelectedId(item.id)}>
                 <div
                   style={{
                     width: 42, height: 42, borderRadius: 6,
@@ -156,6 +248,9 @@ export function AdminFurniture() {
           </div>
         )}
       </div>
+      {selectedId && items.find((i) => i.id === selectedId) && (
+        <ItemSheet item={items.find((i) => i.id === selectedId)!} onClose={() => setSelectedId(null)} />
+      )}
     </div>
   );
 }

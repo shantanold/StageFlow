@@ -1,4 +1,5 @@
-import { randomUUID } from "crypto";
+import { randomBytes, randomUUID } from "crypto";
+import jwt from "jsonwebtoken";
 import { rawPrisma } from "./prisma";
 
 /**
@@ -78,4 +79,53 @@ export async function moveUserToPlatformOrg(email: string, opts: { apply: boolea
   }
 
   return { userId: user.id, fromOrg: user.org, toOrg, alreadyThere, jobsCreated, movementsPerformed };
+}
+
+// ─── Acting inside an org ───────────────────────────────────────────────────
+
+/**
+ * A platform admin can "enter" a customer org to use its normal screens. The
+ * token carries the target org (so tenant scoping works unchanged), manager
+ * rights, and `acting: true`, which makes `authenticate` re-check on every
+ * request that the user is still an active platform admin. Short-lived on
+ * purpose: entering again is one click.
+ */
+export const ACTING_TOKEN_TTL = "8h";
+
+export function signActingToken(user: { id: string; email: string }, orgId: string) {
+  return jwt.sign(
+    { userId: user.id, email: user.email, role: "manager", org_id: orgId, acting: true },
+    process.env.JWT_SECRET!,
+    { expiresIn: ACTING_TOKEN_TTL }
+  );
+}
+
+/** True when the user exists, is active, and is on the platform-admin allowlist. */
+export async function isActivePlatformAdmin(userId: string): Promise<boolean> {
+  const user = await rawPrisma.user.findUnique({ where: { id: userId }, select: { email: true, is_active: true } });
+  return !!user?.is_active && isPlatformAdminEmail(user.email);
+}
+
+// ─── New orgs ───────────────────────────────────────────────────────────────
+
+/** "Bluebird Staging, LLC" → "bluebird-staging-llc". */
+export function slugify(name: string): string {
+  return name.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48) || "org";
+}
+
+/** First free slug: "acme", then "acme-2", "acme-3", ... */
+export async function uniqueSlug(name: string): Promise<string> {
+  const base = slugify(name);
+  for (let n = 1; ; n++) {
+    const candidate = n === 1 ? base : `${base}-${n}`;
+    if (!(await rawPrisma.organization.findUnique({ where: { slug: candidate } }))) return candidate;
+  }
+}
+
+/** Short, readable, unguessable: "BLUEBIRD-7K3Q9X". */
+export function newInviteCode(name: string): string {
+  const prefix = slugify(name).replace(/-/g, "").slice(0, 8).toUpperCase() || "ORG";
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const suffix = Array.from(randomBytes(6), (b) => alphabet[b % alphabet.length]).join("");
+  return `${prefix}-${suffix}`;
 }

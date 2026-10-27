@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "./api";
-import type { Item, ItemDetail, ItemSet, Movement, Job, JobItemRow, ManagedUser, AdminOrganization, AdminOrganizationDetail, AdminItemsResponse } from "../types";
+import { api, apiWithToken } from "./api";
+import type { Item, ItemDetail, ItemSet, Movement, Job, JobItemRow, ManagedUser, AdminOrganization, AdminOrganizationDetail, AdminItemsResponse, AdminOrgSummary, AdminUserUpdate, AdminJobsResponse } from "../types";
 
 // ─── Items ────────────────────────────────────────────────────────────────────
 
@@ -569,5 +569,88 @@ export function useAdminItems(filters: AdminItemFilters) {
   return useQuery({
     queryKey: ["admin", "items", filters],
     queryFn: () => api.get<AdminItemsResponse>(`/admin/items${qs ? `?${qs}` : ""}`),
+  });
+}
+
+export interface AdminJobFilters {
+  org_id?: string;
+  search?: string;
+  status?: string;
+}
+
+export function useAdminJobs(filters: AdminJobFilters) {
+  const p = new URLSearchParams();
+  if (filters.org_id) p.set("org_id", filters.org_id);
+  if (filters.search?.trim()) p.set("search", filters.search.trim());
+  if (filters.status) p.set("status", filters.status);
+  const qs = p.toString();
+  return useQuery({
+    queryKey: ["admin", "jobs", filters],
+    queryFn: () => api.get<AdminJobsResponse>(`/admin/jobs${qs ? `?${qs}` : ""}`),
+  });
+}
+
+/** Any admin change can move the cross-org numbers, so refresh all admin views. */
+function useInvalidateAdmin() {
+  const qc = useQueryClient();
+  return () => qc.invalidateQueries({ queryKey: ["admin"] });
+}
+
+export function useCreateOrganization() {
+  const invalidate = useInvalidateAdmin();
+  return useMutation({
+    mutationFn: (name: string) => api.post<AdminOrgSummary>("/admin/organizations", { name }),
+    onSuccess: invalidate,
+  });
+}
+
+export function useUpdateOrganization(id: string) {
+  const invalidate = useInvalidateAdmin();
+  return useMutation({
+    mutationFn: (data: { name?: string; is_active?: boolean }) => api.patch<AdminOrgSummary>(`/admin/organizations/${id}`, data),
+    onSuccess: invalidate,
+  });
+}
+
+export function useRegenerateInviteCode(id: string) {
+  const invalidate = useInvalidateAdmin();
+  return useMutation({
+    mutationFn: () => api.post<AdminOrgSummary>(`/admin/organizations/${id}/invite-code`, {}),
+    onSuccess: invalidate,
+  });
+}
+
+export function useAdminUpdateUser(id: string) {
+  const invalidate = useInvalidateAdmin();
+  return useMutation({
+    mutationFn: (data: AdminUserUpdate) => api.patch(`/admin/users/${id}`, data),
+    onSuccess: invalidate,
+  });
+}
+
+export type AdminItemAction =
+  | { kind: "condition"; condition: "good" | "fair" | "damaged" }
+  | { kind: "status"; status: "available" | "missing" }
+  | { kind: "found" }
+  | { kind: "dispose" };
+
+/**
+ * Change one item in any org, through that org's normal item routes (same
+ * rules and history as a manager there), using a short-lived org-scoped token.
+ */
+export function useAdminItemAction() {
+  const invalidate = useInvalidateAdmin();
+  return useMutation({
+    mutationFn: async ({ orgId, itemId, action }: { orgId: string; itemId: string; action: AdminItemAction }) => {
+      const { token } = await api.post<{ token: string }>(`/admin/organizations/${orgId}/act`, {});
+      const org = apiWithToken(token);
+      switch (action.kind) {
+        case "condition": return org.put(`/items/${itemId}`, { condition: action.condition });
+        case "status":    return org.post(`/items/${itemId}/set-status`, { status: action.status, notes: "Platform admin override" });
+        case "found":     return org.post(`/items/${itemId}/found`, {});
+        case "dispose":   return org.post(`/items/${itemId}/dispose`, {});
+      }
+    },
+    onSuccess: invalidate,
   });
 }
