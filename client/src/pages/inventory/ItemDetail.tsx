@@ -10,7 +10,7 @@ import { downloadLabels, useQRCodeUrl } from "../../lib/labels";
 import { displayPhotoUrl, uploadImage } from "../../lib/cloudinary";
 import {
   getCategoryEmoji, statusBadgeClass, statusLabel,
-  formatDate, formatCurrency, formatDimensions, movementDotColor, CATEGORIES,
+  formatDate, formatCalendarDay, formatCurrency, formatDimensions, movementDotColor, CATEGORIES,
 } from "../../lib/utils";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
@@ -355,7 +355,7 @@ export function ItemDetail() {
           <InfoCell label="Category" value={item.category} />
           <InfoCell label="Set" value={item.set?.name ?? "None"} />
           <InfoCell label="Cost" value={formatCurrency(item.purchase_cost)} />
-          <InfoCell label="Purchased" value={formatDate(item.purchase_date)} />
+          <InfoCell label="Purchased" value={formatCalendarDay(item.purchase_date)} />
           {formatDimensions(item.width_in, item.depth_in, item.height_in) && (
             <div style={{ gridColumn: "1 / -1" }}>
               <InfoCell label="Dimensions" value={formatDimensions(item.width_in, item.depth_in, item.height_in)!} />

@@ -4,6 +4,7 @@ import { useCreateJob } from "../../lib/queries";
 import { ApiError } from "../../lib/api";
 import { useToast } from "../../contexts/ToastContext";
 import { useAuth } from "../../contexts/AuthContext";
+import { localDateInputValue } from "../../lib/utils";
 
 function BackIcon() {
   return (
@@ -25,8 +26,9 @@ export function CreateJob() {
     zip: "",
     client_name: "",
     client_contact: "",
-    start_date: new Date().toISOString().slice(0, 10),
-    expected_end_date: (() => { const d = new Date(); d.setMonth(d.getMonth() + 3); return d.toISOString().slice(0, 10); })(),
+    // Local days: toISOString() would give tomorrow's date on a US evening.
+    start_date: localDateInputValue(new Date()),
+    expected_end_date: (() => { const d = new Date(); d.setMonth(d.getMonth() + 3); return localDateInputValue(d); })(),
     notes: "",
   });
   const [error, setError] = useState("");
