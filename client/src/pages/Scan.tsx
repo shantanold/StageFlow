@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useJobs } from "../lib/queries";
-import { formatDate } from "../lib/utils";
+import { formatCalendarDay } from "../lib/utils";
 
 function CameraIcon() {
   return (
@@ -95,7 +95,7 @@ export function Scan() {
                 <div style={{ width: "100%" }}>
                   <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>{job.address}</p>
                   <p style={{ fontSize: 11.5, color: "var(--text-tertiary)" }}>
-                    {job.client_name} · {job.item_count} items · closes {formatDate(job.expected_end_date)}
+                    {job.client_name} · {job.item_count} items · closes {formatCalendarDay(job.expected_end_date)}
                   </p>
                 </div>
                 <div style={{ display: "flex", gap: 8, width: "100%" }}>

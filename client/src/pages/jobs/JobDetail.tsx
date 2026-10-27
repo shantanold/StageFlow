@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useJob, useJobItems, useForceCompleteJob, useUnassignItems, useMarkLoaded, useUndoLoad, useMarkReturned } from "../../lib/queries";
 import { getCategoryEmoji, jobStatusBadgeClass, statusBadgeClass, statusLabel, jobItemStatusLabel } from "../../lib/utils";
-import { formatDate } from "../../lib/utils";
+import { formatCalendarDay } from "../../lib/utils";
 import { displayPhotoUrl } from "../../lib/cloudinary";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
@@ -182,17 +182,17 @@ export function JobDetail() {
         <div className="pair-grid" style={{ marginBottom: 14, maxWidth: "none" }}>
           <div className="card">
             <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Start date</div>
-            <div style={{ fontSize: 13, fontWeight: 500 }}>{formatDate(job.start_date)}</div>
+            <div style={{ fontSize: 13, fontWeight: 500 }}>{formatCalendarDay(job.start_date)}</div>
           </div>
           {job.actual_end_date ? (
             <div className="card" style={{ borderColor: "rgba(16,185,129,0.3)" }}>
               <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Closed</div>
-              <div style={{ fontSize: 13, fontWeight: 500, color: "var(--green-text)" }}>{formatDate(job.actual_end_date)}</div>
+              <div style={{ fontSize: 13, fontWeight: 500, color: "var(--green-text)" }}>{formatCalendarDay(job.actual_end_date)}</div>
             </div>
           ) : (
             <div className="card">
               <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Expected close</div>
-              <div style={{ fontSize: 13, fontWeight: 500, color: "var(--amber-text)" }}>{formatDate(job.expected_end_date)}</div>
+              <div style={{ fontSize: 13, fontWeight: 500, color: "var(--amber-text)" }}>{formatCalendarDay(job.expected_end_date)}</div>
             </div>
           )}
         </div>

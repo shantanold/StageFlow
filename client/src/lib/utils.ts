@@ -47,13 +47,25 @@ export function formatDateShort(d: string | null | undefined): string {
   return dt.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-/**
- * Date-only fields (start/end dates) are stored as UTC midnight of the chosen
- * day, so format them in UTC; local time shows the previous day west of UTC.
- */
+// Date-only fields (job start/end dates, purchase date) are Postgres `date`
+// columns, which come back as UTC midnight of that day. Format them in UTC:
+// local time shows the previous day anywhere west of UTC. Use formatDate /
+// formatDateShort only for real timestamps (created_at, movement times).
+
+export function formatCalendarDay(d: string | null | undefined): string {
+  if (!d) return "—";
+  return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+}
+
 export function formatCalendarDayShort(d: string | null | undefined): string {
   if (!d) return "—";
   return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+}
+
+/** "yyyy-MM-dd" for the given moment's *local* day, for <input type="date"> defaults. */
+export function localDateInputValue(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
 // ─── Currency ─────────────────────────────────────────────────────────────────
