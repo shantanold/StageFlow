@@ -14,6 +14,7 @@ import jobsRouter  from "./routes/jobs";
 import statsRouter from "./routes/stats";
 import usersRouter from "./routes/users";
 import adminRouter from "./routes/admin";
+import calendarRouter from "./routes/calendar";
 
 const app = express();
 
@@ -66,6 +67,7 @@ app.use("/api/v1/jobs",   apiLimiter,  jobsRouter);
 app.use("/api/v1/stats",  apiLimiter,  statsRouter);
 app.use("/api/v1/users",  apiLimiter,  usersRouter);
 app.use("/api/v1/admin",  apiLimiter,  adminRouter);
+app.use("/api/v1/calendar", apiLimiter, calendarRouter);
 
 app.use((_req, res) => {
   res.status(404).json({ message: "Not found" });

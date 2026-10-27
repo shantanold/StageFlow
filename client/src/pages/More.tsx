@@ -33,6 +33,11 @@ export function More() {
 
   const orgItems: MenuItem[] = [
     {
+      label: "Schedule",
+      description: "Appointments, installs & pickups; import Google or Apple calendars",
+      route: "/schedule",
+    },
+    {
       label: "Sets",
       description: "Manage furniture set groupings",
       route: "/sets",

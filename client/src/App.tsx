@@ -38,6 +38,9 @@ import { Reports } from "./pages/Reports";
 // Users
 import { Users } from "./pages/Users";
 
+// Schedule
+import { Schedule } from "./pages/Schedule";
+
 // Platform admin
 import { Organizations }      from "./pages/admin/Organizations";
 import { OrganizationDetail } from "./pages/admin/OrganizationDetail";
@@ -85,6 +88,7 @@ export default function App() {
               <Route path="/labels/prep"           element={<PrepLabels />} />
               <Route path="/reports"               element={<Reports />} />
               <Route path="/users"                 element={<Users />} />
+              <Route path="/schedule"              element={<Schedule />} />
               <Route path="/admin/organizations"     element={<Organizations />} />
               <Route path="/admin/organizations/:id" element={<OrganizationDetail />} />
               <Route path="/admin/items"             element={<AdminFurniture />} />
