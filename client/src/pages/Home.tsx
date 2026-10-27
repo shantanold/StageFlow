@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useDashboard } from "../lib/queries";
-import { formatDateShort } from "../lib/utils";
+import { formatCalendarDayShort } from "../lib/utils";
 import type { Job } from "../types";
 import { AdminHome } from "./admin/AdminHome";
 
@@ -182,7 +182,7 @@ function UpcomingJobRow({ job, onClick }: { job: Job; onClick: () => void }) {
         </p>
       </div>
       <span className={`badge ${urgent ? "badge-amber" : "badge-blue"}`}>
-        {formatDateShort(job.expected_end_date)}
+        {formatCalendarDayShort(job.expected_end_date)}
       </span>
     </div>
   );
