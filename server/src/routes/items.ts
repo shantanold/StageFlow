@@ -54,6 +54,18 @@ async function generateSku(): Promise<string> {
   return `STG-ITM-${String(n).padStart(4, "0")}`;
 }
 
+// ─── set_id validation ───────────────────────────────────────────────────────
+// The items_set_id_fkey constraint only checks that the set exists somewhere,
+// not that it belongs to the caller's org — and a missing set surfaces as an
+// FK-violation 500. Look it up through the tenant-scoped client first.
+// Returns false when a non-empty set_id doesn't resolve to a set in this org.
+
+async function setExistsInOrg(setId: string | null | undefined): Promise<boolean> {
+  if (!setId) return true; // undefined = untouched, null/"" = clear the set
+  const set = await prisma.set.findUnique({ where: { id: setId }, select: { id: true } });
+  return set !== null;
+}
+
 // ─── GET /items ───────────────────────────────────────────────────────────────
 
 router.get("/", async (req, res) => {
@@ -148,6 +160,9 @@ router.post("/", requireManager, async (req, res) => {
 
     if (!name?.trim() || !category) {
       return res.status(400).json({ message: "name and category are required" });
+    }
+    if (!(await setExistsInOrg(set_id))) {
+      return res.status(404).json({ message: "Set not found" });
     }
 
     const sku = await generateSku();
@@ -352,6 +367,10 @@ router.put("/:id", requireManager, async (req, res) => {
         qr_printed: boolean;
       }>;
 
+    if (!(await setExistsInOrg(set_id))) {
+      return res.status(404).json({ message: "Set not found" });
+    }
+
     const item = await prisma.item.update({
       where: { id: req.params.id },
       data: {
@@ -545,6 +564,9 @@ router.post("/:id/claim", async (req, res) => {
 
     if (!body.name?.trim() || !body.category?.trim()) {
       return res.status(400).json({ message: "name and category are required" });
+    }
+    if (!(await setExistsInOrg(body.set_id))) {
+      return res.status(404).json({ message: "Set not found" });
     }
 
     let assignJobId: string | null = null;
