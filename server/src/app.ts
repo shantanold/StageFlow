@@ -14,6 +14,7 @@ import jobsRouter  from "./routes/jobs";
 import statsRouter from "./routes/stats";
 import usersRouter from "./routes/users";
 import adminRouter from "./routes/admin";
+import quantityItemsRouter from "./routes/quantityItems";
 
 const app = express();
 
@@ -58,14 +59,15 @@ app.get("/health", (_req, res) => {
 // every page load (and when an admin enters or leaves an org), so it gets the
 // general limit instead of locking people out after a few reloads.
 app.use(["/api/v1/auth/login", "/api/v1/auth/register"], authLimiter);
-app.use("/api/v1/auth",   apiLimiter,  authRouter);
-app.use("/api/v1/items",  apiLimiter,  itemsRouter);
-app.use("/api/v1/sets",   apiLimiter,  setsRouter);
-app.use("/api/v1/labels", apiLimiter,  labelsRouter);
-app.use("/api/v1/jobs",   apiLimiter,  jobsRouter);
-app.use("/api/v1/stats",  apiLimiter,  statsRouter);
-app.use("/api/v1/users",  apiLimiter,  usersRouter);
-app.use("/api/v1/admin",  apiLimiter,  adminRouter);
+app.use("/api/v1/auth",           apiLimiter,  authRouter);
+app.use("/api/v1/items",          apiLimiter,  itemsRouter);
+app.use("/api/v1/sets",           apiLimiter,  setsRouter);
+app.use("/api/v1/labels",         apiLimiter,  labelsRouter);
+app.use("/api/v1/jobs",           apiLimiter,  jobsRouter);
+app.use("/api/v1/stats",          apiLimiter,  statsRouter);
+app.use("/api/v1/users",          apiLimiter,  usersRouter);
+app.use("/api/v1/admin",          apiLimiter,  adminRouter);
+app.use("/api/v1/quantity-items", apiLimiter,  quantityItemsRouter);
 
 app.use((_req, res) => {
   res.status(404).json({ message: "Not found" });

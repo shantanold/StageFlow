@@ -37,6 +37,11 @@ export function More() {
       description: "Manage furniture set groupings",
       route: "/sets",
     },
+    {
+      label: "Quantity Tracking",
+      description: "Track high-quantity items by count",
+      route: "/quantity-tracking",
+    },
     ...(user?.role === "manager"
       ? [{
           label: "Prep Labels",

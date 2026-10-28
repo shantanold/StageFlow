@@ -15,6 +15,7 @@ import { Inventory } from "./pages/Inventory";
 import { Scan }      from "./pages/Scan";
 import { Jobs }      from "./pages/Jobs";
 import { More }      from "./pages/More";
+import { QuantityTracking } from "./pages/QuantityTracking";
 
 // Inventory sub-pages
 import { ItemDetail } from "./pages/inventory/ItemDetail";
@@ -85,6 +86,7 @@ export default function App() {
               <Route path="/labels/prep"           element={<PrepLabels />} />
               <Route path="/reports"               element={<Reports />} />
               <Route path="/users"                 element={<Users />} />
+              <Route path="/quantity-tracking"     element={<QuantityTracking />} />
               <Route path="/admin/organizations"     element={<Organizations />} />
               <Route path="/admin/organizations/:id" element={<OrganizationDetail />} />
               <Route path="/admin/items"             element={<AdminFurniture />} />

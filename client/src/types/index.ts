@@ -216,3 +216,17 @@ export interface AdminItemsResponse {
   items: AdminItem[];
   total: number;
 }
+
+// ─── Quantity Items ───────────────────────────────────────────────────────────
+
+export interface QuantityItem {
+  id: string;
+  org_id: string;
+  name: string;
+  category: string;
+  quantity: number;
+  unit_cost: string; // Prisma Decimal comes back as string
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
