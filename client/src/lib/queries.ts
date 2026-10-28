@@ -27,10 +27,11 @@ function buildItemsQS(filters: ItemFilters): string {
   return qs ? `?${qs}` : "";
 }
 
-export function useItems(filters: ItemFilters = {}) {
+export function useItems(filters: ItemFilters = {}, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ["items", filters],
     queryFn:  () => api.get<Item[]>(`/items${buildItemsQS(filters)}`),
+    enabled: options?.enabled ?? true,
   });
 }
 
@@ -105,6 +106,25 @@ export function useUpdateItem(id: string) {
       qc.invalidateQueries({ queryKey: ["items"] });
       qc.invalidateQueries({ queryKey: ["items", id] });
       qc.invalidateQueries({ queryKey: ["sets"] });
+    },
+  });
+}
+
+export function useSetPurchaseCost() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, purchase_cost }: { id: string; purchase_cost: number }) =>
+      api.put<Item>(`/items/${id}`, { purchase_cost }),
+    onSuccess: (updated, variables) => {
+      const cost = String(updated.purchase_cost ?? variables.purchase_cost);
+      qc.setQueriesData({ queryKey: ["items"] }, (old: unknown) => {
+        if (!Array.isArray(old)) return old;
+        return old.map((item: Item) =>
+          item.id === variables.id ? { ...item, purchase_cost: cost } : item
+        );
+      });
+      qc.invalidateQueries({ queryKey: ["items"] });
+      qc.invalidateQueries({ queryKey: ["stats"] });
     },
   });
 }

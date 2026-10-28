@@ -11,6 +11,7 @@ import { Register } from "./pages/Register";
 
 // Tab pages
 import { Home }      from "./pages/Home";
+import { PriceItems } from "./pages/PriceItems";
 import { Inventory } from "./pages/Inventory";
 import { Scan }      from "./pages/Scan";
 import { Jobs }      from "./pages/Jobs";
@@ -67,6 +68,7 @@ export default function App() {
           <Route element={<ProtectedRoute />}>
             <Route element={<AppShell />}>
               <Route path="/home"                  element={<Home />} />
+              <Route path="/price"                 element={<PriceItems />} />
               <Route path="/inventory"             element={<Inventory />} />
               <Route path="/inventory/new"         element={<AddItem />} />
               <Route path="/inventory/:id/claim"   element={<ClaimItem />} />

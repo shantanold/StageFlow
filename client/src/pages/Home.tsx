@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { useDashboard } from "../lib/queries";
-import { formatCalendarDayShort } from "../lib/utils";
+import { useDashboard, useItems } from "../lib/queries";
+import { formatCalendarDayShort, unpricedItems } from "../lib/utils";
 import type { Job } from "../types";
 import { AdminHome } from "./admin/AdminHome";
 
@@ -18,6 +18,9 @@ export function Home() {
   const { user, isAdminMode } = useAuth();
   const navigate  = useNavigate();
   const { data: stats, isLoading } = useDashboard();
+  const canPrice = user?.role === "manager" && !isAdminMode;
+  const { data: catalog } = useItems({}, { enabled: canPrice });
+  const unpricedCount = unpricedItems(catalog ?? []).length;
 
   // Platform admins sit in a furniture-free org, so their own dashboard would be
   // all zeros; they get a cross-org landing page instead.
@@ -85,6 +88,21 @@ export function Home() {
             </div>
           ))}
         </div>
+
+        {canPrice && unpricedCount > 0 && (
+          <button type="button" className="price-prompt" onClick={() => navigate("/price")}>
+            <span className="price-prompt-icon" aria-hidden>
+              <DollarIcon />
+            </span>
+            <span className="price-prompt-copy">
+              <span className="price-prompt-title">Price items</span>
+              <span className="price-prompt-sub">
+                {unpricedCount} item{unpricedCount === 1 ? "" : "s"} still at $0
+              </span>
+            </span>
+            <span className="price-prompt-go" aria-hidden>→</span>
+          </button>
+        )}
 
         {/* Major pieces */}
         <div style={{ marginBottom: 20 }}>
@@ -163,6 +181,15 @@ export function Home() {
         )}
       </div>
     </div>
+  );
+}
+
+function DollarIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="12" y1="1" x2="12" y2="23" />
+      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+    </svg>
   );
 }
 

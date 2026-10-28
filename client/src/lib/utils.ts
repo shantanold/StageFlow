@@ -170,3 +170,36 @@ export function uniqueItemTemplates(items: Item[]): Item[] {
   }
   return [...byKey.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
+
+// ─── Quick pricing ────────────────────────────────────────────────────────────
+
+/** Purchase cost is missing, unreadable, or exactly zero. */
+export function needsPricing(item: { purchase_cost?: string | number | null }): boolean {
+  if (item.purchase_cost === null || item.purchase_cost === undefined) return true;
+  const trimmed = String(item.purchase_cost).trim();
+  if (!trimmed) return true;
+  const cost = Number(trimmed);
+  if (!Number.isFinite(cost)) return true;
+  return cost === 0;
+}
+
+export function unpricedItems<T extends { purchase_cost?: string | number | null }>(items: T[]): T[] {
+  return items.filter(needsPricing);
+}
+
+/**
+ * Accepts surrounding whitespace, a "$", and thousands separators ("$1,200", " 32.5 ").
+ * Blank or unreadable text returns null.
+ */
+export function parsePriceInput(text: string): number | null {
+  const cleaned = text.trim().replace(/\$/g, "").replace(/,/g, "");
+  if (!cleaned) return null;
+  if (!/^(?:\d+\.?\d*|\.\d+)$/.test(cleaned)) return null;
+  const value = Number(cleaned);
+  if (!Number.isFinite(value)) return null;
+  return value;
+}
+
+export function roundMoney(value: number): number {
+  return Math.round(value * 100) / 100;
+}

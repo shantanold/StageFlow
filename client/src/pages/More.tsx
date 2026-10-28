@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { useDashboard } from "../lib/queries";
+import { useDashboard, useItems } from "../lib/queries";
+import { unpricedItems } from "../lib/utils";
 
 function ChevronRightIcon() {
   return (
@@ -16,6 +17,7 @@ interface MenuItem {
   route?: string;
   onClick?: () => void;
   badge?: string;
+  badgeClass?: string;
   disabled?: boolean;
 }
 
@@ -23,6 +25,9 @@ export function More() {
   const { user, logout, isAdminMode, exitOrg } = useAuth();
   const navigate = useNavigate();
   const { data: stats } = useDashboard();
+  const canPrice = user?.role === "manager" && !isAdminMode;
+  const { data: catalog } = useItems({}, { enabled: canPrice });
+  const unpricedCount = unpricedItems(catalog ?? []).length;
 
   // Platform admins outside any org: only cross-org tools; the org screens below would be empty.
   const adminItems: MenuItem[] = [
@@ -37,6 +42,17 @@ export function More() {
       description: "Manage furniture set groupings",
       route: "/sets",
     },
+    ...(canPrice
+      ? [{
+          label: "Price Items",
+          description: unpricedCount > 0
+            ? `${unpricedCount} item${unpricedCount === 1 ? "" : "s"} still at $0`
+            : "Set a cost on pieces still at $0",
+          route: "/price",
+          badge: unpricedCount > 0 ? String(unpricedCount) : undefined,
+          badgeClass: "badge badge-amber",
+        }]
+      : []),
     ...(user?.role === "manager"
       ? [{
           label: "Prep Labels",
@@ -163,7 +179,7 @@ export function More() {
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 {item.badge && (
-                  <span className="badge badge-gray" style={{ fontSize: 10 }}>
+                  <span className={item.badgeClass ?? "badge badge-gray"} style={{ fontSize: 10 }}>
                     {item.badge}
                   </span>
                 )}
