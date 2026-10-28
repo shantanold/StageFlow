@@ -24,8 +24,14 @@ app.set("trust proxy", 1);
 
 app.use(helmet());
 
+// Comma-separated so the old and new frontend domains can both work during a move.
+const corsOrigins = (process.env.CORS_ORIGIN ?? "http://localhost:5173")
+  .split(",")
+  .map((o) => o.trim().replace(/\/+$/, ""))
+  .filter(Boolean);
+
 app.use(cors({
-  origin: process.env.CORS_ORIGIN ?? "http://localhost:5173",
+  origin: corsOrigins,
   credentials: true,
 }));
 

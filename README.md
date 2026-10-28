@@ -122,7 +122,7 @@ The PWA manifest and service worker are automatically included in the `dist/` bu
 | `DATABASE_URL` | ✅ | PostgreSQL connection string |
 | `JWT_SECRET` | ✅ | Secret for signing JWTs — use a long random string |
 | `PORT` | | Server port (default: 3001) |
-| `CORS_ORIGIN` | | Allowed frontend origin (default: http://localhost:5173) |
+| `CORS_ORIGIN` | | Allowed frontend origin(s), comma-separated (default: http://localhost:5173) |
 | `SIGNUP_CODE` | ✅ | Shared secret required to register a new account — pick your own and share it only with your team |
 
 ### Client (`client/.env`)
