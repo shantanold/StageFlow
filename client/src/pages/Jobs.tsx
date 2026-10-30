@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useJobs } from "../lib/queries";
-import { formatCalendarDay, formatCurrency, jobStatusBadgeClass } from "../lib/utils";
+import { formatCalendarDay, jobStatusBadgeClass } from "../lib/utils";
 import { useAuth } from "../contexts/AuthContext";
 import type { Job } from "../types";
 
@@ -95,8 +95,7 @@ export function Jobs() {
                   <span>
                     {formatCalendarDay(job.start_date)} — {formatCalendarDay(job.expected_end_date)}
                   </span>
-                  {job.amount != null && <span>{formatCurrency(job.amount)}</span>}
-                  {job.market_value != null && <span>MV {formatCurrency(job.market_value)}</span>}
+                  {job.duration && <span>{job.duration}</span>}
                   {job.destaged_at && (
                     <span style={{ color: "var(--green-text)" }}>
                       Destaged {formatCalendarDay(job.destaged_at)}
