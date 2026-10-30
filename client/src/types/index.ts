@@ -123,6 +123,53 @@ export interface Job {
   item_count: number;
 }
 
+// ─── Calendar ────────────────────────────────────────────────────────────────
+
+export type EventSource = "manual" | "ics_file" | "ics_url";
+
+/**
+ * start_at/end_at are real instants. For all_day events they are UTC midnight
+ * of the first day and of the day after the last (end exclusive), like other
+ * date-only fields: format them in UTC.
+ */
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  description: string | null;
+  location: string | null;
+  start_at: string;
+  end_at: string;
+  all_day: boolean;
+  is_busy: boolean;
+  job_id: string | null;
+  assignee_id: string | null;
+  source: EventSource;
+  source_id: string | null;
+  external_uid: string | null;
+  created_by: string | null;
+  job: { id: string; address: string; client_name: string; status: JobStatus } | null;
+  assignee: { id: string; name: string } | null;
+  calendar_source: { id: string; name: string } | null;
+}
+
+export interface CalendarSource {
+  id: string;
+  name: string;
+  url: string;
+  last_synced_at: string | null;
+  last_error: string | null;
+  event_count: number;
+  created_at: string;
+}
+
+export interface CalendarSyncResult {
+  source: CalendarSource;
+  created: number;
+  updated: number;
+  removed: number;
+  error: string | null;
+}
+
 export interface JobItemRow {
   id: string;
   job_id: string;

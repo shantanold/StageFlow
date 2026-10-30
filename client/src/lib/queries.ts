@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, apiWithToken } from "./api";
-import type { Item, ItemDetail, ItemSet, Movement, Job, JobItemRow, ManagedUser, AdminOrganization, AdminOrganizationDetail, AdminItemsResponse, AdminOrgSummary, AdminUserUpdate, AdminJobsResponse } from "../types";
+import type { CalendarEvent, CalendarSource, CalendarSyncResult, Item, ItemDetail, ItemSet, Movement, Job, JobItemRow, ManagedUser, AdminOrganization, AdminOrganizationDetail, AdminItemsResponse, AdminOrgSummary, AdminUserUpdate, AdminJobsResponse } from "../types";
 
 // ─── Items ────────────────────────────────────────────────────────────────────
 
@@ -672,5 +672,112 @@ export function useAdminItemAction() {
       }
     },
     onSuccess: invalidate,
+  });
+}
+
+// ─── Calendar ─────────────────────────────────────────────────────────────────
+
+export function useCalendarEvents(from: Date, to: Date) {
+  const range = { from: from.toISOString(), to: to.toISOString() };
+  return useQuery({
+    queryKey: ["calendar", "events", range],
+    queryFn: () => api.get<CalendarEvent[]>(`/calendar/events?${new URLSearchParams(range)}`),
+  });
+}
+
+export function useCalendarPeople() {
+  return useQuery({
+    queryKey: ["calendar", "people"],
+    queryFn: () => api.get<{ id: string; name: string }[]>("/calendar/people"),
+  });
+}
+
+export interface EventInput {
+  title?: string;
+  description?: string | null;
+  location?: string | null;
+  start_at?: string;
+  end_at?: string;
+  all_day?: boolean;
+  is_busy?: boolean;
+  job_id?: string | null;
+  assignee_id?: string | null;
+}
+
+export function useSaveEvent(id?: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: EventInput) =>
+      id ? api.patch<CalendarEvent>(`/calendar/events/${id}`, data) : api.post<CalendarEvent>("/calendar/events", data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["calendar", "events"] }),
+  });
+}
+
+export function useDeleteEvent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete<void>(`/calendar/events/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["calendar", "events"] }),
+  });
+}
+
+export function useImportIcs() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (ics: string) =>
+      api.postText<{ created: number; updated: number; total: number }>("/calendar/import", ics, "text/calendar"),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["calendar", "events"] }),
+  });
+}
+
+export function useCalendarSources(enabled = true) {
+  return useQuery({
+    queryKey: ["calendar", "sources"],
+    queryFn: () => api.get<CalendarSource[]>("/calendar/sources"),
+    enabled,
+  });
+}
+
+function invalidateCalendar(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: ["calendar", "sources"] });
+  qc.invalidateQueries({ queryKey: ["calendar", "events"] });
+}
+
+export function useAddCalendarSource() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { name?: string; url: string }) => api.post<CalendarSyncResult>("/calendar/sources", data),
+    onSuccess: () => invalidateCalendar(qc),
+  });
+}
+
+export function useSyncCalendarSource() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.post<CalendarSyncResult>(`/calendar/sources/${id}/sync`, {}),
+    onSuccess: () => invalidateCalendar(qc),
+  });
+}
+
+export function useDeleteCalendarSource() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete<void>(`/calendar/sources/${id}`),
+    onSuccess: () => invalidateCalendar(qc),
+  });
+}
+
+export function useCalendarSettings() {
+  return useQuery({
+    queryKey: ["calendar", "settings"],
+    queryFn: () => api.get<{ timezone: string }>("/calendar/settings"),
+  });
+}
+
+export function useUpdateCalendarSettings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { timezone: string }) => api.put<{ timezone: string }>("/calendar/settings", data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["calendar", "settings"] }),
   });
 }

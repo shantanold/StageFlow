@@ -11,7 +11,7 @@ import { useToast } from "../contexts/ToastContext";
 export function adminRedirectFor(pathname: string): string | null {
   if (pathname === "/inventory" || pathname.startsWith("/inventory/")) return "/admin/items";
   if (pathname === "/jobs" || pathname.startsWith("/jobs/")) return "/admin/jobs";
-  const orgOnly = ["/scan", "/sets", "/labels", "/reports", "/users"];
+  const orgOnly = ["/scan", "/sets", "/labels", "/reports", "/users", "/schedule"];
   if (orgOnly.some((p) => pathname === p || pathname.startsWith(`${p}/`))) return "/home";
   return null;
 }
