@@ -59,7 +59,7 @@ export function Login() {
           </svg>
         </div>
         <h1 style={{ fontSize: 24, fontWeight: 600, letterSpacing: "-0.4px", marginBottom: 4 }}>
-          StageFlow
+          Stagemigo
         </h1>
         <p style={{ fontSize: 13, color: "var(--text-tertiary)" }}>
           Staging inventory, simplified.

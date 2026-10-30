@@ -116,7 +116,7 @@ export function Organizations() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
           <div>
             <h1 className="page-title">Organizations</h1>
-            <p className="page-subtitle">Platform admin · every org on StageFlow</p>
+            <p className="page-subtitle">Platform admin · every org on Stagemigo</p>
           </div>
           <button className="btn btn-primary" style={{ fontSize: 12, padding: "7px 12px", flexShrink: 0 }} onClick={() => setShowNew(true)}>
             + New org

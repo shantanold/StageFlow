@@ -10,8 +10,8 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["icon.svg", "icon-192.png", "icon-512.png", "apple-touch-icon.png"],
       manifest: {
-        name: "StageFlow",
-        short_name: "StageFlow",
+        name: "Stagemigo",
+        short_name: "Stagemigo",
         description: "Home staging inventory management",
         theme_color: "#0a0f1a",
         background_color: "#0a0f1a",

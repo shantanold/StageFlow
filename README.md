@@ -1,4 +1,4 @@
-# StageFlow
+# Stagemigo
 
 Home staging inventory management PWA. Track furniture inventory, organize items into sets, manage staging jobs, scan QR codes for check-out/return, and print label sheets — all from a mobile-first web app your team installs directly to their home screen.
 

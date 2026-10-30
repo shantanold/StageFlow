@@ -66,7 +66,7 @@ export function Register() {
           </svg>
         </div>
         <h1 style={{ fontSize: 24, fontWeight: 600, letterSpacing: "-0.4px" }}>
-          StageFlow
+          Stagemigo
         </h1>
       </div>
 

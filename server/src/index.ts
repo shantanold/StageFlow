@@ -6,7 +6,7 @@ if (!Number.isFinite(PORT) || PORT < 1 || PORT > 65535) {
 }
 
 const server = app.listen(PORT, () => {
-  console.log(`StageFlow server running on http://localhost:${PORT}`);
+  console.log(`Stagemigo server running on http://localhost:${PORT}`);
 });
 
 // Graceful shutdown (Railway/Render send SIGTERM before stopping container)

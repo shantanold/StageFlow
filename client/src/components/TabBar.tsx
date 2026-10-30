@@ -76,7 +76,7 @@ export function TabBar() {
   if (isAdminMode) {
     return (
       <nav className="tab-bar">
-        <div className="tab-brand">StageFlow Admin</div>
+        <div className="tab-brand">Stagemigo Admin</div>
         <NavLink to="/home" className={tabClass}>
           <HomeIcon />
           Overview
@@ -103,7 +103,7 @@ export function TabBar() {
 
   return (
     <nav className="tab-bar">
-      <div className="tab-brand">StageFlow</div>
+      <div className="tab-brand">Stagemigo</div>
 
       <NavLink to="/home" className={tabClass}>
         <HomeIcon />

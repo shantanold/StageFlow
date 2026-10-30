@@ -50,7 +50,7 @@ describe("platform admin — platform org and cross-org furniture", () => {
     await addItem(admin.token, "Admin's Old Org Lamp");
 
     const r = await moveUserToPlatformOrg(adminEmail, { apply: true });
-    expect(r.toOrg.name).toBe("StageFlow Platform");
+    expect(r.toOrg.name).toBe("Stagemigo Platform");
     expect((await moveUserToPlatformOrg(adminEmail, { apply: true })).alreadyThere).toBe(true);
 
     const token = await login(adminEmail);
