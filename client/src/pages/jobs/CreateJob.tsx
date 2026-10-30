@@ -37,12 +37,12 @@ export function CreateJob() {
     // Local days: toISOString() would give tomorrow's date on a US evening.
     start_date: localDateInputValue(new Date()),
     expected_end_date: (() => { const d = new Date(); d.setMonth(d.getMonth() + 3); return localDateInputValue(d); })(),
-    amount: "",
-    monthly_rate: "",
+    amount: "3100",
+    monthly_rate: "1033.33",
     duration: "3 Months",
     market_value: "",
     extension_amount: "",
-    total_paid: "",
+    total_paid: "3100",
     notes: "",
   });
   const [error, setError] = useState("");
