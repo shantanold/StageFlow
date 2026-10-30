@@ -117,6 +117,20 @@ export interface Job {
   start_date: string;
   expected_end_date: string;
   actual_end_date: string | null;
+  /** Staging contract fee (Prisma Decimal → string). */
+  amount: string | null;
+  /** Monthly staging rate (Prisma Decimal → string). */
+  monthly_rate: string | null;
+  /** Contract duration label, e.g. "3 Months". */
+  duration: string | null;
+  /** Home market / listing value (Prisma Decimal → string). */
+  market_value: string | null;
+  /** Extension fees (Prisma Decimal → string). */
+  extension_amount: string | null;
+  /** Total paid by client (Prisma Decimal → string). */
+  total_paid: string | null;
+  /** Date furniture was destaged / pulled. */
+  destaged_at: string | null;
   created_by: string;
   notes: string | null;
   created_at: string;

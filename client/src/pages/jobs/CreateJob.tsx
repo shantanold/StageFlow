@@ -14,6 +14,14 @@ function BackIcon() {
   );
 }
 
+function parseMoney(raw: string): number | null | undefined {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const n = Number(trimmed.replace(/,/g, ""));
+  if (!Number.isFinite(n) || n < 0) return undefined;
+  return n;
+}
+
 export function CreateJob() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -29,6 +37,12 @@ export function CreateJob() {
     // Local days: toISOString() would give tomorrow's date on a US evening.
     start_date: localDateInputValue(new Date()),
     expected_end_date: (() => { const d = new Date(); d.setMonth(d.getMonth() + 3); return localDateInputValue(d); })(),
+    amount: "",
+    monthly_rate: "",
+    duration: "3 Months",
+    market_value: "",
+    extension_amount: "",
+    total_paid: "",
     notes: "",
   });
   const [error, setError] = useState("");
@@ -56,6 +70,23 @@ export function CreateJob() {
       setError("Expected close date is required");
       return;
     }
+
+    const amount = parseMoney(form.amount);
+    const monthlyRate = parseMoney(form.monthly_rate);
+    const marketValue = parseMoney(form.market_value);
+    const extensionAmount = parseMoney(form.extension_amount);
+    const totalPaid = parseMoney(form.total_paid);
+    if (
+      amount === undefined ||
+      monthlyRate === undefined ||
+      marketValue === undefined ||
+      extensionAmount === undefined ||
+      totalPaid === undefined
+    ) {
+      setError("Price fields must be valid non-negative numbers");
+      return;
+    }
+
     try {
       await createJob.mutateAsync({
         address: form.address.trim(),
@@ -66,6 +97,12 @@ export function CreateJob() {
         client_contact: form.client_contact.trim(),
         start_date: form.start_date,
         expected_end_date: form.expected_end_date,
+        amount,
+        monthly_rate: monthlyRate,
+        duration: form.duration.trim() || null,
+        market_value: marketValue,
+        extension_amount: extensionAmount,
+        total_paid: totalPaid,
         notes: form.notes.trim() || undefined,
       });
       showToast("Job created", "success");
@@ -128,6 +165,76 @@ export function CreateJob() {
               <input className="input-field" type="date" value={form.expected_end_date} onChange={(e) => set("expected_end_date", e.target.value)} />
             </div>
           </div>
+
+          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 10, marginTop: 4 }}>
+            Pricing & property
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 }}>
+            <div>
+              <label className="form-label">Amount</label>
+              <input
+                className="input-field"
+                inputMode="decimal"
+                placeholder="2900"
+                value={form.amount}
+                onChange={(e) => set("amount", e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="form-label">Monthly rate</label>
+              <input
+                className="input-field"
+                inputMode="decimal"
+                placeholder="966.67"
+                value={form.monthly_rate}
+                onChange={(e) => set("monthly_rate", e.target.value)}
+              />
+            </div>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 }}>
+            <div>
+              <label className="form-label">Duration</label>
+              <input
+                className="input-field"
+                placeholder="3 Months"
+                value={form.duration}
+                onChange={(e) => set("duration", e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="form-label">Market value</label>
+              <input
+                className="input-field"
+                inputMode="decimal"
+                placeholder="749000"
+                value={form.market_value}
+                onChange={(e) => set("market_value", e.target.value)}
+              />
+            </div>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 }}>
+            <div>
+              <label className="form-label">Extension amount</label>
+              <input
+                className="input-field"
+                inputMode="decimal"
+                placeholder="0"
+                value={form.extension_amount}
+                onChange={(e) => set("extension_amount", e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="form-label">Total paid</label>
+              <input
+                className="input-field"
+                inputMode="decimal"
+                placeholder="2900"
+                value={form.total_paid}
+                onChange={(e) => set("total_paid", e.target.value)}
+              />
+            </div>
+          </div>
+
           <div style={{ marginBottom: 20 }}>
             <label className="form-label">Notes</label>
             <textarea

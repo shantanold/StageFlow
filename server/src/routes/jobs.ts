@@ -16,6 +16,24 @@ router.use(authenticate);
 
 const validStatus: JobStatus[] = ["planning", "active", "completed", "cancelled"];
 
+/** Parse an optional money/number field: blank/null → null, invalid → undefined (reject). */
+function parseOptionalDecimal(value: unknown): number | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null || value === "") return null;
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n) || n < 0) return undefined;
+  return n;
+}
+
+function parseOptionalDate(value: unknown): Date | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null || value === "") return null;
+  if (typeof value !== "string") return undefined;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return undefined;
+  return d;
+}
+
 // ─── GET /jobs?status= ───────────────────────────────────────────────────────
 
 router.get("/", async (req, res) => {
@@ -62,6 +80,13 @@ router.post("/", requireManager, async (req, res) => {
       start_date?: string;
       expected_end_date?: string;
       notes?: string;
+      amount?: number | string | null;
+      monthly_rate?: number | string | null;
+      duration?: string | null;
+      market_value?: number | string | null;
+      extension_amount?: number | string | null;
+      total_paid?: number | string | null;
+      destaged_at?: string | null;
     };
 
     if (!body.address?.trim()) {
@@ -75,6 +100,26 @@ router.post("/", requireManager, async (req, res) => {
     }
     if (!body.expected_end_date) {
       return res.status(400).json({ message: "expected_end_date is required" });
+    }
+
+    const amount = parseOptionalDecimal(body.amount);
+    const monthlyRate = parseOptionalDecimal(body.monthly_rate);
+    const marketValue = parseOptionalDecimal(body.market_value);
+    const extensionAmount = parseOptionalDecimal(body.extension_amount);
+    const totalPaid = parseOptionalDecimal(body.total_paid);
+    const destagedAt = parseOptionalDate(body.destaged_at);
+    // Omitted money/date fields are fine (null); only reject explicitly invalid values.
+    if (
+      (body.amount !== undefined && amount === undefined) ||
+      (body.monthly_rate !== undefined && monthlyRate === undefined) ||
+      (body.market_value !== undefined && marketValue === undefined) ||
+      (body.extension_amount !== undefined && extensionAmount === undefined) ||
+      (body.total_paid !== undefined && totalPaid === undefined)
+    ) {
+      return res.status(400).json({ message: "Money fields must be non-negative numbers" });
+    }
+    if (body.destaged_at !== undefined && destagedAt === undefined) {
+      return res.status(400).json({ message: "destaged_at must be a valid date" });
     }
 
     const userId = req.user!.userId;
@@ -91,6 +136,13 @@ router.post("/", requireManager, async (req, res) => {
         start_date: new Date(body.start_date),
         expected_end_date: new Date(body.expected_end_date),
         notes: body.notes?.trim() ?? null,
+        amount: amount ?? null,
+        monthly_rate: monthlyRate ?? null,
+        duration: body.duration?.trim() || null,
+        market_value: marketValue ?? null,
+        extension_amount: extensionAmount ?? null,
+        total_paid: totalPaid ?? null,
+        destaged_at: destagedAt ?? null,
         status: "planning",
         created_by: userId,
       },
@@ -140,7 +192,33 @@ router.put("/:id", requireManager, async (req, res) => {
       actual_end_date?: string | null;
       status?: JobStatus;
       notes?: string;
+      amount?: number | string | null;
+      monthly_rate?: number | string | null;
+      duration?: string | null;
+      market_value?: number | string | null;
+      extension_amount?: number | string | null;
+      total_paid?: number | string | null;
+      destaged_at?: string | null;
     };
+
+    const amount = parseOptionalDecimal(body.amount);
+    const monthlyRate = parseOptionalDecimal(body.monthly_rate);
+    const marketValue = parseOptionalDecimal(body.market_value);
+    const extensionAmount = parseOptionalDecimal(body.extension_amount);
+    const totalPaid = parseOptionalDecimal(body.total_paid);
+    const destagedAt = parseOptionalDate(body.destaged_at);
+    if (
+      (body.amount !== undefined && amount === undefined) ||
+      (body.monthly_rate !== undefined && monthlyRate === undefined) ||
+      (body.market_value !== undefined && marketValue === undefined) ||
+      (body.extension_amount !== undefined && extensionAmount === undefined) ||
+      (body.total_paid !== undefined && totalPaid === undefined)
+    ) {
+      return res.status(400).json({ message: "Money fields must be non-negative numbers" });
+    }
+    if (body.destaged_at !== undefined && destagedAt === undefined) {
+      return res.status(400).json({ message: "destaged_at must be a valid date" });
+    }
 
     const data: Record<string, unknown> = {};
     if (body.address !== undefined) data.address = body.address.trim();
@@ -154,6 +232,20 @@ router.put("/:id", requireManager, async (req, res) => {
     if (body.actual_end_date !== undefined) data.actual_end_date = body.actual_end_date ? new Date(body.actual_end_date) : null;
     if (body.status !== undefined && validStatus.includes(body.status)) data.status = body.status;
     if (body.notes !== undefined) data.notes = body.notes?.trim() ?? null;
+    if (amount !== undefined) data.amount = amount;
+    if (monthlyRate !== undefined) data.monthly_rate = monthlyRate;
+    if (body.duration !== undefined) data.duration = body.duration?.trim() || null;
+    if (marketValue !== undefined) data.market_value = marketValue;
+    if (extensionAmount !== undefined) data.extension_amount = extensionAmount;
+    if (totalPaid !== undefined) data.total_paid = totalPaid;
+    if (destagedAt !== undefined) data.destaged_at = destagedAt;
+
+    // Completing a job without an explicit destage date marks it destaged today.
+    if (data.status === "completed" && destagedAt === undefined && !existing.destaged_at) {
+      data.destaged_at = data.actual_end_date instanceof Date
+        ? data.actual_end_date
+        : existing.actual_end_date ?? new Date();
+    }
 
     const job = await prisma.job.update({
       where: { id: req.params.id },
@@ -777,9 +869,18 @@ router.post("/:id/force-complete", requireManager, async (req, res) => {
         })),
       });
 
+      const now = new Date();
+      const job = await tx.job.findUnique({
+        where: { id: req.params.id },
+        select: { destaged_at: true },
+      });
       await tx.job.update({
         where: { id: req.params.id },
-        data: { status: "completed", actual_end_date: new Date() },
+        data: {
+          status: "completed",
+          actual_end_date: now,
+          ...(job?.destaged_at ? {} : { destaged_at: now }),
+        },
       });
     });
 

@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useJob, useJobItems, useForceCompleteJob, useUnassignItems, useMarkLoaded, useUndoLoad, useMarkReturned } from "../../lib/queries";
-import { getCategoryEmoji, jobStatusBadgeClass, statusBadgeClass, statusLabel, jobItemStatusLabel } from "../../lib/utils";
-import { formatCalendarDay } from "../../lib/utils";
+import { getCategoryEmoji, jobStatusBadgeClass, statusBadgeClass, statusLabel, jobItemStatusLabel, formatCurrency, formatCalendarDay } from "../../lib/utils";
 import { displayPhotoUrl } from "../../lib/cloudinary";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
@@ -196,6 +195,50 @@ export function JobDetail() {
             </div>
           )}
         </div>
+
+        <div className="pair-grid" style={{ marginBottom: 14, maxWidth: "none" }}>
+          <div className="card" style={{ marginBottom: 0 }}>
+            <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Amount</div>
+            <div style={{ fontSize: 13, fontWeight: 500 }}>{formatCurrency(job.amount)}</div>
+          </div>
+          <div className="card" style={{ marginBottom: 0 }}>
+            <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Monthly</div>
+            <div style={{ fontSize: 13, fontWeight: 500 }}>{formatCurrency(job.monthly_rate)}</div>
+          </div>
+        </div>
+        <div className="pair-grid" style={{ marginBottom: 14, maxWidth: "none" }}>
+          <div className="card" style={{ marginBottom: 0 }}>
+            <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Duration</div>
+            <div style={{ fontSize: 13, fontWeight: 500 }}>{job.duration || "—"}</div>
+          </div>
+          <div className="card" style={{ marginBottom: 0 }}>
+            <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Market value</div>
+            <div style={{ fontSize: 13, fontWeight: 500 }}>{formatCurrency(job.market_value)}</div>
+          </div>
+        </div>
+        <div className="pair-grid" style={{ marginBottom: 14, maxWidth: "none" }}>
+          <div className="card" style={{ marginBottom: 0 }}>
+            <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Extension</div>
+            <div style={{ fontSize: 13, fontWeight: 500 }}>{formatCurrency(job.extension_amount)}</div>
+          </div>
+          <div className="card" style={{ marginBottom: 0 }}>
+            <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Total paid</div>
+            <div style={{ fontSize: 13, fontWeight: 500 }}>{formatCurrency(job.total_paid)}</div>
+          </div>
+        </div>
+        <div className="pair-grid" style={{ marginBottom: 14, maxWidth: "none" }}>
+          <div className="card" style={{ marginBottom: 0, ...(job.destaged_at ? { borderColor: "rgba(16,185,129,0.3)" } : {}) }}>
+            <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Destaged</div>
+            <div style={{ fontSize: 13, fontWeight: 500, color: job.destaged_at ? "var(--green-text)" : undefined }}>
+              {job.destaged_at ? formatCalendarDay(job.destaged_at) : "Still staged"}
+            </div>
+          </div>
+          <div className="card" style={{ marginBottom: 0 }}>
+            <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Items</div>
+            <div style={{ fontSize: 13, fontWeight: 500 }}>{job.item_count} pieces</div>
+          </div>
+        </div>
+
         {job.notes && (
           <div className="card" style={{ marginBottom: 14 }}>
             <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Notes</div>
