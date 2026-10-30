@@ -1,4 +1,4 @@
-# StageFlow — Claude Code Build Steps
+# Stagemigo — Claude Code Build Steps
 
 Copy-paste these prompts into Claude Code in order. Wait for each phase to complete before starting the next. Each prompt assumes the previous phases are done.
 
@@ -7,7 +7,7 @@ Copy-paste these prompts into Claude Code in order. Wait for each phase to compl
 ## Phase 0: Project setup
 
 ```
-Read CLAUDE.md in this repo — it's the full product spec for StageFlow, a home staging inventory management PWA. 
+Read CLAUDE.md in this repo — it's the full product spec for Stagemigo, a home staging inventory management PWA. 
 
 Set up the project from scratch:
 - Create a monorepo structure with /client (React + Vite + Tailwind) and /server (Node + Express + Prisma + PostgreSQL)
@@ -195,7 +195,7 @@ Referring to CLAUDE.md for the full spec:
 Make this a proper installable PWA and polish the UX:
 
 PWA setup:
-- Create manifest.json with app name "StageFlow", dark theme color (#0a0f1a), standalone display mode, portrait orientation
+- Create manifest.json with app name "Stagemigo", dark theme color (#0a0f1a), standalone display mode, portrait orientation
 - Create a service worker that caches the app shell and static assets for offline capability (use Workbox via the vite-plugin-pwa plugin)
 - Generate proper PWA icons (192x192 and 512x512) — simple dark icon with "SF" text
 - Add apple-mobile-web-app meta tags for iOS home screen support
@@ -217,7 +217,7 @@ Polish:
 ## Phase 8: Deployment
 
 ```
-Set up deployment for StageFlow:
+Set up deployment for Stagemigo:
 
 Database:
 - Set up a free PostgreSQL instance on Supabase (or Neon)

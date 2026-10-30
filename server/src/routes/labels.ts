@@ -89,13 +89,13 @@ router.get("/generate", async (req, res) => {
       size: "LETTER",
       margins: { top: 0, bottom: 0, left: 0, right: 0 },
       autoFirstPage: false,
-      info: { Title: "StageFlow QR Labels" },
+      info: { Title: "Stagemigo QR Labels" },
     });
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename="stageflow-labels-${Date.now()}.pdf"`
+      `attachment; filename="stagemigo-labels-${Date.now()}.pdf"`
     );
     doc.pipe(res);
 

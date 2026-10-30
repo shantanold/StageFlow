@@ -24,7 +24,7 @@ export async function downloadLabels(itemIds: string[]): Promise<void> {
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement("a");
   a.href     = url;
-  a.download = `stageflow-labels-${new Date().toISOString().slice(0, 10)}.pdf`;
+  a.download = `stagemigo-labels-${new Date().toISOString().slice(0, 10)}.pdf`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);

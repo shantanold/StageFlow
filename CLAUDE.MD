@@ -1,8 +1,8 @@
-# StageFlow — Project Brief
+# Stagemigo — Project Brief
 
 ## What this is
 
-StageFlow is an inventory management system for a home staging business. We own furniture that we place in houses to make them look good for sale. When the house sells, the furniture comes back to our warehouse and waits to be deployed again. This app tracks every piece of furniture through that cycle, using QR code scanning to keep the data accurate.
+Stagemigo is an inventory management system for a home staging business. We own furniture that we place in houses to make them look good for sale. When the house sells, the furniture comes back to our warehouse and waits to be deployed again. This app tracks every piece of furniture through that cycle, using QR code scanning to keep the data accurate.
 
 ## Who uses it
 

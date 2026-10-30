@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken";
 import { rawPrisma } from "./prisma";
 
 /**
- * Platform admins are the people who run StageFlow itself (not a customer's
+ * Platform admins are the people who run Stagemigo itself (not a customer's
  * manager). They're listed by email in PLATFORM_ADMIN_EMAILS (comma-separated)
  * rather than stored in the DB, so no customer org can ever grant the role.
  * Read on every call so tests and config changes take effect without a restart.
@@ -24,7 +24,7 @@ export function isPlatformAdminEmail(email: string | null | undefined): boolean 
  * used to register into it, and it's left out of the admin organization list.
  */
 export const PLATFORM_ORG_SLUG = "stageflow-platform";
-export const PLATFORM_ORG_NAME = "StageFlow Platform";
+export const PLATFORM_ORG_NAME = "Stagemigo Platform";
 
 /** Creates the platform org if it doesn't exist yet. Safe to call repeatedly. */
 export async function ensurePlatformOrg() {

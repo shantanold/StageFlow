@@ -6,7 +6,7 @@ export interface User {
   email: string;
   role: "staff" | "manager";
   created_at?: string;
-  /** Runs StageFlow itself and can see every organization. */
+  /** Runs Stagemigo itself and can see every organization. */
   is_platform_admin?: boolean;
   /** Set while a platform admin is working inside a customer org. */
   acting_org?: { id: string; name: string } | null;
