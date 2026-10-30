@@ -146,6 +146,20 @@ model Job {
   start_date        DateTime  @db.Date
   expected_end_date DateTime  @db.Date
   actual_end_date   DateTime? @db.Date
+  /// Staging contract fee charged to the client (Excel "Amount").
+  amount            Decimal?  @db.Decimal(10, 2)
+  /// Monthly staging rate (Excel "Monthly").
+  monthly_rate      Decimal?  @db.Decimal(10, 2)
+  /// Contract duration label, e.g. "3 Months" (Excel "Duration").
+  duration          String?
+  /// Listed/asking market value of the home (Excel "Market Value").
+  market_value      Decimal?  @db.Decimal(14, 2)
+  /// Fees from contract extensions (Excel "Extension Amount").
+  extension_amount  Decimal?  @db.Decimal(10, 2)
+  /// Total amount paid by the client (Excel "Total Paid").
+  total_paid        Decimal?  @db.Decimal(10, 2)
+  /// Date furniture was destaged / pulled from the home (Excel "Destaged").
+  destaged_at       DateTime? @db.Date
   created_by        String
   notes             String?
   created_at        DateTime  @default(now())

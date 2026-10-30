@@ -128,9 +128,15 @@ export async function maybeCompleteJob(tx: Tx, jobId: string): Promise<boolean> 
     where: { job_id: jobId, status: { not: "returned" } },
   });
   if (remaining === 0) {
+    const now = new Date();
+    const job = await tx.job.findUnique({ where: { id: jobId }, select: { destaged_at: true } });
     await tx.job.update({
       where: { id: jobId },
-      data: { status: "completed", actual_end_date: new Date() },
+      data: {
+        status: "completed",
+        actual_end_date: now,
+        ...(job?.destaged_at ? {} : { destaged_at: now }),
+      },
     });
     return true;
   }

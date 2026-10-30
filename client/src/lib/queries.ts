@@ -317,6 +317,13 @@ interface CreateJobInput {
   start_date: string;
   expected_end_date: string;
   notes?: string;
+  amount?: number | null;
+  monthly_rate?: number | null;
+  duration?: string | null;
+  market_value?: number | null;
+  extension_amount?: number | null;
+  total_paid?: number | null;
+  destaged_at?: string | null;
 }
 
 export function useCreateJob() {
@@ -332,8 +339,12 @@ export function useCreateJob() {
 export function useUpdateJob(id: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: Partial<CreateJobInput> & { actual_end_date?: string | null; status?: string }) =>
-      api.put<Job>(`/jobs/${id}`, data),
+    mutationFn: (
+      data: Partial<CreateJobInput> & {
+        actual_end_date?: string | null;
+        status?: string;
+      },
+    ) => api.put<Job>(`/jobs/${id}`, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["jobs"] });
       qc.invalidateQueries({ queryKey: ["jobs", id] });
