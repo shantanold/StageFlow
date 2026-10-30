@@ -220,6 +220,68 @@ export interface JobPerformanceReport {
   damage_rate_pct:     number;
   top_clients:         { client_name: string; job_count: number }[];
   monthly_completions: { month: string; count: number }[];
+  total_revenue:       number;
+  avg_amount:          number;
+  total_market_value:  number;
+}
+
+export interface RevenueReport {
+  collected_revenue: number;
+  pipeline_revenue: number;
+  total_revenue: number;
+  extension_revenue: number;
+  avg_amount: number;
+  avg_monthly_rate: number;
+  market_value_staged: number;
+  market_value_all_time: number;
+  jobs_with_amount: number;
+  jobs_with_market_value: number;
+  job_count: number;
+  monthly: { month: string; revenue: number; job_count: number; extensions: number }[];
+  top_clients: { client_name: string; revenue: number; job_count: number; market_value: number }[];
+}
+
+export interface DemandReport {
+  by_category: {
+    category: string;
+    assignments: number;
+    item_count: number;
+    staged: number;
+    available: number;
+    avg_jobs_per_item: number;
+    utilization_pct: number;
+  }[];
+  top_items: {
+    id: string;
+    name: string;
+    sku: string;
+    category: string;
+    status: string;
+    job_count: number;
+    purchase_cost: number;
+  }[];
+  tight_supply: {
+    id: string;
+    name: string;
+    sku: string;
+    category: string;
+    status: string;
+    job_count: number;
+  }[];
+  monthly_by_category: { month: string; counts: Record<string, number> }[];
+  top_category_names: string[];
+}
+
+export interface ActivityReport {
+  heatmap: { date: string; staged: number; destaged: number; revenue: number }[];
+  max_activity: number;
+  by_weekday: { weekday: number; staged: number; destaged: number }[];
+  monthly: { month: string; staged: number; destaged: number; revenue: number }[];
+  busiest_days: { date: string; staged: number; destaged: number; revenue: number }[];
+  currently_staged: number;
+  destaged_count: number;
+  range_start: string;
+  range_end: string;
 }
 
 export interface InventoryValueReport {
@@ -268,6 +330,27 @@ export function useDamageLossReport() {
   return useQuery({
     queryKey: ["stats", "reports", "damage-loss"],
     queryFn:  () => api.get<DamageLossReport>("/stats/reports/damage-loss"),
+  });
+}
+
+export function useRevenueReport() {
+  return useQuery({
+    queryKey: ["stats", "reports", "revenue"],
+    queryFn: () => api.get<RevenueReport>("/stats/reports/revenue"),
+  });
+}
+
+export function useDemandReport() {
+  return useQuery({
+    queryKey: ["stats", "reports", "demand"],
+    queryFn: () => api.get<DemandReport>("/stats/reports/demand"),
+  });
+}
+
+export function useActivityReport() {
+  return useQuery({
+    queryKey: ["stats", "reports", "activity"],
+    queryFn: () => api.get<ActivityReport>("/stats/reports/activity"),
   });
 }
 
