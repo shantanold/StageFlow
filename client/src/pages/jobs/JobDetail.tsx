@@ -7,9 +7,14 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { ModalOverlay } from "../../components/ModalOverlay";
-import type { JobItemRow } from "../../types";
+import type { Job, JobItemRow } from "../../types";
 import { EditJobModal } from "./EditJobModal";
 import { AssignItemsModal } from "./AssignItemsModal";
+
+function hasFinancialData(job: Job): boolean {
+  return [job.amount, job.monthly_rate, job.market_value, job.extension_amount, job.total_paid]
+    .some((v) => v != null && v !== "");
+}
 
 function BackIcon() {
   return (
@@ -60,6 +65,7 @@ export function JobDetail() {
   const [showEdit, setShowEdit] = useState(false);
   const [showAssign, setShowAssign] = useState(false);
   const [showForceComplete, setShowForceComplete] = useState(false);
+  const [showFinancial, setShowFinancial] = useState(false);
   const [unassignTarget, setUnassignTarget] = useState<JobItemRow | null>(null);
 
   const { data: job, isLoading: jobLoading } = useJob(id);
@@ -179,63 +185,36 @@ export function JobDetail() {
           </div>
         </div>
         <div className="pair-grid" style={{ marginBottom: 14, maxWidth: "none" }}>
-          <div className="card">
+          <div className="card" style={{ marginBottom: 0 }}>
             <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Start date</div>
             <div style={{ fontSize: 13, fontWeight: 500 }}>{formatCalendarDay(job.start_date)}</div>
           </div>
           {job.actual_end_date ? (
-            <div className="card" style={{ borderColor: "rgba(16,185,129,0.3)" }}>
+            <div className="card" style={{ marginBottom: 0, borderColor: "rgba(16,185,129,0.3)" }}>
               <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Closed</div>
               <div style={{ fontSize: 13, fontWeight: 500, color: "var(--green-text)" }}>{formatCalendarDay(job.actual_end_date)}</div>
             </div>
           ) : (
-            <div className="card">
+            <div className="card" style={{ marginBottom: 0 }}>
               <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Expected close</div>
               <div style={{ fontSize: 13, fontWeight: 500, color: "var(--amber-text)" }}>{formatCalendarDay(job.expected_end_date)}</div>
             </div>
           )}
         </div>
-
-        <div className="pair-grid" style={{ marginBottom: 14, maxWidth: "none" }}>
-          <div className="card" style={{ marginBottom: 0 }}>
-            <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Amount</div>
-            <div style={{ fontSize: 13, fontWeight: 500 }}>{formatCurrency(job.amount)}</div>
-          </div>
-          <div className="card" style={{ marginBottom: 0 }}>
-            <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Monthly</div>
-            <div style={{ fontSize: 13, fontWeight: 500 }}>{formatCurrency(job.monthly_rate)}</div>
-          </div>
-        </div>
-        <div className="pair-grid" style={{ marginBottom: 14, maxWidth: "none" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 14 }}>
           <div className="card" style={{ marginBottom: 0 }}>
             <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Duration</div>
             <div style={{ fontSize: 13, fontWeight: 500 }}>{job.duration || "—"}</div>
           </div>
           <div className="card" style={{ marginBottom: 0 }}>
-            <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Market value</div>
-            <div style={{ fontSize: 13, fontWeight: 500 }}>{formatCurrency(job.market_value)}</div>
+            <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Items</div>
+            <div style={{ fontSize: 13, fontWeight: 500 }}>{job.item_count} pieces</div>
           </div>
-        </div>
-        <div className="pair-grid" style={{ marginBottom: 14, maxWidth: "none" }}>
-          <div className="card" style={{ marginBottom: 0 }}>
-            <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Extension</div>
-            <div style={{ fontSize: 13, fontWeight: 500 }}>{formatCurrency(job.extension_amount)}</div>
-          </div>
-          <div className="card" style={{ marginBottom: 0 }}>
-            <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Total paid</div>
-            <div style={{ fontSize: 13, fontWeight: 500 }}>{formatCurrency(job.total_paid)}</div>
-          </div>
-        </div>
-        <div className="pair-grid" style={{ marginBottom: 14, maxWidth: "none" }}>
           <div className="card" style={{ marginBottom: 0, ...(job.destaged_at ? { borderColor: "rgba(16,185,129,0.3)" } : {}) }}>
             <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Destaged</div>
             <div style={{ fontSize: 13, fontWeight: 500, color: job.destaged_at ? "var(--green-text)" : undefined }}>
               {job.destaged_at ? formatCalendarDay(job.destaged_at) : "Still staged"}
             </div>
-          </div>
-          <div className="card" style={{ marginBottom: 0 }}>
-            <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Items</div>
-            <div style={{ fontSize: 13, fontWeight: 500 }}>{job.item_count} pieces</div>
           </div>
         </div>
 
@@ -243,6 +222,55 @@ export function JobDetail() {
           <div className="card" style={{ marginBottom: 14 }}>
             <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Notes</div>
             <div style={{ fontSize: 13 }}>{job.notes}</div>
+          </div>
+        )}
+
+        {/* Financial details — collapsed by default; full analytics live in Reports */}
+        {(hasFinancialData(job) || isManager) && (
+          <div style={{ marginBottom: 14 }}>
+            <button
+              type="button"
+              className="btn btn-outline"
+              style={{ width: "100%", fontSize: 12.5, justifyContent: "space-between", display: "flex", alignItems: "center" }}
+              onClick={() => setShowFinancial((v) => !v)}
+              aria-expanded={showFinancial}
+            >
+              <span>Financial details</span>
+              <span style={{ color: "var(--text-tertiary)", fontSize: 11 }}>
+                {showFinancial ? "Hide" : "Show"}
+              </span>
+            </button>
+            {showFinancial && (
+              <div style={{ marginTop: 10 }}>
+                <div className="pair-grid" style={{ marginBottom: 10, maxWidth: "none" }}>
+                  <div className="card" style={{ marginBottom: 0 }}>
+                    <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Amount</div>
+                    <div style={{ fontSize: 13, fontWeight: 500 }}>{formatCurrency(job.amount)}</div>
+                  </div>
+                  <div className="card" style={{ marginBottom: 0 }}>
+                    <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Monthly</div>
+                    <div style={{ fontSize: 13, fontWeight: 500 }}>{formatCurrency(job.monthly_rate)}</div>
+                  </div>
+                </div>
+                <div className="pair-grid" style={{ marginBottom: 10, maxWidth: "none" }}>
+                  <div className="card" style={{ marginBottom: 0 }}>
+                    <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Market value</div>
+                    <div style={{ fontSize: 13, fontWeight: 500 }}>{formatCurrency(job.market_value)}</div>
+                  </div>
+                  <div className="card" style={{ marginBottom: 0 }}>
+                    <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Extension</div>
+                    <div style={{ fontSize: 13, fontWeight: 500 }}>{formatCurrency(job.extension_amount)}</div>
+                  </div>
+                </div>
+                <div className="card" style={{ marginBottom: 0 }}>
+                  <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Total paid</div>
+                  <div style={{ fontSize: 13, fontWeight: 500 }}>{formatCurrency(job.total_paid)}</div>
+                </div>
+                <p style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 8 }}>
+                  Revenue trends and comparisons are in Reports.
+                </p>
+              </div>
+            )}
           </div>
         )}
 

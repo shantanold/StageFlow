@@ -37,15 +37,16 @@ export function CreateJob() {
     // Local days: toISOString() would give tomorrow's date on a US evening.
     start_date: localDateInputValue(new Date()),
     expected_end_date: (() => { const d = new Date(); d.setMonth(d.getMonth() + 3); return localDateInputValue(d); })(),
-    amount: "",
-    monthly_rate: "",
+    amount: "3100",
+    monthly_rate: "1033.33",
     duration: "3 Months",
     market_value: "",
     extension_amount: "",
-    total_paid: "",
+    total_paid: "3100",
     notes: "",
   });
   const [error, setError] = useState("");
+  const [showFinancial, setShowFinancial] = useState(false);
 
   if (user?.role !== "manager") {
     return <Navigate to="/jobs" replace />;
@@ -165,74 +166,85 @@ export function CreateJob() {
               <input className="input-field" type="date" value={form.expected_end_date} onChange={(e) => set("expected_end_date", e.target.value)} />
             </div>
           </div>
+          <div style={{ marginBottom: 14 }}>
+            <label className="form-label">Duration</label>
+            <input
+              className="input-field"
+              placeholder="3 Months"
+              value={form.duration}
+              onChange={(e) => set("duration", e.target.value)}
+            />
+          </div>
 
-          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 10, marginTop: 4 }}>
-            Pricing & property
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 }}>
-            <div>
-              <label className="form-label">Amount</label>
-              <input
-                className="input-field"
-                inputMode="decimal"
-                placeholder="2900"
-                value={form.amount}
-                onChange={(e) => set("amount", e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="form-label">Monthly rate</label>
-              <input
-                className="input-field"
-                inputMode="decimal"
-                placeholder="966.67"
-                value={form.monthly_rate}
-                onChange={(e) => set("monthly_rate", e.target.value)}
-              />
-            </div>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 }}>
-            <div>
-              <label className="form-label">Duration</label>
-              <input
-                className="input-field"
-                placeholder="3 Months"
-                value={form.duration}
-                onChange={(e) => set("duration", e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="form-label">Market value</label>
-              <input
-                className="input-field"
-                inputMode="decimal"
-                placeholder="749000"
-                value={form.market_value}
-                onChange={(e) => set("market_value", e.target.value)}
-              />
-            </div>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 }}>
-            <div>
-              <label className="form-label">Extension amount</label>
-              <input
-                className="input-field"
-                inputMode="decimal"
-                placeholder="0"
-                value={form.extension_amount}
-                onChange={(e) => set("extension_amount", e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="form-label">Total paid</label>
-              <input
-                className="input-field"
-                inputMode="decimal"
-                placeholder="2900"
-                value={form.total_paid}
-                onChange={(e) => set("total_paid", e.target.value)}
-              />
-            </div>
+          <div style={{ marginBottom: 14 }}>
+            <button
+              type="button"
+              className="btn btn-outline"
+              style={{ width: "100%", fontSize: 12.5, display: "flex", justifyContent: "space-between", alignItems: "center" }}
+              onClick={() => setShowFinancial((v) => !v)}
+              aria-expanded={showFinancial}
+            >
+              <span>Financial details</span>
+              <span style={{ color: "var(--text-tertiary)", fontSize: 11 }}>{showFinancial ? "Hide" : "Show"}</span>
+            </button>
+            {showFinancial && (
+              <div style={{ marginTop: 12 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 }}>
+                  <div>
+                    <label className="form-label">Amount</label>
+                    <input
+                      className="input-field"
+                      inputMode="decimal"
+                      placeholder="2900"
+                      value={form.amount}
+                      onChange={(e) => set("amount", e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label">Monthly rate</label>
+                    <input
+                      className="input-field"
+                      inputMode="decimal"
+                      placeholder="966.67"
+                      value={form.monthly_rate}
+                      onChange={(e) => set("monthly_rate", e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div style={{ marginBottom: 14 }}>
+                  <label className="form-label">Market value</label>
+                  <input
+                    className="input-field"
+                    inputMode="decimal"
+                    placeholder="749000"
+                    value={form.market_value}
+                    onChange={(e) => set("market_value", e.target.value)}
+                  />
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 0 }}>
+                  <div>
+                    <label className="form-label">Extension amount</label>
+                    <input
+                      className="input-field"
+                      inputMode="decimal"
+                      placeholder="0"
+                      value={form.extension_amount}
+                      onChange={(e) => set("extension_amount", e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label">Total paid</label>
+                    <input
+                      className="input-field"
+                      inputMode="decimal"
+                      placeholder="2900"
+                      value={form.total_paid}
+                      onChange={(e) => set("total_paid", e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <div style={{ marginBottom: 20 }}>
