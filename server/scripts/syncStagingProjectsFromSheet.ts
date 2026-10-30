@@ -67,7 +67,7 @@ async function main() {
   const apply = process.argv.includes("--apply");
   const jsonPath =
     process.env.STAGING_PROJECTS_JSON ??
-    path.resolve(__dirname, "../../../staging_projects_parsed.json");
+    path.resolve(__dirname, "data/staging_projects_parsed.json");
 
   if (!fs.existsSync(jsonPath)) {
     console.error(
