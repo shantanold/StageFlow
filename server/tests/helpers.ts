@@ -16,6 +16,7 @@ export async function cleanDb() {
   await rawPrisma.$transaction([
     rawPrisma.event.deleteMany(),
     rawPrisma.calendarSource.deleteMany(),
+    rawPrisma.googleConnection.deleteMany(),
     rawPrisma.movement.deleteMany(),
     rawPrisma.jobItem.deleteMany(),
     rawPrisma.job.deleteMany(),

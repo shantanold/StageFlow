@@ -139,7 +139,7 @@ export interface Job {
 
 // ─── Calendar ────────────────────────────────────────────────────────────────
 
-export type EventSource = "manual" | "ics_file" | "ics_url";
+export type EventSource = "manual" | "ics_file" | "ics_url" | "google";
 
 /**
  * start_at/end_at are real instants. For all_day events they are UTC midnight
@@ -166,14 +166,41 @@ export interface CalendarEvent {
   calendar_source: { id: string; name: string } | null;
 }
 
+/** A synced calendar: an ICS subscription (url) or one calendar of a connected Google account. */
 export interface CalendarSource {
   id: string;
   name: string;
-  url: string;
+  url: string | null;
+  google_connection_id: string | null;
+  google_calendar_id: string | null;
   last_synced_at: string | null;
   last_error: string | null;
   event_count: number;
   created_at: string;
+}
+
+export interface GoogleConnection {
+  id: string;
+  google_email: string;
+  /** Set when Google stopped accepting the stored access; the account needs reconnecting. */
+  last_error: string | null;
+  created_at: string;
+  connector: { name: string } | null;
+}
+
+export interface GoogleCalendarStatus {
+  /** False when the server has no Google OAuth client set up. */
+  configured: boolean;
+  connections: GoogleConnection[];
+}
+
+/** One calendar in a connected Google account; source_id is set when it's being synced. */
+export interface GoogleCalendarInfo {
+  id: string;
+  name: string;
+  primary: boolean;
+  color: string | null;
+  source_id: string | null;
 }
 
 export interface CalendarSyncResult {

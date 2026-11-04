@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, apiWithToken } from "./api";
-import type { CalendarEvent, CalendarSource, CalendarSyncResult, Item, ItemDetail, ItemSet, Movement, Job, JobItemRow, ManagedUser, AdminOrganization, AdminOrganizationDetail, AdminItemsResponse, AdminOrgSummary, AdminUserUpdate, AdminJobsResponse } from "../types";
+import type { CalendarEvent, CalendarSource, CalendarSyncResult, GoogleCalendarInfo, GoogleCalendarStatus, Item, ItemDetail, ItemSet, Movement, Job, JobItemRow, ManagedUser, AdminOrganization, AdminOrganizationDetail, AdminItemsResponse, AdminOrgSummary, AdminUserUpdate, AdminJobsResponse } from "../types";
 
 // ─── Items ────────────────────────────────────────────────────────────────────
 
@@ -835,6 +835,7 @@ export function useCalendarSources(enabled = true) {
 function invalidateCalendar(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: ["calendar", "sources"] });
   qc.invalidateQueries({ queryKey: ["calendar", "events"] });
+  qc.invalidateQueries({ queryKey: ["calendar", "google"] });
 }
 
 export function useAddCalendarSource() {
@@ -857,6 +858,46 @@ export function useDeleteCalendarSource() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => api.delete<void>(`/calendar/sources/${id}`),
+    onSuccess: () => invalidateCalendar(qc),
+  });
+}
+
+export function useGoogleCalendarStatus() {
+  return useQuery({
+    queryKey: ["calendar", "google"],
+    queryFn: () => api.get<GoogleCalendarStatus>("/calendar/google"),
+  });
+}
+
+/** Asks the server for Google's consent URL; the caller sends the browser there. */
+export function useConnectGoogle() {
+  return useMutation({
+    mutationFn: () => api.post<{ url: string }>("/calendar/google/connect", { return_to: window.location.origin }),
+  });
+}
+
+export function useGoogleCalendars(connectionId: string, enabled = true) {
+  return useQuery({
+    queryKey: ["calendar", "google", connectionId, "calendars"],
+    queryFn: () => api.get<GoogleCalendarInfo[]>(`/calendar/google/${connectionId}/calendars`),
+    enabled,
+    retry: false,
+  });
+}
+
+export function useAddGoogleCalendar(connectionId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { calendar_id: string; name: string }) =>
+      api.post<CalendarSyncResult>(`/calendar/google/${connectionId}/calendars`, data),
+    onSuccess: () => invalidateCalendar(qc),
+  });
+}
+
+export function useDisconnectGoogle() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete<void>(`/calendar/google/${id}`),
     onSuccess: () => invalidateCalendar(qc),
   });
 }

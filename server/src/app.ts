@@ -15,6 +15,8 @@ import statsRouter from "./routes/stats";
 import usersRouter from "./routes/users";
 import adminRouter from "./routes/admin";
 import calendarRouter from "./routes/calendar";
+import googleCalendarRouter from "./routes/googleCalendar";
+import { allowedOrigins } from "./lib/origins";
 
 const app = express();
 
@@ -25,14 +27,8 @@ app.set("trust proxy", 1);
 
 app.use(helmet());
 
-// Comma-separated so the old and new frontend domains can both work during a move.
-const corsOrigins = (process.env.CORS_ORIGIN ?? "http://localhost:5173")
-  .split(",")
-  .map((o) => o.trim().replace(/\/+$/, ""))
-  .filter(Boolean);
-
 app.use(cors({
-  origin: corsOrigins,
+  origin: allowedOrigins(),
   credentials: true,
 }));
 
@@ -73,6 +69,8 @@ app.use("/api/v1/jobs",   apiLimiter,  jobsRouter);
 app.use("/api/v1/stats",  apiLimiter,  statsRouter);
 app.use("/api/v1/users",  apiLimiter,  usersRouter);
 app.use("/api/v1/admin",  apiLimiter,  adminRouter);
+// Before the main calendar router: Google's OAuth callback has no bearer token.
+app.use("/api/v1/calendar/google", apiLimiter, googleCalendarRouter);
 app.use("/api/v1/calendar", apiLimiter, calendarRouter);
 
 app.use((_req, res) => {

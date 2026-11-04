@@ -251,8 +251,8 @@ export function EventModal({ event, day, onClose }: EventModalProps) {
         <ConfirmDialog
           title={`Delete "${event!.title}"?`}
           message={
-            event!.source === "ics_url"
-              ? "It came from a subscribed calendar, so the next sync will add it back. Delete it in that calendar to remove it for good."
+            event!.source === "ics_url" || event!.source === "google"
+              ? "It came from a synced calendar, so the next sync will add it back. Delete it in that calendar to remove it for good."
               : "This can't be undone."
           }
           confirmLabel="Delete"

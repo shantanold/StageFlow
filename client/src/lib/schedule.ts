@@ -165,6 +165,7 @@ export function formTimesToApi(t: EventFormTimes): { start_at: string; end_at: s
 
 export function sourceLabel(ev: CalendarEvent): string | null {
   if (ev.source === "ics_url") return ev.calendar_source?.name ?? "Subscribed calendar";
+  if (ev.source === "google") return ev.calendar_source?.name ?? "Google Calendar";
   if (ev.source === "ics_file") return "Imported";
   return null;
 }

@@ -124,6 +124,11 @@ The PWA manifest and service worker are automatically included in the `dist/` bu
 | `PORT` | | Server port (default: 3001) |
 | `CORS_ORIGIN` | | Allowed frontend origin(s), comma-separated (default: http://localhost:5173) |
 | `SIGNUP_CODE` | ✅ | Shared secret required to register a new account — pick your own and share it only with your team |
+| `CALENDAR_SYNC_INTERVAL_MINUTES` | | How often synced calendars refresh in the background (default 60; 0 turns it off) |
+| `GOOGLE_CLIENT_ID` | | Google OAuth client (Web application) for Google Calendar sync. Leave the four Google/token variables unset to hide "Connect Google Calendar" |
+| `GOOGLE_CLIENT_SECRET` | | That client's secret |
+| `GOOGLE_OAUTH_REDIRECT_URI` | | `https://<api host>/api/v1/calendar/google/callback`, also listed under the client's authorized redirect URIs |
+| `CALENDAR_TOKEN_KEY` | | Encrypts stored Google refresh tokens: `openssl rand -base64 32`. Changing it disconnects every Google account |
 
 ### Client (`client/.env`)
 
