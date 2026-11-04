@@ -8,10 +8,12 @@ import crypto from "crypto";
  */
 
 function key(): Buffer {
-  const raw = process.env.CALENDAR_TOKEN_KEY;
+  const raw = process.env.CALENDAR_TOKEN_KEY?.trim();
   if (!raw) throw new Error("CALENDAR_TOKEN_KEY is not set");
+  // Exactly what `openssl rand -base64 32` prints. Node's decoder skips
+  // characters it doesn't recognize, so check the text before decoding.
+  if (!/^[A-Za-z0-9+/]{43}=$/.test(raw)) throw new Error("CALENDAR_TOKEN_KEY must be 32 bytes, base64-encoded");
   const k = Buffer.from(raw, "base64");
-  if (k.length !== 32) throw new Error("CALENDAR_TOKEN_KEY must be 32 bytes, base64-encoded");
   return k;
 }
 

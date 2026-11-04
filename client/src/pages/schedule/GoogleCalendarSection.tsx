@@ -31,6 +31,17 @@ export function GoogleCalendarSection({ sources }: { sources: CalendarSource[] }
   const { data: status } = useGoogleCalendarStatus();
   const connect = useConnectGoogle();
 
+  if (status?.config_error) {
+    return (
+      <div style={{ marginBottom: 20 }}>
+        <p style={sectionLabel}>Google Calendar</p>
+        <p style={{ ...helpText, color: "var(--red-text)" }}>
+          Google Calendar is turned off because the server's settings are wrong: {status.config_error}. Fix it in
+          the server's environment variables and redeploy.
+        </p>
+      </div>
+    );
+  }
   if (!status?.configured) return null;
 
   async function handleConnect() {

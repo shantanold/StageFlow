@@ -27,13 +27,50 @@ export class GoogleApiError extends Error {}
 
 export const RECONNECT_MESSAGE = "Google access expired or was revoked. Reconnect Google to keep syncing.";
 
+const ENV_NAMES = ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GOOGLE_OAUTH_REDIRECT_URI", "CALENDAR_TOKEN_KEY"] as const;
+
+/** A Google setting with surrounding whitespace (e.g. a pasted trailing newline) removed. */
+function env(name: (typeof ENV_NAMES)[number]) {
+  return (process.env[name] ?? "").trim();
+}
+
+/**
+ * Checks the Google settings' shape, so a mistake (two pasted lines in one
+ * variable, quotes, a NAME= prefix) turns the feature off with a clear
+ * message instead of sending a broken client ID, possibly containing the
+ * secret, to Google. Messages name the variable, never its value.
+ * `error` is null when everything is valid, or when nothing is set at all
+ * (Google Calendar deliberately not set up).
+ */
+export function googleConfigStatus(): { configured: boolean; error: string | null } {
+  const missing = ENV_NAMES.filter((n) => !env(n));
+  if (missing.length === ENV_NAMES.length) return { configured: false, error: null };
+  const error = (() => {
+    if (missing.length) return `${missing.join(", ")} ${missing.length === 1 ? "is" : "are"} not set`;
+    if (!/^\d+-[a-z0-9]+\.apps\.googleusercontent\.com$/.test(env("GOOGLE_CLIENT_ID"))) {
+      return "GOOGLE_CLIENT_ID isn't a Google OAuth client ID (expected only \"<numbers>-<letters>.apps.googleusercontent.com\" on one line)";
+    }
+    if (/[\s"'=]/.test(env("GOOGLE_CLIENT_SECRET"))) {
+      return "GOOGLE_CLIENT_SECRET must be only the secret, on one line, without quotes";
+    }
+    const redirect = env("GOOGLE_OAUTH_REDIRECT_URI");
+    let url: URL | null = null;
+    try {
+      url = /\s/.test(redirect) ? null : new URL(redirect);
+    } catch {
+      url = null;
+    }
+    if (!url || !/^https?:$/.test(url.protocol) || !url.pathname.endsWith("/calendar/google/callback")) {
+      return "GOOGLE_OAUTH_REDIRECT_URI must be one URL ending in /api/v1/calendar/google/callback";
+    }
+    if (!hasSecretKey()) return "CALENDAR_TOKEN_KEY must be 32 random bytes, base64-encoded (openssl rand -base64 32)";
+    return null;
+  })();
+  return { configured: !error, error };
+}
+
 export function googleConfigured() {
-  return !!(
-    process.env.GOOGLE_CLIENT_ID &&
-    process.env.GOOGLE_CLIENT_SECRET &&
-    process.env.GOOGLE_OAUTH_REDIRECT_URI &&
-    hasSecretKey()
-  );
+  return googleConfigStatus().configured;
 }
 
 /** PKCE pair (RFC 7636, S256). */
@@ -45,8 +82,8 @@ export function pkcePair() {
 
 export function authorizationUrl(state: string, codeChallenge: string) {
   const params = new URLSearchParams({
-    client_id: process.env.GOOGLE_CLIENT_ID!,
-    redirect_uri: process.env.GOOGLE_OAUTH_REDIRECT_URI!,
+    client_id: env("GOOGLE_CLIENT_ID"),
+    redirect_uri: env("GOOGLE_OAUTH_REDIRECT_URI"),
     response_type: "code",
     scope: GOOGLE_SCOPES.join(" "),
     // offline + consent so Google always returns a refresh token, even on reconnect.
@@ -75,8 +112,8 @@ async function tokenRequest(body: Record<string, string>) {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
-      client_id: process.env.GOOGLE_CLIENT_ID!,
-      client_secret: process.env.GOOGLE_CLIENT_SECRET!,
+      client_id: env("GOOGLE_CLIENT_ID"),
+      client_secret: env("GOOGLE_CLIENT_SECRET"),
       ...body,
     }),
   });
@@ -99,7 +136,7 @@ export async function exchangeCode(code: string, codeVerifier: string) {
     code,
     code_verifier: codeVerifier,
     grant_type: "authorization_code",
-    redirect_uri: process.env.GOOGLE_OAUTH_REDIRECT_URI!,
+    redirect_uri: env("GOOGLE_OAUTH_REDIRECT_URI"),
   });
   const granted = new Set((tokens.scope ?? "").split(" "));
   if (!GOOGLE_SCOPES.every((s) => granted.has(s))) {

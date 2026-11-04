@@ -1,5 +1,6 @@
 import app from "./app";
 import { syncStaleCalendarSources } from "./lib/calendarSync";
+import { googleConfigStatus } from "./lib/googleCalendar";
 
 const PORT = Number.parseInt(String(process.env.PORT ?? "3001").trim(), 10);
 if (!Number.isFinite(PORT) || PORT < 1 || PORT > 65535) {
@@ -9,6 +10,9 @@ if (!Number.isFinite(PORT) || PORT < 1 || PORT > 65535) {
 const server = app.listen(PORT, () => {
   console.log(`Stagemigo server running on http://localhost:${PORT}`);
 });
+
+const googleConfig = googleConfigStatus();
+if (googleConfig.error) console.warn(`Google Calendar sync is off: ${googleConfig.error}`);
 
 // Refresh subscribed calendars (ICS/webcal feeds) in the background. Set
 // CALENDAR_SYNC_INTERVAL_MINUTES=0 to turn it off.

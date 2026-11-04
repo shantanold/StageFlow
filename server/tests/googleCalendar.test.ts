@@ -95,7 +95,7 @@ async function connectGoogle(token: string, google: ReturnType<typeof fakeGoogle
 
 describe("google calendar", () => {
   beforeEach(async () => {
-    vi.stubEnv("GOOGLE_CLIENT_ID", "test-client");
+    vi.stubEnv("GOOGLE_CLIENT_ID", "123456-testclient.apps.googleusercontent.com");
     vi.stubEnv("GOOGLE_CLIENT_SECRET", "test-secret");
     vi.stubEnv("GOOGLE_OAUTH_REDIRECT_URI", "http://localhost:3001/api/v1/calendar/google/callback");
     vi.stubEnv("CALENDAR_TOKEN_KEY", crypto.randomBytes(32).toString("base64"));
@@ -154,7 +154,7 @@ describe("google calendar", () => {
 
     // Status: configured, nothing connected; staff can't use any of it.
     const status = await request(app).get("/api/v1/calendar/google").set(authHeader(manager.token));
-    expect(status.body).toEqual({ configured: true, connections: [] });
+    expect(status.body).toEqual({ configured: true, config_error: null, connections: [] });
     expect((await request(app).post("/api/v1/calendar/google/connect").set(authHeader(staff.token)).send({ return_to: APP_ORIGIN })).status).toBe(403);
     expect((await request(app).post("/api/v1/calendar/google/connect").set(authHeader(manager.token)).send({ return_to: "https://evil.example" })).status).toBe(400);
 
@@ -269,11 +269,47 @@ describe("google calendar", () => {
     expect((await request(app).delete(`/api/v1/calendar/google/${conn.id}`).set(authHeader(outsider.token))).status).toBe(404);
   });
 
-  it("reports not configured without the Google env vars", async () => {
-    vi.stubEnv("GOOGLE_CLIENT_SECRET", "");
+  it("turns off with a clear reason when the Google env vars are missing or malformed", async () => {
     const manager = await registerUser(app, { role: "manager" });
-    const status = await request(app).get("/api/v1/calendar/google").set(authHeader(manager.token));
-    expect(status.body.configured).toBe(false);
-    expect((await request(app).post("/api/v1/calendar/google/connect").set(authHeader(manager.token)).send({ return_to: APP_ORIGIN })).status).toBe(503);
+    const status = async () => (await request(app).get("/api/v1/calendar/google").set(authHeader(manager.token))).body;
+
+    // Surrounding whitespace (a pasted trailing newline) is fine.
+    vi.stubEnv("GOOGLE_CLIENT_ID", " 123456-testclient.apps.googleusercontent.com\n");
+    expect(await status()).toMatchObject({ configured: true, config_error: null });
+
+    // Nothing set: off, and not an error.
+    for (const name of ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GOOGLE_OAUTH_REDIRECT_URI", "CALENDAR_TOKEN_KEY"]) {
+      vi.stubEnv(name, "");
+    }
+    expect(await status()).toMatchObject({ configured: false, config_error: null });
+    vi.unstubAllEnvs();
+    vi.stubEnv("GOOGLE_CLIENT_ID", "123456-testclient.apps.googleusercontent.com");
+    vi.stubEnv("GOOGLE_CLIENT_SECRET", "GOCSPX-test-secret");
+    vi.stubEnv("GOOGLE_OAUTH_REDIRECT_URI", "http://localhost:3001/api/v1/calendar/google/callback");
+    vi.stubEnv("CALENDAR_TOKEN_KEY", crypto.randomBytes(32).toString("base64"));
+    vi.stubEnv("CORS_ORIGIN", APP_ORIGIN);
+
+    const cases: [string, string, RegExp][] = [
+      // Two env-file lines pasted into one variable: must never reach Google.
+      ["GOOGLE_CLIENT_ID", "123456-testclient.apps.googleusercontent.com\nGOOGLE_CLIENT_SECRET=GOCSPX-test-secret", /GOOGLE_CLIENT_ID/],
+      ["GOOGLE_CLIENT_ID", '"123456-testclient.apps.googleusercontent.com"', /GOOGLE_CLIENT_ID/],
+      ["GOOGLE_CLIENT_SECRET", "GOOGLE_CLIENT_SECRET=GOCSPX-test-secret", /GOOGLE_CLIENT_SECRET/],
+      ["GOOGLE_OAUTH_REDIRECT_URI", "https://api.example.com/", /GOOGLE_OAUTH_REDIRECT_URI/],
+      ["CALENDAR_TOKEN_KEY", "CALENDAR_TOKEN_KEY=" + crypto.randomBytes(32).toString("base64"), /CALENDAR_TOKEN_KEY/],
+      ["GOOGLE_CLIENT_SECRET", "", /GOOGLE_CLIENT_SECRET is not set/],
+    ];
+    for (const [name, value, message] of cases) {
+      const good = process.env[name]!;
+      vi.stubEnv(name, value);
+      const body = await status();
+      expect(body.configured).toBe(false);
+      expect(body.config_error).toMatch(message);
+      expect(body.config_error).not.toContain("GOCSPX");
+      const connect = await request(app).post("/api/v1/calendar/google/connect").set(authHeader(manager.token)).send({ return_to: APP_ORIGIN });
+      expect(connect.status).toBe(503);
+      expect(connect.body.message).toMatch(/misconfigured/);
+      vi.stubEnv(name, good);
+    }
+    expect(await status()).toMatchObject({ configured: true, config_error: null });
   });
 });

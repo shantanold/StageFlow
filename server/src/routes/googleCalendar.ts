@@ -7,7 +7,7 @@ import { open, seal } from "../lib/secretBox";
 import { allowedOrigins } from "../lib/origins";
 import { syncCalendarSource } from "../lib/calendarSync";
 import {
-  authorizationUrl, exchangeCode, GoogleApiError, GoogleAuthError, googleConfigured,
+  authorizationUrl, exchangeCode, GoogleApiError, GoogleAuthError, googleConfigStatus, googleConfigured,
   listCalendars, pkcePair, refreshAccessToken, revokeToken,
 } from "../lib/googleCalendar";
 
@@ -120,7 +120,8 @@ router.get("/", async (_req, res) => {
         connector: { select: { name: true } },
       },
     });
-    return res.json({ configured: googleConfigured(), connections });
+    const config = googleConfigStatus();
+    return res.json({ configured: config.configured, config_error: config.error, connections });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: "Server error" });
@@ -129,7 +130,10 @@ router.get("/", async (_req, res) => {
 
 // POST /calendar/google/connect { return_to }: the Google consent URL to send the browser to.
 router.post("/connect", async (req, res) => {
-  if (!googleConfigured()) return res.status(503).json({ message: "Google Calendar isn't set up on this server" });
+  if (!googleConfigured()) {
+    const { error } = googleConfigStatus();
+    return res.status(503).json({ message: error ? `Google Calendar is misconfigured: ${error}` : "Google Calendar isn't set up on this server" });
+  }
   // A platform admin acting in a customer org must not attach their own Google account to it.
   if (req.user!.acting) return res.status(403).json({ message: "Connect Google Calendar from your own account, not while acting as an admin" });
 
