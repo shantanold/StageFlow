@@ -3,6 +3,8 @@ import { prisma, rawPrisma } from "./prisma";
 import { getCurrentOrgId, runWithOrg } from "./tenantContext";
 import { defaultImportWindow, parseIcs, type ParsedEvent } from "./ics";
 import { fetchIcs } from "./icsFetch";
+import { GoogleAuthError, listEvents, refreshAccessToken, RECONNECT_MESSAGE } from "./googleCalendar";
+import { open } from "./secretBox";
 
 /**
  * Writes parsed calendar events into the current org (tenant-scoped client),
@@ -65,8 +67,36 @@ export async function upsertImportedEvents(
   return { created: toCreate.length, updated: toUpdate.length };
 }
 
+/** Events a source currently holds in the window: from its ICS feed, or from Google. */
+async function fetchSourceEvents(
+  source: CalendarSource,
+  window: { windowStart: Date; windowEnd: Date },
+  fallbackTimeZone: string
+): Promise<{ events: ParsedEvent[]; kind: EventSource }> {
+  if (!source.google_connection_id) {
+    const text = await fetchIcs(source.url!);
+    return { events: parseIcs(text, { ...window, fallbackTimeZone }), kind: "ics_url" };
+  }
+  const conn = await prisma.googleConnection.findUnique({ where: { id: source.google_connection_id } });
+  const refreshToken = conn && open(conn.refresh_token);
+  if (!conn || !refreshToken) throw new GoogleAuthError(RECONNECT_MESSAGE);
+  try {
+    const accessToken = await refreshAccessToken(refreshToken);
+    const events = await listEvents(accessToken, source.google_calendar_id!, window.windowStart, window.windowEnd);
+    if (conn.last_error) {
+      await prisma.googleConnection.update({ where: { id: conn.id }, data: { last_error: null } });
+    }
+    return { events, kind: "google" };
+  } catch (err) {
+    if (err instanceof GoogleAuthError) {
+      await prisma.googleConnection.update({ where: { id: conn.id }, data: { last_error: err.message } });
+    }
+    throw err;
+  }
+}
+
 /**
- * Re-downloads one subscribed feed and mirrors it: new and changed events are
+ * Re-downloads one synced calendar (ICS feed or Google calendar) and mirrors it: new and changed events are
  * upserted, and future events that disappeared from the feed are removed.
  * Past events outside the import window are left alone as history.
  * Must run inside the source's org context. Never throws for feed problems;
@@ -76,9 +106,8 @@ export async function syncCalendarSource(source: CalendarSource, now = new Date(
   const org = await rawPrisma.organization.findUnique({ where: { id: source.org_id }, select: { timezone: true } });
   const window = defaultImportWindow(now);
   try {
-    const text = await fetchIcs(source.url);
-    const events = parseIcs(text, { ...window, fallbackTimeZone: org?.timezone ?? "America/Chicago" });
-    const result = await upsertImportedEvents(events, { source: "ics_url", sourceId: source.id });
+    const { events, kind } = await fetchSourceEvents(source, window, org?.timezone ?? "America/Chicago");
+    const result = await upsertImportedEvents(events, { source: kind, sourceId: source.id });
     const removed = await prisma.event.deleteMany({
       where: {
         source_id: source.id,
@@ -104,7 +133,7 @@ export async function syncCalendarSource(source: CalendarSource, now = new Date(
 }
 
 /**
- * Background refresh of every subscription not synced within `maxAgeMs`,
+ * Background refresh of every synced calendar not synced within `maxAgeMs`,
  * across all orgs (system job, hence rawPrisma for the lookup; each sync then
  * runs inside its own org's tenant context).
  */

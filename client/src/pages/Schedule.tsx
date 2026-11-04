@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useCalendarEvents, useJobs } from "../lib/queries";
 import { useAuth } from "../contexts/AuthContext";
+import { useToast } from "../contexts/ToastContext";
 import {
   addLocalDays, buildSchedule, dateFromKey, dayKey, eventTimeLabel, sourceLabel, startOfLocalDay, startOfWeek,
   type ScheduleEntry,
@@ -126,6 +127,18 @@ export function Schedule() {
   const [agendaDays, setAgendaDays] = useState(AGENDA_DAYS);
   const [editing, setEditing] = useState<{ event?: CalendarEvent; day: string } | null>(null);
   const [importing, setImporting] = useState(false);
+  const { showToast } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Back from Google's consent screen: report the result and show the calendars.
+  useEffect(() => {
+    const ok = searchParams.get("google") === "connected";
+    const error = searchParams.get("google_error");
+    if (!ok && !error) return;
+    showToast(error ?? "Google Calendar connected", error ? "error" : "success");
+    if (isManager) setImporting(true);
+    setSearchParams({}, { replace: true });
+  }, [searchParams, setSearchParams, showToast, isManager]);
 
   const weekStart = startOfWeek(dateFromKey(selected));
   const [from, to] =

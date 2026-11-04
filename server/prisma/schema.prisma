@@ -53,6 +53,7 @@ enum EventSource {
   manual
   ics_file
   ics_url
+  google
 }
 
 // ─── Models ──────────────────────────────────────────────────────────────────
@@ -75,6 +76,7 @@ model Organization {
   movements  Movement[]
   events     Event[]
   calendar_sources CalendarSource[]
+  google_connections GoogleConnection[]
 
   @@map("organizations")
 }
@@ -94,6 +96,7 @@ model User {
   movements     Movement[]  @relation("MovementPerformedBy")
   events_assigned Event[]   @relation("EventAssignee")
   events_created  Event[]   @relation("EventCreatedBy")
+  google_connections GoogleConnection[]
 
   @@index([org_id])
   @@map("users")
@@ -265,21 +268,48 @@ model Event {
   @@map("events")
 }
 
-/// An external calendar subscribed by URL (ICS/webcal: an iCloud public
-/// calendar, Google's "secret address in iCal format", Outlook's published ICS).
+/// An external calendar kept in sync: either subscribed by URL (ICS/webcal:
+/// an iCloud public calendar, Google's "secret address in iCal format",
+/// Outlook's published ICS) or one calendar of a connected Google account.
 model CalendarSource {
   id             String    @id @default(uuid())
   org_id         String
   name           String
-  url            String
+  /// Feed URL for ICS subscriptions; null for Google calendars.
+  url            String?
+  google_connection_id String?
+  google_calendar_id   String?
   last_synced_at DateTime?
   last_error     String?
   event_count    Int       @default(0)
   created_at     DateTime  @default(now())
 
   org            Organization @relation(fields: [org_id], references: [id])
+  google_connection GoogleConnection? @relation(fields: [google_connection_id], references: [id], onDelete: Cascade)
   events         Event[]
 
+  @@unique([google_connection_id, google_calendar_id])
   @@index([org_id])
   @@map("calendar_sources")
+}
+
+/// A Google account connected with read-only calendar access (OAuth). The
+/// refresh token is encrypted with CALENDAR_TOKEN_KEY (see src/lib/secretBox.ts).
+model GoogleConnection {
+  id            String   @id @default(uuid())
+  org_id        String
+  google_email  String
+  refresh_token String
+  connected_by  String?
+  /// Set when Google rejects the refresh token (revoked, expired); cleared on reconnect.
+  last_error    String?
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  org           Organization @relation(fields: [org_id], references: [id])
+  connector     User?        @relation(fields: [connected_by], references: [id], onDelete: SetNull)
+  calendars     CalendarSource[]
+
+  @@unique([org_id, google_email])
+  @@map("google_connections")
 }

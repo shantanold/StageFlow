@@ -9,6 +9,7 @@ import { ModalOverlay } from "../../components/ModalOverlay";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { useToast } from "../../contexts/ToastContext";
 import type { CalendarSource } from "../../types";
+import { GoogleCalendarSection } from "./GoogleCalendarSection";
 
 const sectionLabel = {
   fontSize: 11, fontWeight: 500, color: "var(--text-tertiary)",
@@ -32,7 +33,8 @@ export function ImportModal({ onClose }: { onClose: () => void }) {
   const { showToast } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
   const importIcs = useImportIcs();
-  const { data: sources = [], isLoading: sourcesLoading } = useCalendarSources();
+  const { data: allSources = [], isLoading: sourcesLoading } = useCalendarSources();
+  const sources = allSources.filter((s) => !s.google_connection_id);
   const addSource = useAddCalendarSource();
   const syncSource = useSyncCalendarSource();
   const deleteSource = useDeleteCalendarSource();
@@ -111,6 +113,8 @@ export function ImportModal({ onClose }: { onClose: () => void }) {
       <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="modal-handle" />
         <div style={{ fontSize: 17, fontWeight: 500, marginBottom: 16 }}>Import calendars</div>
+
+        <GoogleCalendarSection sources={allSources} />
 
         {/* ── Subscribe ── */}
         <p style={sectionLabel}>Subscribe by link · stays in sync</p>
