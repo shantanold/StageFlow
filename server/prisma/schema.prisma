@@ -293,7 +293,8 @@ model CalendarSource {
   @@map("calendar_sources")
 }
 
-/// A Google account connected with read-only calendar access (OAuth). The
+/// A Google account connected with calendar access (OAuth): read-only, plus
+/// event write access once a manager turns on adding jobs to Google. The
 /// refresh token is encrypted with CALENDAR_TOKEN_KEY (see src/lib/secretBox.ts).
 model GoogleConnection {
   id            String   @id @default(uuid())
@@ -303,6 +304,12 @@ model GoogleConnection {
   connected_by  String?
   /// Set when Google rejects the refresh token (revoked, expired); cleared on reconnect.
   last_error    String?
+  /// True once the account granted the calendar.events scope (needed to add job events).
+  can_write     Boolean  @default(false)
+  /// Calendar that each job's staging and destage days are written to. At most one per org.
+  job_calendar_id String?
+  /// Last failure writing job events to Google; cleared on the next success.
+  push_error    String?
   created_at    DateTime @default(now())
   updated_at    DateTime @updatedAt
 

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   useAddGoogleCalendar, useConnectGoogle, useDeleteCalendarSource, useDisconnectGoogle,
-  useGoogleCalendars, useGoogleCalendarStatus, useSyncCalendarSource,
+  useGoogleCalendars, useGoogleCalendarStatus, useSetJobCalendar, useSyncCalendarSource,
 } from "../../lib/queries";
 import { ApiError } from "../../lib/api";
 import { formatDate } from "../../lib/utils";
@@ -22,9 +22,10 @@ function errorText(err: unknown, fallback: string) {
 }
 
 /**
- * Manager-only: connect Google accounts (read-only OAuth) and pick which of
- * their calendars to sync. Renders nothing when the server has no Google
- * OAuth client set up.
+ * Manager-only: connect Google accounts and pick which of their calendars to
+ * sync (read-only), and optionally one calendar to add every job to (needs
+ * write access, asked for separately). Renders nothing when the server has no
+ * Google OAuth client set up.
  */
 export function GoogleCalendarSection({ sources }: { sources: CalendarSource[] }) {
   const { showToast } = useToast();
@@ -33,9 +34,9 @@ export function GoogleCalendarSection({ sources }: { sources: CalendarSource[] }
 
   if (!status?.configured) return null;
 
-  async function handleConnect() {
+  async function handleConnect(write = false) {
     try {
-      const { url } = await connect.mutateAsync();
+      const { url } = await connect.mutateAsync({ write });
       window.location.assign(url);
     } catch (err) {
       showToast(errorText(err, "Couldn't start connecting Google"), "error");
@@ -46,16 +47,17 @@ export function GoogleCalendarSection({ sources }: { sources: CalendarSource[] }
     <div style={{ marginBottom: 20 }}>
       <p style={sectionLabel}>Google Calendar · syncs automatically</p>
       <p style={helpText}>
-        Sign in with Google to pick calendars to sync. StageFlow can only read them, never change them.
+        Sign in with Google to pick calendars to sync. Syncing only reads them. You can also have StageFlow
+        add each job to one calendar; it only changes the job events it adds.
       </p>
       {status.connections.map((c) => (
-        <ConnectionCard key={c.id} connection={c} sources={sources} onReconnect={handleConnect} />
+        <ConnectionCard key={c.id} connection={c} sources={sources} onConnect={handleConnect} />
       ))}
       <button
         type="button"
         className="btn btn-outline btn-full"
         disabled={connect.isPending}
-        onClick={handleConnect}
+        onClick={() => handleConnect()}
       >
         {connect.isPending ? "Opening Google…" : status.connections.length ? "Connect another Google account" : "Connect Google Calendar"}
       </button>
@@ -64,8 +66,8 @@ export function GoogleCalendarSection({ sources }: { sources: CalendarSource[] }
 }
 
 function ConnectionCard({
-  connection, sources, onReconnect,
-}: { connection: GoogleConnection; sources: CalendarSource[]; onReconnect: () => void }) {
+  connection, sources, onConnect,
+}: { connection: GoogleConnection; sources: CalendarSource[]; onConnect: (write?: boolean) => void }) {
   const { showToast } = useToast();
   const broken = !!connection.last_error;
   const { data: calendars, isLoading, error } = useGoogleCalendars(connection.id, !broken);
@@ -97,7 +99,8 @@ function ConnectionCard({
         </div>
         <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
           {listError && (
-            <button className="btn btn-outline" style={smallBtn} onClick={onReconnect}>Reconnect</button>
+            // Keep write access when reconnecting an account that had it.
+            <button className="btn btn-outline" style={smallBtn} onClick={() => onConnect(connection.can_write)}>Reconnect</button>
           )}
           <button className="btn btn-outline" style={{ ...smallBtn, color: "var(--red-text)" }}
             disabled={disconnect.isPending} onClick={() => setConfirming(true)}>
@@ -123,15 +126,22 @@ function ConnectionCard({
             <CalendarRow
               key={s.id}
               connectionId={connection.id}
-              calendar={{ id: s.google_calendar_id!, name: s.name, primary: false, color: null, source_id: s.id }}
+              calendar={{ id: s.google_calendar_id!, name: s.name, primary: false, color: null, writable: false, source_id: s.id }}
               source={s}
             />
           ))}
 
+      {!broken && (
+        <JobCalendarRow connection={connection} calendars={calendars} onAllowWrite={() => onConnect(true)} />
+      )}
+
       {confirming && (
         <ConfirmDialog
           title={`Disconnect ${connection.google_email}?`}
-          message="StageFlow loses access to this Google account, and events from its calendars are removed from the schedule."
+          message={
+            "StageFlow loses access to this Google account, and events from its calendars are removed from the schedule." +
+            (connection.job_calendar_id ? " The job events StageFlow added to Google are removed too." : "")
+          }
           confirmLabel="Disconnect"
           confirmDanger
           onConfirm={handleDisconnect}
@@ -217,6 +227,86 @@ function CalendarRow({
           </button>
         )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * "Add jobs to Google Calendar": each job's staging day and destage day go to
+ * one calendar and follow the job as it changes. Needs write access, which
+ * the account grants through Google's consent screen.
+ */
+function JobCalendarRow({
+  connection, calendars, onAllowWrite,
+}: { connection: GoogleConnection; calendars?: GoogleCalendarInfo[]; onAllowWrite: () => void }) {
+  const { showToast } = useToast();
+  const setJobCalendar = useSetJobCalendar(connection.id);
+  // A change that removes events from the current calendar waits for confirmation.
+  const [pending, setPending] = useState<string | null | undefined>(undefined);
+  const current = connection.job_calendar_id;
+  const writable = calendars?.filter((c) => c.writable || c.id === current) ?? [];
+  const nameOf = (id: string) => calendars?.find((c) => c.id === id)?.name ?? id;
+
+  async function apply(calendarId: string | null) {
+    setPending(undefined);
+    try {
+      const r = await setJobCalendar.mutateAsync(calendarId);
+      if (!calendarId) showToast("Stopped adding jobs to Google Calendar", "success");
+      else if (r.error) showToast(`Couldn't add jobs: ${r.error}`, "error");
+      else showToast(`Adding jobs to ${nameOf(calendarId)}: ${r.pushed} upcoming ${r.pushed === 1 ? "job" : "jobs"} added`, "success");
+    } catch (err) {
+      showToast(errorText(err, "Couldn't change where jobs are added"), "error");
+    }
+  }
+
+  function choose(value: string) {
+    const next = value || null;
+    if (next === current) return;
+    if (current) setPending(next);
+    else void apply(next);
+  }
+
+  return (
+    <div className="list-row" style={{ cursor: "default", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
+      <div style={{ flex: "1 1 180px", minWidth: 0 }}>
+        <div style={{ fontSize: 13.5, fontWeight: 500 }}>Add jobs to Google Calendar</div>
+        <div style={{ fontSize: 11.5, color: "var(--text-tertiary)", marginTop: 2, lineHeight: 1.4 }}>
+          Each job's staging day and destage day, updated when the job changes.
+        </div>
+        {connection.push_error && (
+          <div style={{ fontSize: 11.5, color: "var(--red-text)", marginTop: 2 }}>{connection.push_error}</div>
+        )}
+      </div>
+      {!connection.can_write ? (
+        <button className="btn btn-outline" style={{ ...smallBtn, flexShrink: 0 }} onClick={onAllowWrite}>
+          Allow
+        </button>
+      ) : calendars ? (
+        <select
+          className="input-field"
+          style={{ flex: "0 1 200px", minWidth: 0, fontSize: 13, padding: "5px 8px" }}
+          aria-label="Calendar to add jobs to"
+          value={current ?? ""}
+          disabled={setJobCalendar.isPending}
+          onChange={(e) => choose(e.target.value)}
+        >
+          <option value="">Off</option>
+          {writable.map((c) => (
+            <option key={c.id} value={c.id}>{c.name}{c.primary ? " (main)" : ""}</option>
+          ))}
+        </select>
+      ) : null}
+
+      {pending !== undefined && current && (
+        <ConfirmDialog
+          title={pending ? `Add jobs to ${nameOf(pending)} instead?` : "Stop adding jobs to Google?"}
+          message={`The job events StageFlow added to ${nameOf(current)} are removed from it.`}
+          confirmLabel={pending ? "Switch" : "Stop"}
+          confirmDanger={!pending}
+          onConfirm={() => apply(pending)}
+          onCancel={() => setPending(undefined)}
+        />
+      )}
     </div>
   );
 }

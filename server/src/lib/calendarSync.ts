@@ -3,19 +3,22 @@ import { prisma, rawPrisma } from "./prisma";
 import { getCurrentOrgId, runWithOrg } from "./tenantContext";
 import { defaultImportWindow, parseIcs, type ParsedEvent } from "./ics";
 import { fetchIcs } from "./icsFetch";
-import { GoogleAuthError, listEvents, refreshAccessToken, RECONNECT_MESSAGE } from "./googleCalendar";
+import { GoogleAuthError, isJobEventUid, listEvents, refreshAccessToken, RECONNECT_MESSAGE } from "./googleCalendar";
 import { open } from "./secretBox";
 
 /**
  * Writes parsed calendar events into the current org (tenant-scoped client),
  * matching existing rows by external UID so re-imports update in place.
  * Only the fields the external calendar owns are overwritten; a job link or
- * assignee added in StageFlow survives a re-import.
+ * assignee added in StageFlow survives a re-import. Job events StageFlow
+ * itself wrote to Google are skipped.
  */
 export async function upsertImportedEvents(
-  events: ParsedEvent[],
+  allEvents: ParsedEvent[],
   opts: { source: EventSource; sourceId?: string; userId?: string }
 ) {
+  // Job days StageFlow wrote to Google come back through sync or the ICS feed; the schedule already shows the job.
+  const events = allEvents.filter((e) => !isJobEventUid(e.external_uid));
   const uids = events.map((e) => e.external_uid);
   const existing = new Map<string, string>();
   for (let i = 0; i < uids.length; i += 1000) {

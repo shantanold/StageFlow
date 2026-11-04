@@ -3,15 +3,18 @@ import type { ParsedEvent } from "./ics";
 import { hasSecretKey } from "./secretBox";
 
 /**
- * Google Calendar read-only access over plain fetch (no googleapis package).
+ * Google Calendar access over plain fetch (no googleapis package): reading
+ * calendars to sync them, and writing the events StageFlow owns (job days).
  * Configured by GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET,
  * GOOGLE_OAUTH_REDIRECT_URI and CALENDAR_TOKEN_KEY.
  */
 
-export const GOOGLE_SCOPES = [
-  "https://www.googleapis.com/auth/calendar.calendarlist.readonly",
-  "https://www.googleapis.com/auth/calendar.events.readonly",
-];
+const CALENDAR_LIST_SCOPE = "https://www.googleapis.com/auth/calendar.calendarlist.readonly";
+const EVENTS_READ_SCOPE = "https://www.googleapis.com/auth/calendar.events.readonly";
+/** Read and write events. Asked for only when a manager turns on adding jobs to Google. */
+export const EVENTS_WRITE_SCOPE = "https://www.googleapis.com/auth/calendar.events";
+
+export const GOOGLE_SCOPES = [CALENDAR_LIST_SCOPE, EVENTS_READ_SCOPE];
 
 const AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
@@ -43,12 +46,13 @@ export function pkcePair() {
   return { verifier, challenge };
 }
 
-export function authorizationUrl(state: string, codeChallenge: string) {
+/** `write` adds the event write scope on top of the read-only ones (incremental consent). */
+export function authorizationUrl(state: string, codeChallenge: string, write = false) {
   const params = new URLSearchParams({
     client_id: process.env.GOOGLE_CLIENT_ID!,
     redirect_uri: process.env.GOOGLE_OAUTH_REDIRECT_URI!,
     response_type: "code",
-    scope: GOOGLE_SCOPES.join(" "),
+    scope: (write ? [...GOOGLE_SCOPES, EVENTS_WRITE_SCOPE] : GOOGLE_SCOPES).join(" "),
     // offline + consent so Google always returns a refresh token, even on reconnect.
     access_type: "offline",
     prompt: "consent",
@@ -93,8 +97,12 @@ async function tokenRequest(body: Record<string, string>) {
   return json;
 }
 
-/** Exchanges the callback's code. Fails unless Google granted a refresh token and both calendar scopes. */
-export async function exchangeCode(code: string, codeVerifier: string) {
+/**
+ * Exchanges the callback's code. Fails unless Google granted a refresh token
+ * and read access, plus write access when it was asked for. `canWrite` also
+ * picks up write access granted earlier (include_granted_scopes).
+ */
+export async function exchangeCode(code: string, codeVerifier: string, write = false) {
   const tokens = await tokenRequest({
     code,
     code_verifier: codeVerifier,
@@ -102,11 +110,16 @@ export async function exchangeCode(code: string, codeVerifier: string) {
     redirect_uri: process.env.GOOGLE_OAUTH_REDIRECT_URI!,
   });
   const granted = new Set((tokens.scope ?? "").split(" "));
-  if (!GOOGLE_SCOPES.every((s) => granted.has(s))) {
+  const canWrite = granted.has(EVENTS_WRITE_SCOPE);
+  // Write access to events includes reading them.
+  if (!granted.has(CALENDAR_LIST_SCOPE) || !(granted.has(EVENTS_READ_SCOPE) || canWrite)) {
     throw new GoogleApiError("Calendar access wasn't granted. Connect again and leave both calendar boxes checked.");
   }
+  if (write && !canWrite) {
+    throw new GoogleApiError("Permission to add events wasn't granted. Try again and check the box to edit events.");
+  }
   if (!tokens.refresh_token) throw new GoogleApiError("Google didn't return a refresh token. Try connecting again.");
-  return { accessToken: tokens.access_token!, refreshToken: tokens.refresh_token };
+  return { accessToken: tokens.access_token!, refreshToken: tokens.refresh_token, canWrite };
 }
 
 export async function refreshAccessToken(refreshToken: string) {
@@ -143,6 +156,8 @@ export interface GoogleCalendarInfo {
   name: string;
   primary: boolean;
   color: string | null;
+  /** The account can add events to it (owner or writer access). */
+  writable: boolean;
 }
 
 export async function listCalendars(accessToken: string): Promise<GoogleCalendarInfo[]> {
@@ -151,7 +166,9 @@ export async function listCalendars(accessToken: string): Promise<GoogleCalendar
   do {
     const params = new URLSearchParams({ maxResults: "250", ...(pageToken && { pageToken }) });
     const page = await getJson<{
-      items?: { id: string; summary?: string; summaryOverride?: string; primary?: boolean; backgroundColor?: string }[];
+      items?: {
+        id: string; summary?: string; summaryOverride?: string; primary?: boolean; backgroundColor?: string; accessRole?: string;
+      }[];
       nextPageToken?: string;
     }>(`${API}/users/me/calendarList?${params}`, accessToken);
     for (const c of page.items ?? []) {
@@ -160,6 +177,7 @@ export async function listCalendars(accessToken: string): Promise<GoogleCalendar
         name: c.summaryOverride || c.summary || c.id,
         primary: !!c.primary,
         color: c.backgroundColor ?? null,
+        writable: c.accessRole === "owner" || c.accessRole === "writer",
       });
     }
     pageToken = page.nextPageToken;
@@ -183,6 +201,7 @@ export interface GoogleEvent {
   recurringEventId?: string;
   originalStartTime?: GoogleTime;
   eventType?: string;
+  extendedProperties?: { private?: Record<string, string> };
 }
 
 /** yyyy-MM-dd as UTC midnight (the app's date-only convention). */
@@ -200,6 +219,8 @@ function dayToUtc(day: string) {
  */
 export function toParsedEvent(ev: GoogleEvent): ParsedEvent | null {
   if (ev.status === "cancelled" || ev.eventType === "workingLocation") return null;
+  // A job day StageFlow wrote itself: the schedule already shows the job.
+  if (ev.extendedProperties?.private?.[JOB_PROPERTY]) return null;
   const allDay = !!ev.start?.date;
   const start = allDay ? dayToUtc(ev.start!.date!) : ev.start?.dateTime ? new Date(ev.start.dateTime) : null;
   let end = allDay
@@ -254,4 +275,122 @@ export async function listEvents(accessToken: string, calendarId: string, timeMi
     pageToken = page.nextPageToken;
   } while (pageToken);
   return out;
+}
+
+// ─── Writing job events ─────────────────────────────────────────────────────
+
+/** Private extended properties on events StageFlow writes, so it can find and skip its own. */
+export const JOB_PROPERTY = "stageflowJob";
+export const ORG_PROPERTY = "stageflowOrg";
+
+/**
+ * Google lets the client choose event ids (base32hex: 0-9 and a-v, 5-1024
+ * chars), so each job day gets a fixed id derived from the job: "sf", the
+ * job's UUID without dashes, then 0 (staging day) or 1 (destage day). Writes
+ * are then plain upserts by id, with no id mapping stored in StageFlow.
+ */
+export function jobEventId(jobId: string, kind: "stage" | "destage") {
+  return `sf${jobId.replace(/-/g, "").toLowerCase()}${kind === "stage" ? "0" : "1"}`;
+}
+
+const JOB_EVENT_UID = /^sf[0-9a-f]{32}[01](@google\.com)?$/;
+
+/**
+ * True for a job event StageFlow wrote, as it comes back from Google sync or
+ * from the same calendar's ICS feed (UID "<id>@google.com"). Imports skip
+ * these so a job doesn't show twice on the schedule.
+ */
+export function isJobEventUid(uid: string) {
+  return JOB_EVENT_UID.test(uid);
+}
+
+export interface JobEventBody {
+  summary: string;
+  description: string;
+  location: string;
+  /** yyyy-MM-dd; an all-day event on that day. */
+  day: string;
+  jobId: string;
+  orgId: string;
+}
+
+async function send(url: string, accessToken: string, method: string, body?: unknown) {
+  const res = await call(url, {
+    method,
+    headers: { Authorization: `Bearer ${accessToken}`, ...(body !== undefined && { "Content-Type": "application/json" }) },
+    ...(body !== undefined && { body: JSON.stringify(body) }),
+  });
+  if (res.status === 401) throw new GoogleAuthError(RECONNECT_MESSAGE);
+  return res;
+}
+
+async function apiError(res: Response, what: string) {
+  const body = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
+  if (res.status === 403) {
+    return new GoogleApiError(`${what}: Google refused (no permission to edit that calendar${body.error?.message ? `: ${body.error.message}` : ""})`);
+  }
+  if (res.status === 404) return new GoogleApiError(`${what}: that calendar no longer exists or isn't shared with this Google account`);
+  return new GoogleApiError(`${what}: Google Calendar error ${res.status}${body.error?.message ? `: ${body.error.message}` : ""}`);
+}
+
+function addDays(day: string, n: number) {
+  const d = new Date(`${day}T00:00:00.000Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Creates or overwrites one job event. Updating first also revives an event
+ * that was deleted in Google (deleted ids linger as "cancelled", and a plain
+ * insert of the same id would be refused); insert only when it never existed.
+ */
+export async function putJobEvent(accessToken: string, calendarId: string, eventId: string, ev: JobEventBody) {
+  const body = {
+    id: eventId,
+    status: "confirmed",
+    summary: ev.summary,
+    description: ev.description,
+    location: ev.location,
+    start: { date: ev.day },
+    end: { date: addDays(ev.day, 1) },
+    // A day marker: doesn't make the whole day show as busy.
+    transparency: "transparent",
+    extendedProperties: { private: { [JOB_PROPERTY]: ev.jobId, [ORG_PROPERTY]: ev.orgId } },
+  };
+  const base = `${API}/calendars/${encodeURIComponent(calendarId)}/events`;
+  const updated = await send(`${base}/${eventId}`, accessToken, "PUT", body);
+  if (updated.ok) return;
+  if (updated.status !== 404) throw await apiError(updated, "Couldn't update a job in Google Calendar");
+  const created = await send(base, accessToken, "POST", body);
+  if (!created.ok) throw await apiError(created, "Couldn't add a job to Google Calendar");
+}
+
+/** Deletes one job event; already gone is fine. */
+export async function deleteJobEvent(accessToken: string, calendarId: string, eventId: string) {
+  const res = await send(
+    `${API}/calendars/${encodeURIComponent(calendarId)}/events/${eventId}`,
+    accessToken,
+    "DELETE"
+  );
+  if (res.ok || res.status === 404 || res.status === 410) return;
+  throw await apiError(res, "Couldn't remove a job from Google Calendar");
+}
+
+/** Ids of every (not deleted) job event this org wrote to a calendar. */
+export async function listJobEventIds(accessToken: string, calendarId: string, orgId: string) {
+  const ids: string[] = [];
+  let pageToken: string | undefined;
+  do {
+    const params = new URLSearchParams({
+      privateExtendedProperty: `${ORG_PROPERTY}=${orgId}`,
+      maxResults: "2500",
+      ...(pageToken && { pageToken }),
+    });
+    const res = await send(`${API}/calendars/${encodeURIComponent(calendarId)}/events?${params}`, accessToken, "GET");
+    if (!res.ok) throw await apiError(res, "Couldn't list job events in Google Calendar");
+    const page = (await res.json()) as { items?: { id: string }[]; nextPageToken?: string };
+    for (const ev of page.items ?? []) ids.push(ev.id);
+    pageToken = page.nextPageToken;
+  } while (pageToken);
+  return ids;
 }
