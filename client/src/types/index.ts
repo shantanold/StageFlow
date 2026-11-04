@@ -191,6 +191,8 @@ export interface GoogleConnection {
 export interface GoogleCalendarStatus {
   /** False when the server has no Google OAuth client set up. */
   configured: boolean;
+  /** Why the server's Google settings are unusable (names the variable, never its value); null when fine or not set up. */
+  config_error: string | null;
   connections: GoogleConnection[];
 }
 
