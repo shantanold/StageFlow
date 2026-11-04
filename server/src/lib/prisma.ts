@@ -19,7 +19,7 @@ if (process.env.NODE_ENV !== "production") globalForPrisma.rawPrisma = base;
  */
 export const rawPrisma = base;
 
-const TENANT_MODELS = new Set(["User", "Item", "Set", "Job", "JobItem", "Movement"]);
+const TENANT_MODELS = new Set(["User", "Item", "Set", "Job", "JobItem", "Movement", "Event", "CalendarSource"]);
 
 /**
  * Tenant-scoped client. Every query against a tenant table is automatically

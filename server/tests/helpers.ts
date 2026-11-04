@@ -14,6 +14,8 @@ export async function cleanDb() {
     throw new Error("cleanDb() refused: DATABASE_URL does not look like the test DB.");
   }
   await rawPrisma.$transaction([
+    rawPrisma.event.deleteMany(),
+    rawPrisma.calendarSource.deleteMany(),
     rawPrisma.movement.deleteMany(),
     rawPrisma.jobItem.deleteMany(),
     rawPrisma.job.deleteMany(),
@@ -21,6 +23,7 @@ export async function cleanDb() {
     rawPrisma.set.deleteMany(),
     rawPrisma.user.deleteMany(),
     rawPrisma.organization.deleteMany({ where: { id: { not: DEFAULT_ORG_ID } } }),
+    rawPrisma.organization.update({ where: { id: DEFAULT_ORG_ID }, data: { timezone: "America/Chicago" } }),
   ]);
 }
 
