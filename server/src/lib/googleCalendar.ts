@@ -308,8 +308,12 @@ export interface JobEventBody {
   summary: string;
   description: string;
   location: string;
-  /** yyyy-MM-dd; an all-day event on that day. */
+  /** yyyy-MM-dd; an all-day event on that day unless `window` is set. */
   day: string;
+  /** Local start/end ("yyyy-MM-ddTHH:mm:00") in `timeZone`, for a visit with a set time. */
+  window?: { start: string; end: string } | null;
+  /** IANA zone the window is read in (the org's). */
+  timeZone?: string;
   jobId: string;
   orgId: string;
 }
@@ -351,10 +355,20 @@ export async function putJobEvent(accessToken: string, calendarId: string, event
     summary: ev.summary,
     description: ev.description,
     location: ev.location,
-    start: { date: ev.day },
-    end: { date: addDays(ev.day, 1) },
-    // A day marker: doesn't make the whole day show as busy.
-    transparency: "transparent",
+    ...(ev.window
+      ? {
+          // A set visit time: blocks that time on the calendar. Google applies the
+          // zone's daylight saving rules to the wall-clock times.
+          start: { dateTime: ev.window.start, timeZone: ev.timeZone },
+          end: { dateTime: ev.window.end, timeZone: ev.timeZone },
+          transparency: "opaque",
+        }
+      : {
+          start: { date: ev.day },
+          end: { date: addDays(ev.day, 1) },
+          // A day marker: doesn't make the whole day show as busy.
+          transparency: "transparent",
+        }),
     extendedProperties: { private: { [JOB_PROPERTY]: ev.jobId, [ORG_PROPERTY]: ev.orgId } },
   };
   const base = `${API}/calendars/${encodeURIComponent(calendarId)}/events`;

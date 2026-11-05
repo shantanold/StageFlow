@@ -1,6 +1,7 @@
 import type { GoogleConnection, Job } from "@prisma/client";
 import { prisma } from "./prisma";
 import { getCurrentOrgId } from "./tenantContext";
+import { visitWindow } from "./jobTimes";
 import { open } from "./secretBox";
 import {
   deleteJobEvent, GoogleApiError, GoogleAuthError, jobEventId, listJobEventIds, putJobEvent,
@@ -28,6 +29,8 @@ interface Target {
   conn: GoogleConnection;
   calendarId: string;
   accessToken: string;
+  /** The org's time zone, for visits with a set time. */
+  timeZone: string;
 }
 
 function day(d: Date) {
@@ -39,8 +42,8 @@ function jobLocation(job: Job) {
   return [job.address, cityLine].filter(Boolean).join(", ");
 }
 
-/** The two all-day events a job puts on the calendar. */
-export function jobEvents(job: Job): { id: string; body: JobEventBody }[] {
+/** The job's two visits as events: all day, or at the visit's set time in the org's time zone. */
+export function jobEvents(job: Job, timeZone: string): { id: string; body: JobEventBody }[] {
   const details = [
     `Client: ${job.client_name}`,
     job.client_contact && `Contact: ${job.client_contact}`,
@@ -48,18 +51,27 @@ export function jobEvents(job: Job): { id: string; body: JobEventBody }[] {
   ].filter(Boolean).join("\n");
   const footer = "\n\nAdded by StageFlow. Edit the job in StageFlow; changes made here are overwritten.";
   const destaged = !!job.destaged_at;
-  const common = { location: jobLocation(job), jobId: job.id, orgId: job.org_id };
+  const common = { location: jobLocation(job), jobId: job.id, orgId: job.org_id, timeZone };
+  const stageDay = day(job.start_date);
+  const destageDay = day(job.destaged_at ?? job.expected_end_date);
   return [
     {
       id: jobEventId(job.id, "stage"),
-      body: { ...common, summary: `Staging: ${job.address}`, day: day(job.start_date), description: details + footer },
+      body: {
+        ...common,
+        summary: `Staging: ${job.address}`,
+        day: stageDay,
+        window: visitWindow(stageDay, job.stage_start_time, job.stage_end_time),
+        description: details + footer,
+      },
     },
     {
       id: jobEventId(job.id, "destage"),
       body: {
         ...common,
         summary: `Destage: ${job.address}`,
-        day: day(job.destaged_at ?? job.expected_end_date),
+        day: destageDay,
+        window: visitWindow(destageDay, job.destage_start_time, job.destage_end_time),
         description: `${destaged ? "Destaged" : "Expected close date"}\n${details}${footer}`,
       },
     },
@@ -79,6 +91,11 @@ async function recordResult(conn: GoogleConnection, err: unknown) {
   }).catch(() => {});
 }
 
+async function orgTimeZone(orgId: string) {
+  const org = await prisma.organization.findUnique({ where: { id: orgId }, select: { timezone: true } });
+  return org?.timezone ?? "America/Chicago";
+}
+
 async function accessFor(conn: GoogleConnection) {
   const refreshToken = open(conn.refresh_token);
   if (!refreshToken) throw new GoogleAuthError(RECONNECT_MESSAGE);
@@ -86,7 +103,7 @@ async function accessFor(conn: GoogleConnection) {
 }
 
 /** The org's push target, or null when adding jobs to Google is off. */
-async function findTarget(): Promise<Omit<Target, "accessToken"> | null> {
+async function findTarget(): Promise<Omit<Target, "accessToken" | "timeZone"> | null> {
   const conn = await prisma.googleConnection.findFirst({
     where: { job_calendar_id: { not: null }, can_write: true },
   });
@@ -101,7 +118,7 @@ async function reconcile(t: Target, jobId: string, job: Job | null) {
     }
     return;
   }
-  for (const ev of jobEvents(job)) await putJobEvent(t.accessToken, t.calendarId, ev.id, ev.body);
+  for (const ev of jobEvents(job, t.timeZone)) await putJobEvent(t.accessToken, t.calendarId, ev.id, ev.body);
 }
 
 async function inBatches<T>(items: T[], fn: (item: T) => Promise<void>) {
@@ -116,12 +133,13 @@ async function inBatches<T>(items: T[], fn: (item: T) => Promise<void>) {
  * query) when no calendar is picked.
  */
 export async function syncJobToGoogle(jobId: string) {
-  let target: Omit<Target, "accessToken"> | null = null;
+  let target: Omit<Target, "accessToken" | "timeZone"> | null = null;
   try {
     target = await findTarget();
     if (!target) return;
     const job = await prisma.job.findUnique({ where: { id: jobId } });
-    await reconcile({ ...target, accessToken: await accessFor(target.conn) }, jobId, job);
+    const timeZone = await orgTimeZone(target.conn.org_id);
+    await reconcile({ ...target, accessToken: await accessFor(target.conn), timeZone }, jobId, job);
     await recordResult(target.conn, null);
   } catch (err) {
     if (target) await recordResult(target.conn, err);
@@ -132,7 +150,9 @@ export async function syncJobToGoogle(jobId: string) {
 /** Writes every planning and active job to a newly picked calendar. */
 export async function backfillJobs(conn: GoogleConnection) {
   try {
-    const t: Target = { conn, calendarId: conn.job_calendar_id!, accessToken: await accessFor(conn) };
+    const t: Target = {
+      conn, calendarId: conn.job_calendar_id!, accessToken: await accessFor(conn), timeZone: await orgTimeZone(conn.org_id),
+    };
     const jobs = await prisma.job.findMany({ where: { status: { in: [...BACKFILL_STATUSES] } } });
     await inBatches(jobs, (job) => reconcile(t, job.id, job));
     await recordResult(conn, null);

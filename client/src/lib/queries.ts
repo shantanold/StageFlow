@@ -407,6 +407,10 @@ interface CreateJobInput {
   extension_amount?: number | null;
   total_paid?: number | null;
   destaged_at?: string | null;
+  stage_start_time?: string | null;
+  stage_end_time?: string | null;
+  destage_start_time?: string | null;
+  destage_end_time?: string | null;
 }
 
 export function useCreateJob() {

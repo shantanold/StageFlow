@@ -131,6 +131,14 @@ export interface Job {
   total_paid: string | null;
   /** Date furniture was destaged / pulled. */
   destaged_at: string | null;
+  /**
+   * Optional visit times, "HH:MM" in the business time zone. A null start
+   * means the visit is all day; a null end means it lasts 2 hours.
+   */
+  stage_start_time: string | null;
+  stage_end_time: string | null;
+  destage_start_time: string | null;
+  destage_end_time: string | null;
   created_by: string;
   notes: string | null;
   created_at: string;

@@ -36,8 +36,9 @@ interface WrittenEvent {
   summary: string;
   description: string;
   location: string;
-  start: { date: string };
-  end: { date: string };
+  start: { date?: string; dateTime?: string; timeZone?: string };
+  end: { date?: string; dateTime?: string; timeZone?: string };
+  transparency: string;
   extendedProperties: { private: Record<string, string> };
 }
 
@@ -442,6 +443,61 @@ describe("google calendar", () => {
     expect(written(EMAIL)).toHaveLength(6);
     expect((await request(app).delete(`/api/v1/calendar/google/${conn.id}`).set(authHeader(manager.token))).status).toBe(204);
     expect(written(EMAIL)).toHaveLength(0);
+  });
+
+  it("validates job visit times and sends timed visits to Google in the org's time zone", async () => {
+    const google = fakeGoogle();
+    google.grantedScope = `${READ_SCOPES} ${WRITE_SCOPE}`;
+    google.events.set(EMAIL, []);
+    const manager = await registerUser(app, { role: "manager" });
+    await connectGoogle(manager.token, google, true);
+    const conn = await rawPrisma.googleConnection.findFirstOrThrow();
+    await rawPrisma.organization.update({ where: { id: conn.org_id }, data: { timezone: "America/Denver" } });
+    await request(app).put(`/api/v1/calendar/google/${conn.id}/job-calendar`).set(authHeader(manager.token)).send({ calendar_id: EMAIL });
+
+    const base = {
+      address: "9 Clock St", client_name: "Acme", start_date: "2026-12-01", expected_end_date: "2027-03-01",
+    };
+    const post = (extra: Record<string, unknown>) =>
+      request(app).post("/api/v1/jobs").set(authHeader(manager.token)).send({ ...base, ...extra });
+
+    // Bad input is refused.
+    expect((await post({ stage_start_time: "9am" })).body.message).toMatch(/time like 09:30/);
+    expect((await post({ stage_start_time: "24:00" })).status).toBe(400);
+    expect((await post({ stage_end_time: "11:00" })).body.message).toMatch(/start time before an end time/);
+    expect((await post({ destage_start_time: "14:00", destage_end_time: "13:00" })).body.message).toMatch(/after its start/);
+
+    // Staging 9:00-11:30; destage start only (default 2 hours).
+    const created = await post({ stage_start_time: "09:00", stage_end_time: "11:30", destage_start_time: "15:15" });
+    expect(created.status).toBe(201);
+    expect(created.body).toMatchObject({
+      stage_start_time: "09:00", stage_end_time: "11:30", destage_start_time: "15:15", destage_end_time: null,
+    });
+    const job = created.body;
+    const ev = (kind: "stage" | "destage") => google.written.get(EMAIL)!.get(jobEventId(job.id, kind))!;
+    expect(ev("stage")).toMatchObject({
+      start: { dateTime: "2026-12-01T09:00:00", timeZone: "America/Denver" },
+      end: { dateTime: "2026-12-01T11:30:00", timeZone: "America/Denver" },
+      transparency: "opaque",
+    });
+    expect(ev("destage")).toMatchObject({
+      start: { dateTime: "2027-03-01T15:15:00" }, end: { dateTime: "2027-03-01T17:15:00" },
+    });
+
+    const put = (data: Record<string, unknown>) =>
+      request(app).put(`/api/v1/jobs/${job.id}`).set(authHeader(manager.token)).send(data);
+    // Moving the date keeps the time.
+    await put({ start_date: "2026-12-03" });
+    expect(ev("stage").start).toMatchObject({ dateTime: "2026-12-03T09:00:00" });
+    // An end time is checked against the saved start time.
+    expect((await put({ stage_end_time: "08:00" })).status).toBe(400);
+    // Late start with the default length runs past midnight.
+    await put({ destage_start_time: "23:00" });
+    expect(ev("destage").end).toMatchObject({ dateTime: "2027-03-02T01:00:00" });
+    // Clearing the start time clears its end time and makes it all day again.
+    const cleared = await put({ stage_start_time: null });
+    expect(cleared.body).toMatchObject({ stage_start_time: null, stage_end_time: null });
+    expect(ev("stage")).toMatchObject({ start: { date: "2026-12-03" }, end: { date: "2026-12-04" }, transparency: "transparent" });
   });
 
   it("reports not configured without the Google env vars", async () => {

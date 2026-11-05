@@ -175,6 +175,13 @@ model Job {
   total_paid        Decimal?  @db.Decimal(10, 2)
   /// Date furniture was destaged / pulled from the home (Excel "Destaged").
   destaged_at       DateTime? @db.Date
+  /// Optional time of day for the staging (install) visit on start_date, "HH:MM"
+  /// in the org's time zone. Null means all day. End null means 2 hours after start.
+  stage_start_time  String?
+  stage_end_time    String?
+  /// Same for the destage (pickup) visit, on destaged_at or expected_end_date.
+  destage_start_time String?
+  destage_end_time   String?
   created_by        String
   notes             String?
   created_at        DateTime  @default(now())

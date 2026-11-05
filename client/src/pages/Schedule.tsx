@@ -4,8 +4,8 @@ import { useCalendarEvents, useJobs } from "../lib/queries";
 import { useAuth } from "../contexts/AuthContext";
 import { useToast } from "../contexts/ToastContext";
 import {
-  addLocalDays, buildSchedule, dateFromKey, dayKey, eventTimeLabel, sourceLabel, startOfLocalDay, startOfWeek,
-  type ScheduleEntry,
+  addLocalDays, buildSchedule, dateFromKey, dayKey, eventTimeLabel, jobVisitTimeLabel, sourceLabel, startOfLocalDay,
+  startOfWeek, type ScheduleEntry,
 } from "../lib/schedule";
 import { EventModal } from "./schedule/EventModal";
 import { ImportModal } from "./schedule/ImportModal";
@@ -62,6 +62,7 @@ function EntryRow({ entry, day, onOpen }: { entry: ScheduleEntry; day: string; o
             {job.address}
           </div>
           <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 2 }}>
+            {jobVisitTimeLabel(job, milestone) && `${jobVisitTimeLabel(job, milestone)} · `}
             {milestone === "install" ? "Job starts" : job.actual_end_date ? "Job closed" : "Job ends"} · {job.client_name}
           </div>
         </div>

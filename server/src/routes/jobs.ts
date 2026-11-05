@@ -11,6 +11,7 @@ import {
   type ReturnCond,
 } from "../lib/itemTransitions";
 import { syncJobToGoogle } from "../lib/jobCalendarPush";
+import { resolveVisitTimes } from "../lib/jobTimes";
 
 const router = Router();
 router.use(authenticate);
@@ -122,6 +123,9 @@ router.post("/", requireManager, async (req, res) => {
     if (body.destaged_at !== undefined && destagedAt === undefined) {
       return res.status(400).json({ message: "destaged_at must be a valid date" });
     }
+    // Optional visit times ("HH:MM"): stage_start_time, stage_end_time, destage_start_time, destage_end_time.
+    const times = resolveVisitTimes(req.body as Record<string, unknown>);
+    if ("error" in times) return res.status(400).json({ message: times.error });
 
     const userId = req.user!.userId;
 
@@ -144,6 +148,7 @@ router.post("/", requireManager, async (req, res) => {
         extension_amount: extensionAmount ?? null,
         total_paid: totalPaid ?? null,
         destaged_at: destagedAt ?? null,
+        ...times.data,
         status: "planning",
         created_by: userId,
       },
@@ -223,8 +228,10 @@ router.put("/:id", requireManager, async (req, res) => {
     if (body.destaged_at !== undefined && destagedAt === undefined) {
       return res.status(400).json({ message: "destaged_at must be a valid date" });
     }
+    const times = resolveVisitTimes(req.body as Record<string, unknown>, existing);
+    if ("error" in times) return res.status(400).json({ message: times.error });
 
-    const data: Record<string, unknown> = {};
+    const data: Record<string, unknown> = { ...times.data };
     if (body.address !== undefined) data.address = body.address.trim();
     if (body.city !== undefined) data.city = body.city.trim();
     if (body.state !== undefined) data.state = body.state.trim();
