@@ -4,7 +4,7 @@ import request from "supertest";
 import app from "../src/app";
 import { rawPrisma } from "../src/lib/prisma";
 import { open, seal } from "../src/lib/secretBox";
-import { toParsedEvent } from "../src/lib/googleCalendar";
+import { isJobEventUid, jobEventId, toParsedEvent } from "../src/lib/googleCalendar";
 import { cleanDb, createOrg, registerUser, authHeader } from "./helpers";
 
 const APP_ORIGIN = "http://localhost:5173";
@@ -26,17 +26,34 @@ function timedEvent(id: string, title: string, start: Date, extra: Record<string
   };
 }
 
-/** A fake Google: token, calendar list, events and revoke endpoints, editable per test. */
+const READ_SCOPES =
+  "https://www.googleapis.com/auth/calendar.calendarlist.readonly https://www.googleapis.com/auth/calendar.events.readonly";
+const WRITE_SCOPE = "https://www.googleapis.com/auth/calendar.events";
+
+interface WrittenEvent {
+  id: string;
+  status: string;
+  summary: string;
+  description: string;
+  location: string;
+  start: { date?: string; dateTime?: string; timeZone?: string };
+  end: { date?: string; dateTime?: string; timeZone?: string };
+  transparency: string;
+  extendedProperties: { private: Record<string, string> };
+}
+
+/** A fake Google: token, calendar list, events (read and write) and revoke endpoints, editable per test. */
 function fakeGoogle() {
   const google = {
     calendars: [
-      { id: EMAIL, summary: EMAIL, summaryOverride: "My calendar", primary: true },
-      { id: "team@group.calendar.google.com", summary: "Team" },
-    ],
+      { id: EMAIL, summary: EMAIL, summaryOverride: "My calendar", primary: true, accessRole: "owner" },
+      { id: "team@group.calendar.google.com", summary: "Team", accessRole: "reader" },
+    ] as Record<string, unknown>[],
     events: new Map<string, unknown[]>(),
+    /** Events written through the API, by calendar then id. Deleted ones linger as "cancelled", like Google. */
+    written: new Map<string, Map<string, WrittenEvent>>(),
     refreshTokenValid: true,
-    grantedScope:
-      "https://www.googleapis.com/auth/calendar.calendarlist.readonly https://www.googleapis.com/auth/calendar.events.readonly",
+    grantedScope: READ_SCOPES,
     tokenRequests: [] as URLSearchParams[],
     revoked: [] as string[],
   };
@@ -63,10 +80,47 @@ function fakeGoogle() {
     }
     if ((init?.headers as Record<string, string>)?.Authorization !== "Bearer access-1") return json(401, {});
     if (url.pathname === "/calendar/v3/users/me/calendarList") return json(200, { items: google.calendars });
-    const m = url.pathname.match(/^\/calendar\/v3\/calendars\/([^/]+)\/events$/);
+    const m = url.pathname.match(/^\/calendar\/v3\/calendars\/([^/]+)\/events(?:\/([^/]+))?$/);
     if (m) {
-      const items = google.events.get(decodeURIComponent(m[1]));
-      return items ? json(200, { items }) : json(404, { error: { message: "Not Found" } });
+      const calId = decodeURIComponent(m[1]);
+      const eventId = m[2];
+      const method = init?.method ?? "GET";
+      const cal = google.calendars.find((c) => c.id === calId);
+      const store = google.written.get(calId) ?? new Map<string, WrittenEvent>();
+      if (method !== "GET") {
+        if (!cal) return json(404, { error: { message: "Not Found" } });
+        if (cal.accessRole === "reader") return json(403, { error: { message: "Forbidden" } });
+        google.written.set(calId, store);
+      }
+      const live = [...store.values()].filter((e) => e.status !== "cancelled");
+      if (method === "GET" && !eventId) {
+        const prop = url.searchParams.get("privateExtendedProperty");
+        if (prop) {
+          const [k, v] = prop.split("=");
+          return json(200, { items: live.filter((e) => e.extendedProperties.private[k] === v) });
+        }
+        const items = google.events.get(calId);
+        if (!items && !live.length) return json(404, { error: { message: "Not Found" } });
+        return json(200, { items: [...(items ?? []), ...live.map((e) => ({ ...e, iCalUID: `${e.id}@google.com` }))] });
+      }
+      const body = init?.body ? (JSON.parse(String(init.body)) as WrittenEvent) : undefined;
+      if (method === "PUT") {
+        if (!store.has(eventId!)) return json(404, { error: { message: "Not Found" } });
+        store.set(eventId!, body!);
+        return json(200, body);
+      }
+      if (method === "POST") {
+        if (store.has(body!.id)) return json(409, { error: { message: "The requested identifier already exists." } });
+        store.set(body!.id, body!);
+        return json(200, body);
+      }
+      if (method === "DELETE") {
+        const ev = store.get(eventId!);
+        if (!ev) return json(404, {});
+        if (ev.status === "cancelled") return json(410, {});
+        ev.status = "cancelled";
+        return new Response(null, { status: 204 });
+      }
     }
     return json(404, {});
   });
@@ -75,8 +129,9 @@ function fakeGoogle() {
 }
 
 /** Runs connect + the browser's trip through Google and back; returns the callback response. */
-async function connectGoogle(token: string, google: ReturnType<typeof fakeGoogle>) {
-  const res = await request(app).post("/api/v1/calendar/google/connect").set(authHeader(token)).send({ return_to: APP_ORIGIN });
+async function connectGoogle(token: string, google: ReturnType<typeof fakeGoogle>, write = false) {
+  const res = await request(app).post("/api/v1/calendar/google/connect").set(authHeader(token))
+    .send({ return_to: APP_ORIGIN, ...(write && { write: true }) });
   expect(res.status).toBe(200);
   const consent = new URL(res.body.url);
   expect(consent.origin).toBe("https://accounts.google.com");
@@ -257,8 +312,7 @@ describe("google calendar", () => {
     expect(await rawPrisma.googleConnection.count()).toBe(0);
 
     // Connected in this org: invisible to another org's manager.
-    google.grantedScope =
-      "https://www.googleapis.com/auth/calendar.calendarlist.readonly https://www.googleapis.com/auth/calendar.events.readonly";
+    google.grantedScope = READ_SCOPES;
     google.events.set(EMAIL, []);
     await connectGoogle(manager.token, google);
     const conn = await rawPrisma.googleConnection.findFirstOrThrow();
@@ -267,6 +321,183 @@ describe("google calendar", () => {
     expect((await request(app).get("/api/v1/calendar/google").set(authHeader(outsider.token))).body.connections).toEqual([]);
     expect((await request(app).get(`/api/v1/calendar/google/${conn.id}/calendars`).set(authHeader(outsider.token))).status).toBe(404);
     expect((await request(app).delete(`/api/v1/calendar/google/${conn.id}`).set(authHeader(outsider.token))).status).toBe(404);
+  });
+
+  it("recognizes the job events it writes, so imports skip them", () => {
+    const id = jobEventId("0f8fad5b-d9cb-469f-a165-70867728950e", "destage");
+    expect(id).toBe("sf0f8fad5bd9cb469fa16570867728950e1");
+    // Google event ids are base32hex: 0-9 and a-v only.
+    expect(id).toMatch(/^[0-9a-v]{5,1024}$/);
+    expect(isJobEventUid(id)).toBe(true);
+    expect(isJobEventUid(`${id}@google.com`)).toBe(true);
+    expect(isJobEventUid("c1@google.com")).toBe(false);
+    expect(toParsedEvent({
+      id, start: { date: "2026-12-01" }, extendedProperties: { private: { stageflowJob: "x" } },
+    })).toBeNull();
+  });
+
+  it("adds jobs to a picked Google calendar and keeps them in line with the job", async () => {
+    const google = fakeGoogle();
+    google.calendars.push({ id: "jobs@group.calendar.google.com", summary: "Jobs", accessRole: "writer" });
+    google.events.set(EMAIL, []);
+    const manager = await registerUser(app, { role: "manager" });
+    const staff = await registerUser(app, { role: "staff" });
+    const jobsUrl = "/api/v1/jobs";
+    const newJob = (address: string, extra: Record<string, unknown> = {}) =>
+      request(app).post(jobsUrl).set(authHeader(manager.token)).send({
+        address, client_name: "Acme Realty", client_contact: "555-0100", city: "Houston", state: "TX", zip: "77002",
+        start_date: "2026-12-01", expected_end_date: "2027-03-01", ...extra,
+      });
+    const written = (cal: string) =>
+      [...(google.written.get(cal)?.values() ?? [])].filter((e) => e.status !== "cancelled");
+
+    // Read-only connection: can't pick a calendar for jobs yet.
+    await connectGoogle(manager.token, google);
+    let conn = await rawPrisma.googleConnection.findFirstOrThrow();
+    expect(conn.can_write).toBe(false);
+    const jobCal = `/api/v1/calendar/google/${conn.id}/job-calendar`;
+    expect((await request(app).put(jobCal).set(authHeader(manager.token)).send({ calendar_id: EMAIL })).status).toBe(409);
+
+    // Asking for write access but unchecking it on Google's screen fails clearly.
+    const { callback: denied } = await connectGoogle(manager.token, google, true);
+    expect(new URL(denied.headers.location).searchParams.get("google_error")).toMatch(/add events/);
+
+    // Granting it: the consent URL asks for event write access, and the account can now write.
+    google.grantedScope = `${READ_SCOPES} ${WRITE_SCOPE}`;
+    const writeConnect = await request(app).post("/api/v1/calendar/google/connect").set(authHeader(manager.token))
+      .send({ return_to: APP_ORIGIN, write: true });
+    expect(new URL(writeConnect.body.url).searchParams.get("scope")).toContain(WRITE_SCOPE);
+    await connectGoogle(manager.token, google, true);
+    conn = await rawPrisma.googleConnection.findFirstOrThrow();
+    expect(conn.can_write).toBe(true);
+
+    // Jobs that exist before a calendar is picked: only upcoming ones get copied over.
+    const planned = (await newJob("1 Early St")).body;
+    const done = (await newJob("2 Done Ave")).body;
+    await request(app).put(`${jobsUrl}/${done.id}`).set(authHeader(manager.token)).send({ status: "completed" });
+    expect(written(EMAIL)).toHaveLength(0);
+
+    // Only managers, only calendars this account can add to.
+    expect((await request(app).put(jobCal).set(authHeader(staff.token)).send({ calendar_id: EMAIL })).status).toBe(403);
+    expect((await request(app).put(jobCal).set(authHeader(manager.token)).send({ calendar_id: "team@group.calendar.google.com" })).status).toBe(400);
+    expect((await request(app).put(jobCal).set(authHeader(manager.token)).send({ calendar_id: "nope@example.com" })).status).toBe(400);
+
+    const picked = await request(app).put(jobCal).set(authHeader(manager.token)).send({ calendar_id: EMAIL });
+    expect(picked.status).toBe(200);
+    expect(picked.body).toMatchObject({ job_calendar_id: EMAIL, pushed: 1, error: null });
+    expect(written(EMAIL).map((e) => [e.id, e.summary, e.start.date, e.end.date])).toEqual([
+      [jobEventId(planned.id, "stage"), "Staging: 1 Early St", "2026-12-01", "2026-12-02"],
+      [jobEventId(planned.id, "destage"), "Destage: 1 Early St", "2027-03-01", "2027-03-02"],
+    ]);
+    const stageEv = written(EMAIL)[0];
+    expect(stageEv.location).toBe("1 Early St, Houston, TX 77002");
+    expect(stageEv.description).toContain("Client: Acme Realty");
+    expect(stageEv.extendedProperties.private).toMatchObject({ stageflowJob: planned.id, stageflowOrg: conn.org_id });
+
+    // New and edited jobs follow along.
+    const job = (await newJob("3 New Rd")).body;
+    expect(written(EMAIL)).toHaveLength(4);
+    await request(app).put(`${jobsUrl}/${job.id}`).set(authHeader(manager.token)).send({ expected_end_date: "2027-04-15" });
+    expect(google.written.get(EMAIL)!.get(jobEventId(job.id, "destage"))!.start.date).toBe("2027-04-15");
+
+    // Syncing the same calendar in doesn't bring the job days back as duplicate events.
+    const primary = await rawPrisma.calendarSource.findFirstOrThrow({ where: { google_calendar_id: EMAIL } });
+    const synced = await request(app).post(`/api/v1/calendar/sources/${primary.id}/sync`).set(authHeader(manager.token));
+    expect(synced.body).toMatchObject({ created: 0, error: null });
+    expect(await rawPrisma.event.count()).toBe(0);
+
+    // Cancelling removes its events; un-cancelling brings them back (Google keeps the deleted ids).
+    await request(app).put(`${jobsUrl}/${job.id}`).set(authHeader(manager.token)).send({ status: "cancelled" });
+    expect(written(EMAIL)).toHaveLength(2);
+    await request(app).put(`${jobsUrl}/${job.id}`).set(authHeader(manager.token)).send({ status: "planning" });
+    expect(written(EMAIL)).toHaveLength(4);
+    // Deleting the job removes them too.
+    expect((await request(app).delete(`${jobsUrl}/${job.id}`).set(authHeader(manager.token))).status).toBe(200);
+    expect(written(EMAIL).map((e) => e.summary)).toEqual(["Staging: 1 Early St", "Destage: 1 Early St"]);
+
+    // Google failing never blocks saving a job; the error shows on the account instead.
+    google.refreshTokenValid = false;
+    const offline = await newJob("4 Offline Ln");
+    expect(offline.status).toBe(201);
+    const status = await request(app).get("/api/v1/calendar/google").set(authHeader(manager.token));
+    expect(status.body.connections[0]).toMatchObject({ can_write: true, job_calendar_id: EMAIL });
+    expect(status.body.connections[0].push_error).toMatch(/Reconnect Google/);
+    google.refreshTokenValid = true;
+    await request(app).put(`${jobsUrl}/${offline.body.id}`).set(authHeader(manager.token)).send({ notes: "gate code 1234" });
+    expect((await rawPrisma.googleConnection.findFirstOrThrow()).push_error).toBeNull();
+    expect(google.written.get(EMAIL)!.get(jobEventId(offline.body.id, "stage"))!.description).toContain("gate code 1234");
+
+    // Switching calendars moves the events; turning it off removes them.
+    const moved = await request(app).put(jobCal).set(authHeader(manager.token)).send({ calendar_id: "jobs@group.calendar.google.com" });
+    expect(moved.body).toMatchObject({ pushed: 2, error: null });
+    expect(written(EMAIL)).toHaveLength(0);
+    expect(written("jobs@group.calendar.google.com")).toHaveLength(4);
+    const off = await request(app).put(jobCal).set(authHeader(manager.token)).send({ calendar_id: null });
+    expect(off.body).toMatchObject({ job_calendar_id: null });
+    expect(written("jobs@group.calendar.google.com")).toHaveLength(0);
+    await newJob("5 Quiet Ct");
+    expect(written("jobs@group.calendar.google.com")).toHaveLength(0);
+
+    // Disconnecting cleans up the calendar it was adding jobs to.
+    await request(app).put(jobCal).set(authHeader(manager.token)).send({ calendar_id: EMAIL });
+    expect(written(EMAIL)).toHaveLength(6);
+    expect((await request(app).delete(`/api/v1/calendar/google/${conn.id}`).set(authHeader(manager.token))).status).toBe(204);
+    expect(written(EMAIL)).toHaveLength(0);
+  });
+
+  it("validates job visit times and sends timed visits to Google in the org's time zone", async () => {
+    const google = fakeGoogle();
+    google.grantedScope = `${READ_SCOPES} ${WRITE_SCOPE}`;
+    google.events.set(EMAIL, []);
+    const manager = await registerUser(app, { role: "manager" });
+    await connectGoogle(manager.token, google, true);
+    const conn = await rawPrisma.googleConnection.findFirstOrThrow();
+    await rawPrisma.organization.update({ where: { id: conn.org_id }, data: { timezone: "America/Denver" } });
+    await request(app).put(`/api/v1/calendar/google/${conn.id}/job-calendar`).set(authHeader(manager.token)).send({ calendar_id: EMAIL });
+
+    const base = {
+      address: "9 Clock St", client_name: "Acme", start_date: "2026-12-01", expected_end_date: "2027-03-01",
+    };
+    const post = (extra: Record<string, unknown>) =>
+      request(app).post("/api/v1/jobs").set(authHeader(manager.token)).send({ ...base, ...extra });
+
+    // Bad input is refused.
+    expect((await post({ stage_start_time: "9am" })).body.message).toMatch(/time like 09:30/);
+    expect((await post({ stage_start_time: "24:00" })).status).toBe(400);
+    expect((await post({ stage_end_time: "11:00" })).body.message).toMatch(/start time before an end time/);
+    expect((await post({ destage_start_time: "14:00", destage_end_time: "13:00" })).body.message).toMatch(/after its start/);
+
+    // Staging 9:00-11:30; destage start only (default 2 hours).
+    const created = await post({ stage_start_time: "09:00", stage_end_time: "11:30", destage_start_time: "15:15" });
+    expect(created.status).toBe(201);
+    expect(created.body).toMatchObject({
+      stage_start_time: "09:00", stage_end_time: "11:30", destage_start_time: "15:15", destage_end_time: null,
+    });
+    const job = created.body;
+    const ev = (kind: "stage" | "destage") => google.written.get(EMAIL)!.get(jobEventId(job.id, kind))!;
+    expect(ev("stage")).toMatchObject({
+      start: { dateTime: "2026-12-01T09:00:00", timeZone: "America/Denver" },
+      end: { dateTime: "2026-12-01T11:30:00", timeZone: "America/Denver" },
+      transparency: "opaque",
+    });
+    expect(ev("destage")).toMatchObject({
+      start: { dateTime: "2027-03-01T15:15:00" }, end: { dateTime: "2027-03-01T17:15:00" },
+    });
+
+    const put = (data: Record<string, unknown>) =>
+      request(app).put(`/api/v1/jobs/${job.id}`).set(authHeader(manager.token)).send(data);
+    // Moving the date keeps the time.
+    await put({ start_date: "2026-12-03" });
+    expect(ev("stage").start).toMatchObject({ dateTime: "2026-12-03T09:00:00" });
+    // An end time is checked against the saved start time.
+    expect((await put({ stage_end_time: "08:00" })).status).toBe(400);
+    // Late start with the default length runs past midnight.
+    await put({ destage_start_time: "23:00" });
+    expect(ev("destage").end).toMatchObject({ dateTime: "2027-03-02T01:00:00" });
+    // Clearing the start time clears its end time and makes it all day again.
+    const cleared = await put({ stage_start_time: null });
+    expect(cleared.body).toMatchObject({ stage_start_time: null, stage_end_time: null });
+    expect(ev("stage")).toMatchObject({ start: { date: "2026-12-03" }, end: { date: "2026-12-04" }, transparency: "transparent" });
   });
 
   it("reports not configured without the Google env vars", async () => {

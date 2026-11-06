@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useJob, useJobItems, useForceCompleteJob, useUnassignItems, useMarkLoaded, useUndoLoad, useMarkReturned } from "../../lib/queries";
-import { getCategoryEmoji, jobStatusBadgeClass, statusBadgeClass, statusLabel, jobItemStatusLabel, formatCurrency, formatCalendarDay } from "../../lib/utils";
+import { getCategoryEmoji, jobStatusBadgeClass, statusBadgeClass, statusLabel, jobItemStatusLabel, formatCurrency, formatCalendarDay, visitTimeLabel } from "../../lib/utils";
 import { displayPhotoUrl } from "../../lib/cloudinary";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
@@ -188,6 +188,9 @@ export function JobDetail() {
           <div className="card" style={{ marginBottom: 0 }}>
             <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Start date</div>
             <div style={{ fontSize: 13, fontWeight: 500 }}>{formatCalendarDay(job.start_date)}</div>
+            {visitTimeLabel(job.stage_start_time, job.stage_end_time) && (
+              <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 2 }}>{visitTimeLabel(job.stage_start_time, job.stage_end_time)}</div>
+            )}
           </div>
           {job.actual_end_date ? (
             <div className="card" style={{ marginBottom: 0, borderColor: "rgba(16,185,129,0.3)" }}>
@@ -198,6 +201,9 @@ export function JobDetail() {
             <div className="card" style={{ marginBottom: 0 }}>
               <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Expected close</div>
               <div style={{ fontSize: 13, fontWeight: 500, color: "var(--amber-text)" }}>{formatCalendarDay(job.expected_end_date)}</div>
+              {visitTimeLabel(job.destage_start_time, job.destage_end_time) && (
+                <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 2 }}>{visitTimeLabel(job.destage_start_time, job.destage_end_time)}</div>
+              )}
             </div>
           )}
         </div>

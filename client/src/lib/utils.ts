@@ -62,6 +62,18 @@ export function formatCalendarDayShort(d: string | null | undefined): string {
   return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 }
 
+/** "14:30" → "2:30 PM". */
+export function formatClockTime(hhmm: string): string {
+  const [h, m] = hhmm.split(":").map(Number);
+  return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
+}
+
+/** A job visit's time: "9:00 AM – 11:30 AM", "3:15 PM" (default length), or null when all day. */
+export function visitTimeLabel(start: string | null, end: string | null): string | null {
+  if (!start) return null;
+  return end ? `${formatClockTime(start)} – ${formatClockTime(end)}` : formatClockTime(start);
+}
+
 /** "yyyy-MM-dd" for the given moment's *local* day, for <input type="date"> defaults. */
 export function localDateInputValue(date: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");

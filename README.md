@@ -130,6 +130,8 @@ The PWA manifest and service worker are automatically included in the `dist/` bu
 | `GOOGLE_OAUTH_REDIRECT_URI` | | `https://<api host>/api/v1/calendar/google/callback`, also listed under the client's authorized redirect URIs |
 | `CALENDAR_TOKEN_KEY` | | Encrypts stored Google refresh tokens: `openssl rand -base64 32`. Changing it disconnects every Google account |
 
+**Google OAuth consent screen scopes.** Calendar sync asks for `calendar.calendarlist.readonly` and `calendar.events.readonly`. Adding jobs to Google Calendar (a manager turns it on per account under Schedule → Import calendars) also asks for `calendar.events`, so add that scope to the consent screen too. Google treats it as a sensitive scope: while the app is in "Testing" mode, only listed test users can grant it, and publishing to all users needs Google's verification.
+
 ### Client (`client/.env`)
 
 | Variable | Required | Description |

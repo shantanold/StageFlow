@@ -1,5 +1,5 @@
 import type { CalendarEvent, Job } from "../types";
-import { localDateInputValue } from "./utils";
+import { localDateInputValue, visitTimeLabel } from "./utils";
 
 /**
  * Pure helpers for the Schedule page: which day each event or job date lands
@@ -72,11 +72,20 @@ export function buildSchedule(events: CalendarEvent[], jobs: Job[]): Map<string,
     else byDay.set(key, [entry]);
   };
 
+  // A job visit with a set time sorts among timed events; otherwise it leads the day.
+  const jobSortKey = (day: string, time: string | null) => {
+    if (!time) return -2;
+    const [h, m] = time.split(":").map(Number);
+    const d = dateFromKey(day);
+    d.setHours(h, m);
+    return d.getTime();
+  };
   for (const job of jobs) {
     if (job.status === "cancelled") continue;
-    add(job.start_date.slice(0, 10), { kind: "job", key: `${job.id}-install`, job, milestone: "install", sortKey: -2 });
-    const end = job.actual_end_date ?? job.expected_end_date;
-    add(end.slice(0, 10), { kind: "job", key: `${job.id}-pickup`, job, milestone: "pickup", sortKey: -2 });
+    const start = job.start_date.slice(0, 10);
+    add(start, { kind: "job", key: `${job.id}-install`, job, milestone: "install", sortKey: jobSortKey(start, job.stage_start_time) });
+    const end = (job.actual_end_date ?? job.expected_end_date).slice(0, 10);
+    add(end, { kind: "job", key: `${job.id}-pickup`, job, milestone: "pickup", sortKey: jobSortKey(end, job.destage_start_time) });
   }
   for (const ev of events) {
     const sortKey = ev.all_day ? -1 : new Date(ev.start_at).getTime();
@@ -103,6 +112,13 @@ export function eventTimeLabel(ev: CalendarEvent, onDay: string): string {
   if (first) return `From ${formatTime(ev.start_at)}`;
   if (last) return `Until ${formatTime(ev.end_at)}`;
   return "All day";
+}
+
+/** The set time of a job's install or pickup visit, or null when it's all day. */
+export function jobVisitTimeLabel(job: Job, milestone: "install" | "pickup"): string | null {
+  return milestone === "install"
+    ? visitTimeLabel(job.stage_start_time, job.stage_end_time)
+    : visitTimeLabel(job.destage_start_time, job.destage_end_time);
 }
 
 // ─── Event form <-> API ─────────────────────────────────────────────────────

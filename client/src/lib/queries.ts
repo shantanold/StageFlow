@@ -407,6 +407,10 @@ interface CreateJobInput {
   extension_amount?: number | null;
   total_paid?: number | null;
   destaged_at?: string | null;
+  stage_start_time?: string | null;
+  stage_end_time?: string | null;
+  destage_start_time?: string | null;
+  destage_end_time?: string | null;
 }
 
 export function useCreateJob() {
@@ -869,10 +873,30 @@ export function useGoogleCalendarStatus() {
   });
 }
 
-/** Asks the server for Google's consent URL; the caller sends the browser there. */
+/**
+ * Asks the server for Google's consent URL; the caller sends the browser there.
+ * write: also ask for permission to add events (to add jobs to Google).
+ */
 export function useConnectGoogle() {
   return useMutation({
-    mutationFn: () => api.post<{ url: string }>("/calendar/google/connect", { return_to: window.location.origin }),
+    mutationFn: (opts?: { write?: boolean }) =>
+      api.post<{ url: string }>("/calendar/google/connect", {
+        return_to: window.location.origin,
+        ...(opts?.write && { write: true }),
+      }),
+  });
+}
+
+/** Picks the calendar jobs are added to (null turns it off); the server copies upcoming jobs over. */
+export function useSetJobCalendar(connectionId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (calendarId: string | null) =>
+      api.put<{ job_calendar_id: string | null; pushed: number; error: string | null }>(
+        `/calendar/google/${connectionId}/job-calendar`,
+        { calendar_id: calendarId }
+      ),
+    onSuccess: () => invalidateCalendar(qc),
   });
 }
 

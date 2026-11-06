@@ -8,6 +8,7 @@ import { IcsFetchError, normalizeFeedUrl } from "../lib/icsFetch";
 import { syncCalendarSource, upsertImportedEvents } from "../lib/calendarSync";
 import { findFreeSlots } from "../lib/availability";
 import { isValidTimeZone } from "../lib/timezone";
+import { jobVisitIntervals } from "../lib/jobTimes";
 
 const router = Router();
 router.use(authenticate);
@@ -338,8 +339,28 @@ router.get("/availability", async (req, res) => {
       take: 5000,
     });
 
+    // Job visits with a set time are busy too. Jobs have no assignee, so like an
+    // unassigned event they block everyone. Their times are in the org's zone,
+    // whatever zone the slots are asked for in.
+    const orgZone = await orgTimeZone(req.user!.org_id);
+    const pad = 2 * DAY_MS;
+    const near = { gte: new Date(range.from.getTime() - pad), lt: new Date(range.to.getTime() + pad) };
+    const timedJobs = await prisma.job.findMany({
+      where: {
+        status: { not: "cancelled" },
+        OR: [
+          { stage_start_time: { not: null }, start_date: near },
+          { destage_start_time: { not: null }, OR: [{ destaged_at: near }, { destaged_at: null, expected_end_date: near }] },
+        ],
+      },
+      take: 5000,
+    });
+    const busyJobs = timedJobs
+      .flatMap((job) => jobVisitIntervals(job, orgZone).map((v) => ({ id: `job-${job.id}-${v.visit}`, job_id: job.id, ...v })))
+      .filter((v) => v.start < range.to && v.end > range.from);
+
     const slots = findFreeSlots(
-      busyEvents.map((e) => ({ start: e.start_at, end: e.end_at })),
+      [...busyEvents.map((e) => ({ start: e.start_at, end: e.end_at })), ...busyJobs],
       {
         from: range.from, to: range.to, timeZone,
         dayStartMinutes: dayStart, dayEndMinutes: dayEnd, workingDays: days,
@@ -351,7 +372,10 @@ router.get("/availability", async (req, res) => {
       time_zone: timeZone,
       duration_minutes: duration,
       slots,
-      busy: busyEvents.map((e) => ({ id: e.id, title: e.title, start: e.start_at, end: e.end_at })),
+      busy: [
+        ...busyEvents.map((e) => ({ id: e.id, title: e.title, start: e.start_at, end: e.end_at })),
+        ...busyJobs.map((j) => ({ id: j.id, title: j.title, start: j.start, end: j.end, job_id: j.job_id })),
+      ].sort((a, b) => a.start.getTime() - b.start.getTime()),
     });
   } catch (err) {
     console.error(err);

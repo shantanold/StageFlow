@@ -3,6 +3,7 @@ import { useUpdateJob } from "../../lib/queries";
 import { ApiError } from "../../lib/api";
 import { ModalOverlay } from "../../components/ModalOverlay";
 import type { Job } from "../../types";
+import { VisitTimeFields } from "./VisitTimeFields";
 
 interface EditJobModalProps {
   job: Job;
@@ -43,6 +44,10 @@ export function EditJobModal({ job, onClose }: EditJobModalProps) {
     extension_amount: moneyField(job.extension_amount),
     total_paid: moneyField(job.total_paid),
     notes: job.notes ?? "",
+    stage_start_time: job.stage_start_time ?? "",
+    stage_end_time: job.stage_end_time ?? "",
+    destage_start_time: job.destage_start_time ?? "",
+    destage_end_time: job.destage_end_time ?? "",
   });
   const [error, setError] = useState("");
   const [showFinancial, setShowFinancial] = useState(false);
@@ -54,6 +59,13 @@ export function EditJobModal({ job, onClose }: EditJobModalProps) {
   async function handleSave(e: FormEvent) {
     e.preventDefault();
     setError("");
+    if (
+      (form.stage_start_time && form.stage_end_time && form.stage_end_time <= form.stage_start_time) ||
+      (form.destage_start_time && form.destage_end_time && form.destage_end_time <= form.destage_start_time)
+    ) {
+      setError("End times must be after their start times");
+      return;
+    }
 
     const amount = parseMoney(form.amount);
     const monthlyRate = parseMoney(form.monthly_rate);
@@ -82,6 +94,10 @@ export function EditJobModal({ job, onClose }: EditJobModalProps) {
         start_date: form.start_date,
         expected_end_date: form.expected_end_date,
         destaged_at: form.destaged_at || null,
+        stage_start_time: form.stage_start_time || null,
+        stage_end_time: form.stage_end_time || null,
+        destage_start_time: form.destage_start_time || null,
+        destage_end_time: form.destage_end_time || null,
         status: form.status,
         amount,
         monthly_rate: monthlyRate,
@@ -141,6 +157,18 @@ export function EditJobModal({ job, onClose }: EditJobModalProps) {
               <input className="input-field" type="date" value={form.destaged_at} onChange={(e) => set("destaged_at", e.target.value)} />
             </div>
           </div>
+          <VisitTimeFields
+            label="Staging time"
+            start={form.stage_start_time}
+            end={form.stage_end_time}
+            onChange={(start, end) => setForm((f) => ({ ...f, stage_start_time: start, stage_end_time: end }))}
+          />
+          <VisitTimeFields
+            label="Destage time"
+            start={form.destage_start_time}
+            end={form.destage_end_time}
+            onChange={(start, end) => setForm((f) => ({ ...f, destage_start_time: start, destage_end_time: end }))}
+          />
           <div style={{ marginBottom: 14 }}>
             <label className="form-label">Status</label>
             <select className="input-field" value={form.status} onChange={(e) => set("status", e.target.value)}>

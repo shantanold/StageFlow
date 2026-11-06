@@ -10,6 +10,8 @@ import {
   maybeCompleteJob,
   type ReturnCond,
 } from "../lib/itemTransitions";
+import { syncJobToGoogle } from "../lib/jobCalendarPush";
+import { resolveVisitTimes } from "../lib/jobTimes";
 
 const router = Router();
 router.use(authenticate);
@@ -121,6 +123,9 @@ router.post("/", requireManager, async (req, res) => {
     if (body.destaged_at !== undefined && destagedAt === undefined) {
       return res.status(400).json({ message: "destaged_at must be a valid date" });
     }
+    // Optional visit times ("HH:MM"): stage_start_time, stage_end_time, destage_start_time, destage_end_time.
+    const times = resolveVisitTimes(req.body as Record<string, unknown>);
+    if ("error" in times) return res.status(400).json({ message: times.error });
 
     const userId = req.user!.userId;
 
@@ -143,10 +148,14 @@ router.post("/", requireManager, async (req, res) => {
         extension_amount: extensionAmount ?? null,
         total_paid: totalPaid ?? null,
         destaged_at: destagedAt ?? null,
+        ...times.data,
         status: "planning",
         created_by: userId,
       },
     });
+
+    // Best effort; never fails the request (errors show in the Google Calendar settings).
+    await syncJobToGoogle(job.id);
 
     return res.status(201).json({ ...job, item_count: 0 });
   } catch (err) {
@@ -219,8 +228,10 @@ router.put("/:id", requireManager, async (req, res) => {
     if (body.destaged_at !== undefined && destagedAt === undefined) {
       return res.status(400).json({ message: "destaged_at must be a valid date" });
     }
+    const times = resolveVisitTimes(req.body as Record<string, unknown>, existing);
+    if ("error" in times) return res.status(400).json({ message: times.error });
 
-    const data: Record<string, unknown> = {};
+    const data: Record<string, unknown> = { ...times.data };
     if (body.address !== undefined) data.address = body.address.trim();
     if (body.city !== undefined) data.city = body.city.trim();
     if (body.state !== undefined) data.state = body.state.trim();
@@ -252,6 +263,7 @@ router.put("/:id", requireManager, async (req, res) => {
       data,
       include: { _count: { select: { job_items: true } } },
     });
+    await syncJobToGoogle(job.id);
 
     const { _count, ...rest } = job;
     return res.json({ ...rest, item_count: _count.job_items });
@@ -281,6 +293,7 @@ router.delete("/:id", requireManager, async (req, res) => {
       prisma.jobItem.deleteMany({ where: { job_id: req.params.id } }),
       prisma.job.delete({ where: { id: req.params.id } }),
     ]);
+    await syncJobToGoogle(req.params.id);
 
     return res.json({ message: "Job deleted", id: req.params.id });
   } catch (err) {
@@ -744,6 +757,8 @@ router.post("/:id/scan-return", async (req, res) => {
       });
       jobCompleted = await maybeCompleteJob(tx, req.params.id);
     });
+    // Completing sets the destage date.
+    if (jobCompleted) await syncJobToGoogle(req.params.id);
 
     const remaining = await prisma.jobItem.count({
       where: { job_id: req.params.id, status: { not: "returned" } },
@@ -806,6 +821,8 @@ router.post("/:id/mark-returned", requireManager, async (req, res) => {
       });
       jobCompleted = await maybeCompleteJob(tx, req.params.id);
     });
+    // Completing sets the destage date.
+    if (jobCompleted) await syncJobToGoogle(req.params.id);
 
     const remaining = await prisma.jobItem.count({
       where: { job_id: req.params.id, status: { not: "returned" } },
@@ -884,6 +901,7 @@ router.post("/:id/force-complete", requireManager, async (req, res) => {
       });
     });
 
+    await syncJobToGoogle(req.params.id);
     return res.json({ job_completed: true, missing_count: remainingItems.length });
   } catch (err) {
     console.error(err);

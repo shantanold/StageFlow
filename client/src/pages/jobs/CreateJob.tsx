@@ -5,6 +5,7 @@ import { ApiError } from "../../lib/api";
 import { useToast } from "../../contexts/ToastContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { localDateInputValue } from "../../lib/utils";
+import { VisitTimeFields } from "./VisitTimeFields";
 
 function BackIcon() {
   return (
@@ -44,6 +45,10 @@ export function CreateJob() {
     extension_amount: "",
     total_paid: "3100",
     notes: "",
+    stage_start_time: "",
+    stage_end_time: "",
+    destage_start_time: "",
+    destage_end_time: "",
   });
   const [error, setError] = useState("");
   const [showFinancial, setShowFinancial] = useState(false);
@@ -69,6 +74,13 @@ export function CreateJob() {
     }
     if (!form.expected_end_date) {
       setError("Expected close date is required");
+      return;
+    }
+    if (
+      (form.stage_start_time && form.stage_end_time && form.stage_end_time <= form.stage_start_time) ||
+      (form.destage_start_time && form.destage_end_time && form.destage_end_time <= form.destage_start_time)
+    ) {
+      setError("End times must be after their start times");
       return;
     }
 
@@ -98,6 +110,10 @@ export function CreateJob() {
         client_contact: form.client_contact.trim(),
         start_date: form.start_date,
         expected_end_date: form.expected_end_date,
+        stage_start_time: form.stage_start_time || null,
+        stage_end_time: form.stage_end_time || null,
+        destage_start_time: form.destage_start_time || null,
+        destage_end_time: form.destage_end_time || null,
         amount,
         monthly_rate: monthlyRate,
         duration: form.duration.trim() || null,
@@ -166,6 +182,18 @@ export function CreateJob() {
               <input className="input-field" type="date" value={form.expected_end_date} onChange={(e) => set("expected_end_date", e.target.value)} />
             </div>
           </div>
+          <VisitTimeFields
+            label="Staging time"
+            start={form.stage_start_time}
+            end={form.stage_end_time}
+            onChange={(start, end) => setForm((f) => ({ ...f, stage_start_time: start, stage_end_time: end }))}
+          />
+          <VisitTimeFields
+            label="Destage time"
+            start={form.destage_start_time}
+            end={form.destage_end_time}
+            onChange={(start, end) => setForm((f) => ({ ...f, destage_start_time: start, destage_end_time: end }))}
+          />
           <div style={{ marginBottom: 14 }}>
             <label className="form-label">Duration</label>
             <input

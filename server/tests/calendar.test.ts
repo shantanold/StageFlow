@@ -251,6 +251,36 @@ describe("calendar", () => {
       .send({ timezone: "America/Chicago" })).status).toBe(403);
   });
 
+  it("counts job visits with a set time as busy, in the org's time zone", async () => {
+    const manager = await registerUser(app, { role: "manager" });
+    await request(app).put("/api/v1/calendar/settings").set(authHeader(manager.token)).send({ timezone: "America/New_York" });
+    const job = (address: string, extra: object) =>
+      request(app).post("/api/v1/jobs").set(authHeader(manager.token)).send({
+        address, client_name: "Acme", start_date: "2026-11-02", expected_end_date: "2026-11-02", ...extra,
+      });
+    // Monday 2026-11-02, EST (UTC-5). Working 9-13 → 14:00-18:00Z.
+    const staged = (await job("1 Busy St", { stage_start_time: "10:00", stage_end_time: "11:00" })).body;
+    // Destage at noon with no end time: 2 hours, 12:00-14:00.
+    await job("2 Pickup Rd", { start_date: "2026-10-01", destage_start_time: "12:00" });
+    await job("3 All Day Ln", {});
+    const cancelled = (await job("4 Gone Ave", { stage_start_time: "09:00" })).body;
+    await request(app).put(`/api/v1/jobs/${cancelled.id}`).set(authHeader(manager.token)).send({ status: "cancelled" });
+
+    const q = "from=2026-11-02T05:00:00Z&to=2026-11-03T05:00:00Z&day_start=09:00&day_end=13:00&duration_minutes=60&step_minutes=60";
+    const res = await request(app).get(`/api/v1/calendar/availability?${q}`).set(authHeader(manager.token));
+    expect(res.status).toBe(200);
+    // 9:00 and 11:00 local are free; 10:00 (staging) and 12:00 (destage) are taken.
+    expect(res.body.slots.map((s: { start: string }) => s.start)).toEqual(["2026-11-02T14:00:00.000Z", "2026-11-02T16:00:00.000Z"]);
+    expect(res.body.busy).toEqual([
+      { id: `job-${staged.id}-stage`, job_id: staged.id, title: "Staging: 1 Busy St", start: "2026-11-02T15:00:00.000Z", end: "2026-11-02T16:00:00.000Z" },
+      expect.objectContaining({ title: "Destage: 2 Pickup Rd", start: "2026-11-02T17:00:00.000Z", end: "2026-11-02T19:00:00.000Z" }),
+    ]);
+
+    // Slots asked for in another zone still read job times in the org's zone.
+    const la = await request(app).get(`/api/v1/calendar/availability?${q}&tz=America/Los_Angeles`).set(authHeader(manager.token));
+    expect(la.body.busy[0].start).toBe("2026-11-02T15:00:00.000Z");
+  });
+
   it("keeps each org's events, imports and subscriptions separate", async () => {
     const orgA = await registerUser(app, { role: "manager" });
     const other = await createOrg("Org B");
