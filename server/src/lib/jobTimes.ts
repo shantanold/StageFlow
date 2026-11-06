@@ -1,3 +1,5 @@
+import { zonedTimeToUtc } from "./timezone";
+
 /**
  * Optional times of day for a job's two visits: staging (install, on
  * start_date) and destage (pickup, on destaged_at or expected_end_date).
@@ -96,4 +98,41 @@ export function visitWindow(day: string, start: string | null, end: string | nul
   const s = minutes(start);
   const e = end ? minutes(end) : s + DEFAULT_VISIT_MINUTES;
   return { start: localDateTime(day, s), end: localDateTime(day, e) };
+}
+
+interface JobVisitFields extends TimeFields {
+  id: string;
+  address: string;
+  start_date: Date;
+  expected_end_date: Date;
+  destaged_at: Date | null;
+}
+
+/** The calendar day ("yyyy-MM-dd") a visit happens on: staging on the start date, destage once destaged or else on the expected close. */
+export function visitDay(job: Pick<JobVisitFields, "start_date" | "expected_end_date" | "destaged_at">, visit: Visit) {
+  const d = visit === "stage" ? job.start_date : job.destaged_at ?? job.expected_end_date;
+  return d.toISOString().slice(0, 10);
+}
+
+function wallToUtc(local: string, timeZone: string) {
+  const [date, time] = local.split("T");
+  const [year, month, day] = date.split("-").map(Number);
+  const [hour, minute] = time.split(":").map(Number);
+  return zonedTimeToUtc({ year, month, day, hour, minute, second: 0 }, timeZone);
+}
+
+/** A job's visits that have a set time, as real instants (times read in `timeZone`, the org's). */
+export function jobVisitIntervals(job: JobVisitFields, timeZone: string) {
+  const out: { visit: Visit; title: string; start: Date; end: Date }[] = [];
+  for (const visit of VISITS) {
+    const w = visitWindow(visitDay(job, visit), job[`${visit}_start_time`], job[`${visit}_end_time`]);
+    if (!w) continue;
+    out.push({
+      visit,
+      title: `${visit === "stage" ? "Staging" : "Destage"}: ${job.address}`,
+      start: wallToUtc(w.start, timeZone),
+      end: wallToUtc(w.end, timeZone),
+    });
+  }
+  return out;
 }

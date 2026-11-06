@@ -1,7 +1,7 @@
 import type { GoogleConnection, Job } from "@prisma/client";
 import { prisma } from "./prisma";
 import { getCurrentOrgId } from "./tenantContext";
-import { visitWindow } from "./jobTimes";
+import { visitDay, visitWindow } from "./jobTimes";
 import { open } from "./secretBox";
 import {
   deleteJobEvent, GoogleApiError, GoogleAuthError, jobEventId, listJobEventIds, putJobEvent,
@@ -33,10 +33,6 @@ interface Target {
   timeZone: string;
 }
 
-function day(d: Date) {
-  return d.toISOString().slice(0, 10);
-}
-
 function jobLocation(job: Job) {
   const cityLine = [job.city, [job.state, job.zip].filter(Boolean).join(" ")].filter(Boolean).join(", ");
   return [job.address, cityLine].filter(Boolean).join(", ");
@@ -52,8 +48,8 @@ export function jobEvents(job: Job, timeZone: string): { id: string; body: JobEv
   const footer = "\n\nAdded by StageFlow. Edit the job in StageFlow; changes made here are overwritten.";
   const destaged = !!job.destaged_at;
   const common = { location: jobLocation(job), jobId: job.id, orgId: job.org_id, timeZone };
-  const stageDay = day(job.start_date);
-  const destageDay = day(job.destaged_at ?? job.expected_end_date);
+  const stageDay = visitDay(job, "stage");
+  const destageDay = visitDay(job, "destage");
   return [
     {
       id: jobEventId(job.id, "stage"),
