@@ -60,6 +60,35 @@ function OrgsIcon() {
   );
 }
 
+function ScheduleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="5" width="18" height="16" rx="2" />
+      <path d="M16 3v4M8 3v4M3 10h18" />
+    </svg>
+  );
+}
+
+function SetsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="7" height="7" rx="1.5" />
+      <rect x="14" y="3" width="7" height="7" rx="1.5" />
+      <rect x="3" y="14" width="7" height="7" rx="1.5" />
+      <rect x="14" y="14" width="7" height="7" rx="1.5" />
+    </svg>
+  );
+}
+
+function ReportsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 3v18h18" />
+      <path d="M8 17v-5M13 17V8M18 17v-8" />
+    </svg>
+  );
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function TabBar() {
@@ -70,6 +99,8 @@ export function TabBar() {
 
   const tabClass = ({ isActive }: { isActive: boolean }) =>
     `tab-item${isActive ? " active" : ""}`;
+  const desktopTabClass = ({ isActive }: { isActive: boolean }) =>
+    `tab-item tab-desktop-only${isActive ? " active" : ""}`;
 
   // Platform admins (outside any org) get a birds-eye set of tabs instead of
   // one org's Inventory / Scan / Jobs.
@@ -129,6 +160,22 @@ export function TabBar() {
       <NavLink to="/jobs" className={tabClass}>
         <JobsIcon />
         Jobs
+      </NavLink>
+
+      {/* Desktop sidebar only — on mobile these live in the More tab. */}
+      <NavLink to="/schedule" className={desktopTabClass}>
+        <ScheduleIcon />
+        Schedule
+      </NavLink>
+
+      <NavLink to="/sets" className={desktopTabClass}>
+        <SetsIcon />
+        Sets
+      </NavLink>
+
+      <NavLink to="/reports" className={desktopTabClass}>
+        <ReportsIcon />
+        Reports
       </NavLink>
 
       <NavLink to="/more" className={tabClass}>

@@ -155,6 +155,9 @@ body {
   display: none;
 }
 
+/* Extra sidebar links shown only on desktop; on mobile they live in More. */
+.tab-item.tab-desktop-only { display: none; }
+
 .tab-scan-link {
   text-decoration: none;
   display: flex;
@@ -559,6 +562,9 @@ img.photo-contain {
     border-radius: var(--radius-md);
     width: 100%;
   }
+
+  .tab-item.tab-desktop-only { display: flex; }
+  .more-mobile-only { display: none !important; }
 
   .tab-item.active {
     background: var(--accent-dim);

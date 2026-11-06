@@ -19,6 +19,8 @@ interface MenuItem {
   badge?: string;
   badgeClass?: string;
   disabled?: boolean;
+  /** Also in the desktop sidebar, so only listed here on mobile. */
+  mobileOnly?: boolean;
 }
 
 export function More() {
@@ -41,11 +43,13 @@ export function More() {
       label: "Schedule",
       description: "Appointments, installs & pickups; import Google or Apple calendars",
       route: "/schedule",
+      mobileOnly: true,
     },
     {
       label: "Sets",
       description: "Manage furniture set groupings",
       route: "/sets",
+      mobileOnly: true,
     },
     ...(canPrice
       ? [{
@@ -74,6 +78,7 @@ export function More() {
       label: "Reports",
       description: "Utilization, performance, value & damage",
       route: "/reports",
+      mobileOnly: true,
     },
     ...(user?.role === "manager"
       ? [{ label: "Users", description: "Manage roles & access", route: "/users" }]
@@ -162,7 +167,7 @@ export function More() {
           {menuItems.map((item) => (
             <div
               key={item.label}
-              className="list-row"
+              className={`list-row${item.mobileOnly ? " more-mobile-only" : ""}`}
               style={{
                 justifyContent: "space-between",
                 opacity: item.disabled ? 0.5 : 1,
