@@ -7,12 +7,12 @@ import { useActivityReport } from "../../lib/queries";
  * Built from the activity report's daily series (counts are jobs/homes).
  */
 
-type Day = { date: string; staged: number; destaged: number; revenue: number };
-type Key = "staged" | "destaged" | "revenue";
+type Day = { date: string; staged: number; destaged: number; revenue: number; pieces_out?: number; pieces_in?: number };
+type Key = "staged" | "destaged" | "revenue" | "pieces_out" | "pieces_in";
 
 function sumRange(days: Day[], from: number, to: number, key: Key) {
   let total = 0;
-  for (let i = Math.max(0, from); i < Math.min(days.length, to); i++) total += days[i][key];
+  for (let i = Math.max(0, from); i < Math.min(days.length, to); i++) total += days[i][key] ?? 0;
   return total;
 }
 
@@ -66,6 +66,18 @@ function Delta({ now, before, goodWhenUp = true, format = (n: number) => String(
   );
 }
 
+/** Two bars: last 90 days vs the 90 before. */
+function StayBars({ now, before }: { now: number | null; before: number | null }) {
+  if (now === null && before === null) return null;
+  const max = Math.max(now ?? 0, before ?? 0, 1);
+  return (
+    <div className="stay-bars" aria-hidden="true" title="Last 90 days vs the 90 before">
+      <span style={{ height: `${((before ?? 0) / max) * 100}%` }} />
+      <span className="is-now" style={{ height: `${((now ?? 0) / max) * 100}%` }} />
+    </div>
+  );
+}
+
 export function Momentum() {
   const { data, isLoading } = useActivityReport();
 
@@ -81,6 +93,9 @@ export function Momentum() {
       installs: { now: last("staged"), before: prior("staged"), pace: pace("staged"), spark: weekly(days, "staged") },
       pickups: { now: last("destaged"), before: prior("destaged"), pace: pace("destaged"), spark: weekly(days, "destaged") },
       revenue: { now: last("revenue"), before: prior("revenue"), pace: pace("revenue"), spark: weekly(days, "revenue") },
+      piecesOut: { now: last("pieces_out"), before: prior("pieces_out"), pace: pace("pieces_out"), spark: weekly(days, "pieces_out") },
+      piecesIn: { now: last("pieces_in"), before: prior("pieces_in"), pace: pace("pieces_in"), spark: weekly(days, "pieces_in") },
+      pieces: data.pieces ?? null,
       net: {
         now: last("staged") - last("destaged"),
         onSite: data.currently_staged,
@@ -99,8 +114,14 @@ export function Momentum() {
 
   const fmtPace = (v: number) => (v >= 10 ? Math.round(v).toString() : v.toFixed(1));
 
+  const p = m.pieces;
+  const stayNow = p?.days_on_site_recent.avg_days ?? null;
+  const stayBefore = p?.days_on_site_prior.avg_days ?? null;
+
   return (
-    <section className="momentum" aria-label="Last 30 days">
+    <>
+    <h2 className="momentum-group">Homes</h2>
+    <section className="momentum" aria-label="Homes, last 30 days">
       <div className="card momentum-card">
         <p className="stat-label">Installs · 30d</p>
         <div className="momentum-row">
@@ -143,5 +164,64 @@ export function Momentum() {
         <p className="stat-sub">installs minus pickups, weekly</p>
       </div>
     </section>
+
+    {p && (
+      <>
+        <h2 className="momentum-group">Pieces</h2>
+        <section className="momentum" aria-label="Pieces, last 30 days">
+          <div className="card momentum-card">
+            <p className="stat-label">Pieces out · 30d</p>
+            <div className="momentum-row">
+              <p className="momentum-value">{m.piecesOut.now}</p>
+              <Sparkline values={m.piecesOut.spark} color="var(--teal)" />
+            </div>
+            <Delta now={m.piecesOut.now} before={m.piecesOut.before} />
+            <p className="stat-sub">{fmtPace(m.piecesOut.pace)} pieces / week over 12 weeks</p>
+          </div>
+
+          <div className="card momentum-card">
+            <p className="stat-label">Pieces back · 30d</p>
+            <div className="momentum-row">
+              <p className="momentum-value">{m.piecesIn.now}</p>
+              <Sparkline values={m.piecesIn.spark} color="var(--green)" />
+            </div>
+            <Delta now={m.piecesIn.now} before={m.piecesIn.before} goodWhenUp={null} />
+            <p className="stat-sub">{fmtPace(m.piecesIn.pace)} pieces / week over 12 weeks</p>
+          </div>
+
+          <div className="card momentum-card">
+            <p className="stat-label">Days on site · 90d</p>
+            <div className="momentum-row">
+              <p className="momentum-value">{stayNow === null ? "—" : `${Math.round(stayNow)}d`}</p>
+              <StayBars now={stayNow} before={stayBefore} />
+            </div>
+            {stayNow !== null && stayBefore !== null ? (
+              <Delta now={Math.round(stayNow)} before={Math.round(stayBefore)} goodWhenUp={null} format={(n) => `${n}d`} />
+            ) : (
+              <span className="delta is-flat">{stayNow === null ? "— no returns in 90d" : "— nothing to compare yet"}</span>
+            )}
+            <p className="stat-sub">
+              avg per returned piece{p.days_on_site_recent.count > 0 ? ` · ${p.days_on_site_recent.count} returns` : ""}
+            </p>
+          </div>
+
+          <div className="card momentum-card">
+            <p className="stat-label">Pieces on site</p>
+            <div className="momentum-row">
+              <p className="momentum-value">{p.on_site}</p>
+            </div>
+            <span className={`delta ${m.piecesOut.now - m.piecesIn.now > 0 ? "is-good" : m.piecesOut.now - m.piecesIn.now < 0 ? "is-neutral" : "is-flat"}`}>
+              {m.piecesOut.now === m.piecesIn.now
+                ? "— no net change in 30d"
+                : `${m.piecesOut.now > m.piecesIn.now ? "+" : "−"}${Math.abs(m.piecesOut.now - m.piecesIn.now)} net in 30d`}
+            </span>
+            <p className="stat-sub">
+              {p.open_avg_days === null ? "none out right now" : `out ${Math.round(p.open_avg_days)} days on average so far`}
+            </p>
+          </div>
+        </section>
+      </>
+    )}
+    </>
   );
 }

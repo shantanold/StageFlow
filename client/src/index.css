@@ -1482,3 +1482,14 @@ input[type="radio"] { accent-color: var(--brand); }
   .report-tabs { display: inline-flex; }
   .report-tab-btn { flex: 0 0 auto; }
 }
+.momentum-group {
+  margin: 0 4px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-secondary);
+}
+.stay-bars { display: flex; align-items: flex-end; gap: 4px; height: 34px; }
+.stay-bars span { width: 14px; min-height: 3px; border-radius: 4px; background: #DCC8F2; }
+.stay-bars span.is-now { background: var(--brand); }
