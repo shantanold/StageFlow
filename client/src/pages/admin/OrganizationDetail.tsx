@@ -172,7 +172,7 @@ function OrgActions({ org }: { org: AdminOrganizationDetail }) {
           className="btn btn-outline"
           style={{
             fontSize: 12.5, padding: "8px 14px",
-            borderColor: org.is_active ? "rgba(239,68,68,0.4)" : undefined,
+            borderColor: org.is_active ? "#F0C4BE" : undefined,
             color: org.is_active ? "var(--red-text)" : undefined,
           }}
           onClick={() => (org.is_active ? setDialog("toggle") : toggleActive())}
@@ -292,7 +292,7 @@ function OrgUserRow({ user, orgId }: { user: ManagedUser; orgId: string }) {
         </button>
         <button
           className="btn btn-outline"
-          style={{ ...smallBtn, borderColor: user.is_active ? "rgba(239,68,68,0.4)" : undefined, color: user.is_active ? "var(--red-text)" : undefined }}
+          style={{ ...smallBtn, borderColor: user.is_active ? "#F0C4BE" : undefined, color: user.is_active ? "var(--red-text)" : undefined }}
           disabled={updateUser.isPending}
           onClick={() => (user.is_active ? setDialog("deactivate") : change({ is_active: true }, `${user.name} reactivated`))}
         >

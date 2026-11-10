@@ -194,7 +194,7 @@ export function ScanOut() {
 
 function ItemRow({ item, loaded }: { item: Item; loaded: boolean }) {
   return (
-    <div className="list-row" style={{ background: loaded ? "rgba(16,185,129,0.07)" : undefined }}>
+    <div className="list-row" style={{ background: loaded ? "var(--green-dim)" : undefined }}>
       <div style={{ width: 36, height: 36, borderRadius: 6, flexShrink: 0, background: "var(--bg-surface)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, overflow: "hidden" }}>
         {displayPhotoUrl(item.photo_url)
           ? <img src={displayPhotoUrl(item.photo_url)} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />

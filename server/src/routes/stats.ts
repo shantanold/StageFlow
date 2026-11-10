@@ -682,11 +682,20 @@ router.get("/reports/activity", async (_req, res) => {
     // Align start to Sunday (UTC day 0)
     const startAligned = addUtcDays(start, -start.getUTCDay());
 
-    type DayBucket = { date: string; staged: number; destaged: number; revenue: number };
+    type DayBucket = {
+      date: string;
+      staged: number;
+      destaged: number;
+      revenue: number;
+      /** Pieces scanned out to a job that day (movement → staged). */
+      pieces_out: number;
+      /** Pieces back from a job that day (movement staged → available / disposed). */
+      pieces_in: number;
+    };
     const dayMap = new Map<string, DayBucket>();
     for (let d = new Date(startAligned); d <= end; d = addUtcDays(d, 1)) {
       const key = dayKey(d);
-      dayMap.set(key, { date: key, staged: 0, destaged: 0, revenue: 0 });
+      dayMap.set(key, { date: key, staged: 0, destaged: 0, revenue: 0, pieces_out: 0, pieces_in: 0 });
     }
 
     const byWeekday = Array.from({ length: 7 }, (_, weekday) => ({
@@ -713,6 +722,59 @@ router.get("/reports/activity", async (_req, res) => {
         byWeekday[new Date(destageDate).getUTCDay()].destaged += 1;
       }
     }
+
+    // Piece-level velocity from the movement audit trail. Movements are
+    // append-only, so pairing an item's move out with its next move back on
+    // the same job gives how long each piece stayed on site.
+    const movements = await prisma.movement.findMany({
+      where: {
+        created_at: { gte: addUtcDays(startAligned, -365) },
+        OR: [
+          { to_status: "staged" },
+          { from_status: "staged", to_status: { in: ["available", "disposed"] } },
+        ],
+      },
+      select: { item_id: true, job_id: true, from_status: true, to_status: true, created_at: true },
+      orderBy: { created_at: "asc" },
+    });
+
+    const outAt = new Map<string, Date>(); // item|job → when it went out
+    const stays: { returned: Date; days: number }[] = [];
+    for (const m of movements) {
+      const key = `${m.item_id}|${m.job_id ?? ""}`;
+      const bucket = dayMap.get(dayKey(m.created_at));
+      if (m.to_status === "staged") {
+        if (bucket) bucket.pieces_out += 1;
+        if (!outAt.has(key)) outAt.set(key, m.created_at);
+      } else {
+        if (bucket) bucket.pieces_in += 1;
+        const out = outAt.get(key);
+        if (out) {
+          stays.push({ returned: m.created_at, days: (m.created_at.getTime() - out.getTime()) / 86_400_000 });
+          outAt.delete(key);
+        }
+      }
+    }
+
+    // Average days on site for pieces returned in the last 90 days vs the 90 before.
+    const now = Date.now();
+    const avgStay = (fromDaysAgo: number, toDaysAgo: number) => {
+      const window = stays.filter((s) => {
+        const age = (now - s.returned.getTime()) / 86_400_000;
+        return age < fromDaysAgo && age >= toDaysAgo;
+      });
+      if (window.length === 0) return { avg_days: null as number | null, count: 0 };
+      const avg = window.reduce((sum, s) => sum + s.days, 0) / window.length;
+      return { avg_days: Math.round(avg * 10) / 10, count: window.length };
+    };
+
+    // Pieces still out right now and how long they've been there.
+    const stagedNow = await prisma.item.findMany({ where: { status: "staged" }, select: { id: true } });
+    const stagedIds = new Set(stagedNow.map((i) => i.id));
+    const openStays = [...outAt.entries()]
+      .filter(([key]) => stagedIds.has(key.split("|")[0]))
+      .map(([, d]) => (now - d.getTime()) / 86_400_000);
+    const piecesOnSite = stagedNow.length;
 
     const heatmap = Array.from(dayMap.values());
     const maxActivity = Math.max(...heatmap.map((d) => d.staged + d.destaged), 1);
@@ -759,6 +821,14 @@ router.get("/reports/activity", async (_req, res) => {
       destaged_count: destagedCount,
       range_start: dayKey(startAligned),
       range_end: dayKey(end),
+      pieces: {
+        on_site: piecesOnSite,
+        days_on_site_recent: avgStay(90, 0),
+        days_on_site_prior: avgStay(180, 90),
+        open_avg_days: openStays.length
+          ? Math.round((openStays.reduce((a, b) => a + b, 0) / openStays.length) * 10) / 10
+          : null,
+      },
     });
   } catch (err) {
     console.error(err);

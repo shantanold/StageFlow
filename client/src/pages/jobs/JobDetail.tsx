@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useJob, useJobItems, useForceCompleteJob, useUnassignItems, useMarkLoaded, useUndoLoad, useMarkReturned } from "../../lib/queries";
-import { getCategoryEmoji, jobStatusBadgeClass, statusBadgeClass, statusLabel, jobItemStatusLabel, formatCurrency, formatCalendarDay, visitTimeLabel } from "../../lib/utils";
+import { getCategoryEmoji, jobItemStatusLabel, formatCurrency, formatCalendarDay, visitTimeLabel } from "../../lib/utils";
 import { displayPhotoUrl } from "../../lib/cloudinary";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
@@ -10,6 +10,7 @@ import { ModalOverlay } from "../../components/ModalOverlay";
 import type { Job, JobItemRow } from "../../types";
 import { EditJobModal } from "./EditJobModal";
 import { AssignItemsModal } from "./AssignItemsModal";
+import { ItemStatusPill, JobStatusPill } from "../../components/b2";
 
 function hasFinancialData(job: Job): boolean {
   return [job.amount, job.monthly_rate, job.market_value, job.extension_amount, job.total_paid]
@@ -163,12 +164,10 @@ export function JobDetail() {
         </button>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
           <div>
-            <h1 className="page-title" style={{ fontSize: 18 }}>{job.address}</h1>
+            <h1 className="page-title" style={{ fontSize: 26 }}>{job.address}</h1>
             <p className="page-subtitle">{job.city}, {job.state} {job.zip}</p>
           </div>
-          <span className={jobStatusBadgeClass(job.status)} style={{ textTransform: "capitalize" }}>
-            {job.status}
-          </span>
+          <JobStatusPill status={job.status} />
         </div>
       </div>
 
@@ -193,7 +192,7 @@ export function JobDetail() {
             )}
           </div>
           {job.actual_end_date ? (
-            <div className="card" style={{ marginBottom: 0, borderColor: "rgba(16,185,129,0.3)" }}>
+            <div className="card" style={{ marginBottom: 0, borderColor: "#C3E6D0" }}>
               <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Closed</div>
               <div style={{ fontSize: 13, fontWeight: 500, color: "var(--green-text)" }}>{formatCalendarDay(job.actual_end_date)}</div>
             </div>
@@ -216,7 +215,7 @@ export function JobDetail() {
             <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Items</div>
             <div style={{ fontSize: 13, fontWeight: 500 }}>{job.item_count} pieces</div>
           </div>
-          <div className="card" style={{ marginBottom: 0, ...(job.destaged_at ? { borderColor: "rgba(16,185,129,0.3)" } : {}) }}>
+          <div className="card" style={{ marginBottom: 0, ...(job.destaged_at ? { borderColor: "#C3E6D0" } : {}) }}>
             <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>Destaged</div>
             <div style={{ fontSize: 13, fontWeight: 500, color: job.destaged_at ? "var(--green-text)" : undefined }}>
               {job.destaged_at ? formatCalendarDay(job.destaged_at) : "Still staged"}
@@ -305,7 +304,7 @@ export function JobDetail() {
             style={{
               width: "100%",
               fontSize: 12.5,
-              borderColor: "rgba(239,68,68,0.4)",
+              borderColor: "#F0C4BE",
               color: "var(--red-text)",
               marginBottom: 18,
             }}
@@ -399,9 +398,7 @@ export function JobDetail() {
                             {row.item.sku} · {jobItemStatusLabel(row.status)}
                           </p>
                         </div>
-                        <span className={statusBadgeClass(row.item.status, row.item.condition)}>
-                          {statusLabel(row.item.status, row.item.condition)}
-                        </span>
+                        <ItemStatusPill status={row.item.status} condition={row.item.condition} />
                         {canUnassign && (
                           <button
                             className="btn btn-outline"
@@ -410,7 +407,7 @@ export function JobDetail() {
                             style={{
                               padding: 7,
                               flexShrink: 0,
-                              borderColor: "rgba(239,68,68,0.35)",
+                              borderColor: "#F0C4BE",
                               color: "var(--red-text)",
                             }}
                             onClick={(e) => {

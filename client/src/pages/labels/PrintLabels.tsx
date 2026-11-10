@@ -4,8 +4,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useItems } from "../../lib/queries";
 import { useDebounce } from "../../hooks/useDebounce";
 import { downloadLabels } from "../../lib/labels";
-import { getCategoryEmoji, statusBadgeClass, statusLabel } from "../../lib/utils";
+import { getCategoryEmoji } from "../../lib/utils";
 import { useToast } from "../../contexts/ToastContext";
+import { ItemStatusPill } from "../../components/b2";
 
 type PrintFilter = "all" | "unprinted" | "printed";
 
@@ -171,7 +172,7 @@ export function PrintLabels() {
             <div
               style={{
                 width: 20, height: 20, borderRadius: 5, flexShrink: 0,
-                border: `2px solid ${allFilteredSelected ? "var(--accent)" : "rgba(148,163,184,0.3)"}`,
+                border: `2px solid ${allFilteredSelected ? "var(--accent)" : "var(--field-border)"}`,
                 background: allFilteredSelected ? "var(--accent)" : "transparent",
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}
@@ -206,13 +207,13 @@ export function PrintLabels() {
                 <div
                   key={item.id}
                   className="list-row"
-                  style={{ background: selected ? "rgba(59,130,246,0.08)" : undefined }}
+                  style={{ background: selected ? "var(--lilac)" : undefined }}
                   onClick={() => toggle(item.id)}
                 >
                   <div
                     style={{
                       width: 20, height: 20, borderRadius: 5, flexShrink: 0,
-                      border: `2px solid ${selected ? "var(--accent)" : "rgba(148,163,184,0.3)"}`,
+                      border: `2px solid ${selected ? "var(--accent)" : "var(--field-border)"}`,
                       background: selected ? "var(--accent)" : "transparent",
                       display: "flex", alignItems: "center", justifyContent: "center",
                     }}
@@ -241,9 +242,7 @@ export function PrintLabels() {
                     </div>
                   </div>
 
-                  <span className={statusBadgeClass(item.status, item.condition)}>
-                    {statusLabel(item.status, item.condition)}
-                  </span>
+                  <ItemStatusPill status={item.status} condition={item.condition} />
                 </div>
               );
             })}

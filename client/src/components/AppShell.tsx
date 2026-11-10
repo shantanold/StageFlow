@@ -42,7 +42,7 @@ function ActingBanner() {
       style={{
         display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
         padding: "8px 16px", paddingTop: "calc(8px + var(--safe-top))",
-        background: "rgba(245,158,11,0.14)", borderBottom: "1px solid rgba(245,158,11,0.35)",
+        background: "var(--amber-dim)", borderBottom: "1px solid #F2D9AE",
         fontSize: 12.5, color: "var(--amber-text)",
       }}
     >

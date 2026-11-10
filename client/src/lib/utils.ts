@@ -105,9 +105,9 @@ export function formatDimensions(
 
 export function statusBadgeClass(status: string, condition?: string): string {
   if (status === "missing")   return "badge badge-red";
-  if (condition === "damaged") return "badge badge-amber";
+  if (condition === "damaged") return "badge badge-red";
   if (status === "available") return "badge badge-green";
-  if (status === "staged")    return "badge badge-blue";
+  if (status === "staged")    return "badge badge-teal";
   if (status === "disposed")  return "badge badge-gray";
   return "badge badge-gray";
 }
@@ -140,17 +140,18 @@ export function jobItemStatusLabel(status: string): string {
 }
 
 export function movementDotColor(toStatus: string): string {
-  if (toStatus === "staged")    return "var(--accent)";
+  if (toStatus === "staged")    return "var(--teal)";
   if (toStatus === "available") return "var(--green)";
+  if (toStatus === "disposed")  return "var(--gray)";
   return "var(--red)";
 }
 
 // ─── Job status badge ────────────────────────────────────────────────────────
 
 export function jobStatusBadgeClass(status: string): string {
-  if (status === "active")    return "badge badge-green";
-  if (status === "planning")  return "badge badge-blue";
-  if (status === "completed") return "badge badge-gray";
+  if (status === "active")    return "badge badge-teal";
+  if (status === "planning")  return "badge badge-amber";
+  if (status === "completed") return "badge badge-green";
   if (status === "cancelled") return "badge badge-gray";
   return "badge badge-gray";
 }

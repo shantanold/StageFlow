@@ -76,3 +76,51 @@ describe("business reports (revenue, demand, activity)", () => {
     expect(perf.body).toHaveProperty("total_market_value");
   });
 });
+
+describe("activity report piece velocity", () => {
+  beforeEach(cleanDb);
+  afterAll(async () => {
+    await cleanDb();
+    await prisma.$disconnect();
+  });
+
+  it("counts pieces out/in per day and days on site from movements", async () => {
+    const manager = await registerUser(app, { role: "manager" });
+    const item = await request(app)
+      .post("/api/v1/items")
+      .set(authHeader(manager.token))
+      .send({ name: "Chair", category: "Chair", purchase_cost: 100 });
+    const job = await request(app)
+      .post("/api/v1/jobs")
+      .set(authHeader(manager.token))
+      .send({
+        address: "1 Test St", city: "Houston", state: "TX", zip: "77001",
+        client_name: "Client", client_contact: "555",
+        start_date: "2026-01-01", expected_end_date: "2026-06-01",
+      });
+    await request(app)
+      .post(`/api/v1/jobs/${job.body.id}/assign`)
+      .set(authHeader(manager.token))
+      .send({ itemIds: [item.body.id] });
+
+    let activity = await request(app).get("/api/v1/stats/reports/activity").set(authHeader(manager.token));
+    expect(activity.status).toBe(200);
+    const out = activity.body.heatmap.reduce((n: number, d: { pieces_out: number }) => n + d.pieces_out, 0);
+    expect(out).toBe(1);
+    expect(activity.body.pieces.on_site).toBe(1);
+    expect(activity.body.pieces.open_avg_days).not.toBeNull();
+
+    const ret = await request(app)
+      .post(`/api/v1/jobs/${job.body.id}/scan-return`)
+      .set(authHeader(manager.token))
+      .send({ itemId: item.body.id, condition: "good" });
+    expect(ret.status).toBeLessThan(300);
+
+    activity = await request(app).get("/api/v1/stats/reports/activity").set(authHeader(manager.token));
+    const back = activity.body.heatmap.reduce((n: number, d: { pieces_in: number }) => n + d.pieces_in, 0);
+    expect(back).toBe(1);
+    expect(activity.body.pieces.on_site).toBe(0);
+    expect(activity.body.pieces.days_on_site_recent.count).toBe(1);
+    expect(activity.body.pieces.days_on_site_recent.avg_days).toBeGreaterThanOrEqual(0);
+  });
+});

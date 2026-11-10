@@ -5,7 +5,8 @@ import { useItems, useSets } from "../lib/queries";
 import { useDebounce } from "../hooks/useDebounce";
 import { downloadLabels } from "../lib/labels";
 import { displayPhotoUrl } from "../lib/cloudinary";
-import { getCategoryEmoji, statusBadgeClass, statusLabel } from "../lib/utils";
+import { formatCurrency, getCategoryEmoji } from "../lib/utils";
+import { BandIconButton, BandWatermark, Icon, ItemStatusPill } from "../components/b2";
 import { useToast } from "../contexts/ToastContext";
 import { useAuth } from "../contexts/AuthContext";
 import { ImportCSVModal } from "./inventory/ImportCSVModal";
@@ -17,35 +18,20 @@ type SortKey = "name" | "newest" | "sku" | "status" | "category";
 type GroupBy = "category" | "set" | "none";
 type ViewMode = "list" | "grid";
 
-const SelectArrow = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2394a3b8'%3E%3Cpath d='M6 8L1 3h10z'/%3E%3C/svg%3E")`;
+const SelectArrow = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%236B5A80'%3E%3Cpath d='M6 8L1 3h10z'/%3E%3C/svg%3E")`;
 const selectStyle: import("react").CSSProperties = {
   backgroundImage: SelectArrow,
   backgroundRepeat: "no-repeat",
   backgroundPosition: "right 10px center",
   paddingRight: 28,
   appearance: "none",
-  fontSize: 12,
+  fontSize: 14,
+  minHeight: 42,
   paddingTop: 8,
   paddingBottom: 8,
 };
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
-
-function SearchIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--text-tertiary)" }}>
-      <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-    </svg>
-  );
-}
-
-function PlusIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-    </svg>
-  );
-}
 
 function PrinterIcon() {
   return (
@@ -95,18 +81,6 @@ function GridViewIcon() {
       <rect x="14" y="3" width="7" height="7" />
       <rect x="14" y="14" width="7" height="7" />
       <rect x="3" y="14" width="7" height="7" />
-    </svg>
-  );
-}
-
-function ChevronIcon({ open }: { open: boolean }) {
-  return (
-    <svg
-      width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-      strokeLinecap="round" strokeLinejoin="round"
-      style={{ transform: open ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.15s" }}
-    >
-      <polyline points="9 18 15 12 9 6" />
     </svg>
   );
 }
@@ -356,111 +330,94 @@ export function Inventory() {
     }
   }
 
-  const chips: [StatusFilter, string][] = [
-    ["all",           `All (${counts.all})`],
-    ["available",     `Unstaged (${counts.available})`],
-    ["staged",        `Staged (${counts.staged})`],
-    ["flagged",       `Flagged (${counts.flagged})`],
-    ["needs_details", `Needs details (${counts.needs_details})`],
+  const chips: [StatusFilter, string, number][] = [
+    ["all",           "All",           counts.all],
+    ["available",     "Unstaged",      counts.available],
+    ["staged",        "Staged",        counts.staged],
+    ["flagged",       "Flagged",       counts.flagged],
+    ["needs_details", "Needs details", counts.needs_details],
   ];
+  const totalValue = claimed.reduce((sum, i) => sum + (Number(i.purchase_cost) || 0), 0);
 
   return (
     <div className="animate-in">
-      {/* Header */}
-      <div
-        className="page-header"
-        style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}
-      >
+      {/* Header band */}
+      <div className="page-header">
+        <BandWatermark kind="box" />
         {selectMode ? (
-          <>
+          <div className="band-row">
             <div>
               <h1 className="page-title">Select items</h1>
-              <p className="page-subtitle">{selectedIds.size} selected</p>
+              <p className="page-subtitle">{selectedIds.size} selected for labels</p>
             </div>
-            <button className="btn btn-outline" style={{ padding: "7px 14px", fontSize: 12 }} onClick={exitSelectMode}>
-              Cancel
-            </button>
-          </>
+            <button className="btn btn-primary" onClick={exitSelectMode}>Done</button>
+          </div>
         ) : (
-          <>
-            <div>
+          <div className="band-row">
+            <div style={{ minWidth: 0 }}>
               <h1 className="page-title">Inventory</h1>
               <p className="page-subtitle">
                 {filtered.length === claimed.length && filter !== "needs_details"
-                  ? `${claimed.length} items`
-                  : `${filtered.length} of ${filter === "needs_details" ? blanks.length : claimed.length} items`}
+                  ? `${claimed.length} pieces${totalValue > 0 ? ` · ${formatCurrency(totalValue).replace(/\.00$/, "")}` : ""}`
+                  : `${filtered.length} of ${filter === "needs_details" ? blanks.length : claimed.length} pieces`}
               </p>
             </div>
-            <div style={{ display: "flex", gap: 6 }}>
-              <button
-                className="btn btn-outline"
-                style={{ padding: "7px 12px", fontSize: 12, background: viewMode === "list" ? "var(--bg-surface)" : undefined }}
+            <div className="band-actions">
+              <BandIconButton
+                label={viewMode === "list" ? "Switch to grid view" : "Switch to list view"}
                 onClick={() => setViewMode(viewMode === "list" ? "grid" : "list")}
-                title={viewMode === "list" ? "Switch to grid view" : "Switch to list view"}
               >
                 {viewMode === "list" ? <GridViewIcon /> : <ListViewIcon />}
-              </button>
-              <button
-                className="btn btn-outline"
-                style={{ padding: "7px 12px", fontSize: 12 }}
-                onClick={() => setSelectMode(true)}
-                title="Select for printing"
-              >
+              </BandIconButton>
+              <BandIconButton label="Select items to print labels" onClick={() => setSelectMode(true)}>
                 <PrinterIcon />
-              </button>
+              </BandIconButton>
               {isManager && (
-                <button
-                  className="btn btn-outline"
-                  style={{ padding: "7px 12px", fontSize: 12 }}
-                  onClick={() => setShowImport(true)}
-                  title="Import from CSV"
-                >
+                <BandIconButton label="Import from CSV" onClick={() => setShowImport(true)}>
                   <UploadIcon />
-                </button>
+                </BandIconButton>
               )}
               {isManager && (
-                <button
-                  className="btn btn-primary"
-                  style={{ padding: "8px 14px", fontSize: 12, gap: 5 }}
-                  onClick={() => navigate("/inventory/new")}
-                >
-                  <PlusIcon /> Add
-                </button>
+                <BandIconButton label="Add item" filled onClick={() => navigate("/inventory/new")}>
+                  <Icon.Plus />
+                </BandIconButton>
               )}
             </div>
-          </>
+          </div>
         )}
+
       </div>
 
       <div className="page-body">
-        {/* Search */}
-        <div style={{ position: "relative", marginBottom: 10 }}>
-          <div
-            style={{
-              position: "absolute", left: 11, top: "50%",
-              transform: "translateY(-50%)", display: "flex",
-            }}
-          >
-            <SearchIcon />
-          </div>
+        <label className="band-search field-search" style={{ marginBottom: 12 }}>
+          <Icon.Search style={{ width: 18, height: 18, flexShrink: 0 }} />
           <input
-            className="input-field"
-            placeholder="Search name, SKU, category, set…"
+            type="search"
+            placeholder="Search name, SKU, category, set"
+            aria-label="Search name, SKU, category, set"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            style={{ paddingLeft: 34 }}
           />
-        </div>
-
+          <button
+            type="button"
+            className="band-search-scan"
+            aria-label="Scan a label"
+            title="Scan a label"
+            onClick={() => navigate("/scan/quick")}
+          >
+            <Icon.Scan />
+          </button>
+        </label>
         {/* Status chips */}
         <div className="chip-row">
-          {chips.map(([key, label]) => (
+          {chips.map(([key, label, count]) => (
             <button
               key={key}
               className={`chip${filter === key ? " active" : ""}`}
               onClick={() => handleFilterChange(key)}
             >
               {label}
+              <span className="chip-count">{count}</span>
             </button>
           ))}
         </div>
@@ -532,8 +489,8 @@ export function Inventory() {
           </select>
           {hasExtraFilters && (
             <button
-              className="back-btn"
-              style={{ marginBottom: 0, fontSize: 12 }}
+              className="btn btn-soft"
+              style={{ minHeight: 42 }}
               onClick={clearExtraFilters}
             >
               Reset filters
@@ -552,46 +509,35 @@ export function Inventory() {
               const open = groupBy === "none" || !collapsed.has(group.key);
               const allSelected = group.items.length > 0 && group.items.every((i) => selectedIds.has(i.id));
               return (
-                <div key={group.key} style={{ marginBottom: groupBy === "none" ? 0 : 14 }}>
+                <section key={group.key} style={{ marginBottom: groupBy === "none" ? 0 : 16 }}>
                   {groupBy !== "none" && (
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 8,
-                        padding: "6px 2px",
-                        marginBottom: open ? 6 : 0,
-                        cursor: "pointer",
-                        userSelect: "none",
-                      }}
-                      onClick={() => toggleGroupCollapse(group.key)}
-                    >
-                      <span style={{ color: "var(--text-tertiary)", display: "flex" }}>
-                        <ChevronIcon open={open} />
-                      </span>
-                      <span style={{ fontSize: 16 }}>{group.emoji}</span>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ fontSize: 13.5, fontWeight: 600 }}>
-                          {group.label}
-                          <span style={{ fontWeight: 500, color: "var(--text-tertiary)", marginLeft: 6 }}>
-                            {group.items.length}
+                    <div className="inv-group-head">
+                      <button
+                        type="button"
+                        className="inv-group-toggle"
+                        aria-expanded={open}
+                        onClick={() => toggleGroupCollapse(group.key)}
+                      >
+                        <span style={{ display: "flex", flexDirection: "column", minWidth: 0, flex: 1 }}>
+                          <span style={{ fontSize: 15, fontWeight: 700 }}>
+                            {group.label}
+                            <span style={{ fontWeight: 600, color: "var(--ink-secondary)", marginLeft: 6 }}>{group.items.length}</span>
                           </span>
-                        </p>
-                        <p style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 1 }}>
-                          {group.available} unstaged · {group.staged} staged
-                          {group.flagged > 0 ? ` · ${group.flagged} flagged` : ""}
-                        </p>
-                      </div>
+                          <span className="inv-group-summary">
+                            {group.staged > 0 && <span><i style={{ background: "var(--teal)" }} />{group.staged} staged</span>}
+                            {group.available > 0 && <span><i style={{ background: "var(--green)" }} />{group.available} unstaged</span>}
+                            {group.flagged > 0 && <span><i style={{ background: "var(--red)" }} />{group.flagged} flagged</span>}
+                          </span>
+                        </span>
+                        <Icon.ChevronDown className="chevron" style={{ transform: open ? "none" : "rotate(-90deg)", transition: "transform 0.2s" }} />
+                      </button>
                       {selectMode && (
                         <button
-                          className="btn btn-outline"
-                          style={{ padding: "4px 10px", fontSize: 11 }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            selectGroup(group.items);
-                          }}
+                          className="btn btn-soft"
+                          style={{ minHeight: 32, padding: "4px 12px", fontSize: 13 }}
+                          onClick={() => selectGroup(group.items)}
                         >
-                          {allSelected ? "Deselect" : "Select"}
+                          {allSelected ? "Deselect" : "Select all"}
                         </button>
                       )}
                     </div>
@@ -627,7 +573,7 @@ export function Inventory() {
                       </div>
                     )
                   )}
-                </div>
+                </section>
               );
             })}
           </div>
@@ -638,12 +584,11 @@ export function Inventory() {
 
       {selectMode && (
         <div className="sticky-action-bar">
-          <p style={{ fontSize: 13, color: "var(--text-secondary)" }}>
+          <p style={{ fontSize: 14, fontWeight: 600, color: "var(--ink-secondary)" }}>
             {selectedIds.size === 0 ? "Tap items to select" : `${selectedIds.size} item${selectedIds.size !== 1 ? "s" : ""} selected`}
           </p>
           <button
             className="btn btn-primary"
-            style={{ padding: "8px 14px", fontSize: 12, gap: 6 }}
             disabled={selectedIds.size === 0 || downloading}
             onClick={handlePrintSelected}
           >
@@ -668,56 +613,53 @@ function ItemRow({
   onClick: () => void;
   showCategory?: boolean;
 }) {
+  const photo = displayPhotoUrl(item.photo_url);
   return (
     <div
       className="list-row"
-      style={{ background: selected ? "rgba(59,130,246,0.08)" : undefined }}
+      role="button"
+      tabIndex={0}
+      aria-pressed={selectMode ? selected : undefined}
+      style={{ background: selected ? "var(--lilac)" : undefined }}
       onClick={selectMode ? onToggle : onClick}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); (selectMode ? onToggle : onClick)(); } }}
     >
-      {selectMode ? (
-        <div
-          style={{
-            width: 22, height: 22, borderRadius: 6, flexShrink: 0,
-            border: `2px solid ${selected ? "var(--accent)" : "rgba(148,163,184,0.3)"}`,
-            background: selected ? "var(--accent)" : "transparent",
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}
-        >
-          {selected && <CheckIcon />}
-        </div>
-      ) : (
-        <div
-          style={{
-            width: 42, height: 42, borderRadius: 6,
-            background: "var(--bg-surface)", flexShrink: 0,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 20, overflow: "hidden",
-          }}
-        >
-          {displayPhotoUrl(item.photo_url) ? (
-            <img src={displayPhotoUrl(item.photo_url)} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-          ) : (
-            getCategoryEmoji(item.category)
-          )}
-        </div>
-      )}
+      {selectMode && <SelectBox selected={selected} />}
+      <div className="thumb">
+        {photo ? <img src={photo} alt="" /> : <span aria-hidden>{getCategoryEmoji(item.category)}</span>}
+      </div>
 
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13.5, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+        <div style={{ fontSize: 15, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
           {item.name}
         </div>
-        <div style={{ fontSize: 11.5, color: "var(--text-tertiary)", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-          <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, opacity: 0.8 }}>{item.sku}</span>
+        <div style={{ fontSize: 12, color: "var(--ink-secondary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          <span className="sku">{item.sku}</span>
           {showCategory && <span> · {item.category}</span>}
           {item.set && <span> · {item.set.name}</span>}
-          <span> · {item.qr_printed ? "QR printed" : "QR not printed"}</span>
+          {!item.qr_printed && <span> · QR not printed</span>}
         </div>
       </div>
 
-      <span className={statusBadgeClass(item.status, item.condition)}>
-        {statusLabel(item.status, item.condition)}
-      </span>
+      <ItemStatusPill status={item.status} condition={item.condition} />
     </div>
+  );
+}
+
+function SelectBox({ selected }: { selected: boolean }) {
+  return (
+    <span
+      aria-hidden
+      style={{
+        width: 22, height: 22, borderRadius: 7, flexShrink: 0,
+        border: `2px solid ${selected ? "var(--brand)" : "var(--field-border)"}`,
+        background: selected ? "var(--brand)" : "#fff",
+        color: "#fff",
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }}
+    >
+      {selected && <CheckIcon />}
+    </span>
   );
 }
 
@@ -734,9 +676,9 @@ function GridItem({
     <div
       onClick={selectMode ? onToggle : onClick}
       style={{
-        borderRadius: "var(--radius-lg)",
-        border: `1px solid ${selected ? "var(--accent)" : "var(--border)"}`,
-        background: selected ? "rgba(59,130,246,0.08)" : "var(--bg-card)",
+        borderRadius: 18,
+        border: `${selected ? 2 : 1}px solid ${selected ? "var(--brand)" : "var(--hairline)"}`,
+        background: "#fff",
         overflow: "hidden",
         cursor: "pointer",
         position: "relative",
@@ -757,33 +699,22 @@ function GridItem({
           getCategoryEmoji(item.category)
         )}
 
-        <span
-          className={statusBadgeClass(item.status, item.condition)}
-          style={{ position: "absolute", bottom: 6, right: 6, fontSize: 10 }}
-        >
-          {statusLabel(item.status, item.condition)}
+        <span style={{ position: "absolute", bottom: 8, left: 8 }}>
+          <ItemStatusPill status={item.status} condition={item.condition} />
         </span>
 
         {selectMode && (
-          <div
-            style={{
-              position: "absolute", top: 8, right: 8,
-              width: 22, height: 22, borderRadius: 6,
-              border: `2px solid ${selected ? "var(--accent)" : "rgba(148,163,184,0.5)"}`,
-              background: selected ? "var(--accent)" : "rgba(0,0,0,0.4)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}
-          >
-            {selected && <CheckIcon />}
-          </div>
+          <span style={{ position: "absolute", top: 8, right: 8 }}>
+            <SelectBox selected={selected} />
+          </span>
         )}
       </div>
 
       <div style={{ padding: "8px 10px 10px" }}>
-        <div style={{ fontSize: 12.5, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+        <div style={{ fontSize: 14, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
           {item.name}
         </div>
-        <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+        <div style={{ fontSize: 12, color: "var(--ink-secondary)", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
           {item.category}
           {item.set ? ` · ${item.set.name}` : ""}
         </div>
@@ -797,10 +728,10 @@ function ItemListSkeleton() {
     <div className="list-card">
       {[...Array(6)].map((_, i) => (
         <div key={i} className="list-row" style={{ pointerEvents: "none" }}>
-          <div style={{ width: 42, height: 42, borderRadius: 6, background: "var(--bg-surface)" }} />
+          <div className="skeleton" style={{ width: 44, height: 44, borderRadius: 12 }} />
           <div style={{ flex: 1 }}>
-            <div style={{ height: 13, borderRadius: 4, background: "var(--bg-surface)", width: "55%", marginBottom: 6 }} />
-            <div style={{ height: 10, borderRadius: 3, background: "var(--bg-surface)", width: "35%" }} />
+            <div className="skeleton" style={{ height: 13, width: "55%", marginBottom: 8 }} />
+            <div className="skeleton" style={{ height: 10, width: "35%" }} />
           </div>
         </div>
       ))}
@@ -812,10 +743,10 @@ function ItemGridSkeleton() {
   return (
     <div className="item-photo-grid">
       {[...Array(6)].map((_, i) => (
-        <div key={i} style={{ borderRadius: "var(--radius-lg)", border: "1px solid var(--border)", background: "var(--bg-card)", overflow: "hidden" }}>
-          <div style={{ width: "100%", aspectRatio: "1 / 1", background: "var(--bg-surface)" }} />
+        <div key={i} style={{ borderRadius: 18, border: "1px solid var(--hairline)", background: "#fff", overflow: "hidden" }}>
+          <div className="skeleton" style={{ width: "100%", aspectRatio: "1 / 1", borderRadius: 0 }} />
           <div style={{ padding: "8px 10px 10px" }}>
-            <div style={{ height: 12, borderRadius: 4, background: "var(--bg-surface)", width: "70%" }} />
+            <div className="skeleton" style={{ height: 12, width: "70%" }} />
           </div>
         </div>
       ))}
@@ -831,8 +762,9 @@ function EmptyState({ search, filter }: { search: string; filter: StatusFilter }
     : `No ${filter === "all" ? "" : filter + " "}items match these filters`;
 
   return (
-    <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: "40px 16px", textAlign: "center" }}>
-      <p style={{ fontSize: 13, color: "var(--text-tertiary)" }}>{msg}</p>
+    <div className="card empty-state">
+      <p className="empty-state-title">Nothing here</p>
+      <p>{msg}</p>
     </div>
   );
 }

@@ -61,7 +61,7 @@ function UserRow({ managedUser, isSelf }: { managedUser: ManagedUser; isSelf: bo
             className="btn btn-outline"
             style={{
               fontSize: 11, padding: "6px 10px",
-              borderColor: managedUser.is_active ? "rgba(239,68,68,0.4)" : undefined,
+              borderColor: managedUser.is_active ? "#F0C4BE" : undefined,
               color: managedUser.is_active ? "var(--red-text)" : undefined,
             }}
             disabled={updateAccess.isPending}

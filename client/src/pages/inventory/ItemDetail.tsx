@@ -9,30 +9,15 @@ import {
 import { downloadLabels, useQRCodeUrl } from "../../lib/labels";
 import { displayPhotoUrl, uploadImage } from "../../lib/cloudinary";
 import {
-  getCategoryEmoji, statusBadgeClass, statusLabel,
+  getCategoryEmoji, statusLabel,
   formatDate, formatCalendarDay, formatCurrency, formatDimensions, movementDotColor, CATEGORIES,
 } from "../../lib/utils";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { ApiError } from "../../lib/api";
 import { ModalOverlay } from "../../components/ModalOverlay";
+import { BandBack, ConditionPill, Icon, ItemStatusPill } from "../../components/b2";
 import type { ItemDetail as ItemDetailType, Movement } from "../../types";
-
-function BackIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="15 18 9 12 15 6" />
-    </svg>
-  );
-}
-
-function ChevronRightIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="9 18 15 12 9 6" />
-    </svg>
-  );
-}
 
 function PrinterIcon() {
   return (
@@ -111,13 +96,13 @@ function QRSection({
       {/* QR image */}
       <div
         style={{
-          width: 80, height: 80, flexShrink: 0,
-          background: "white", borderRadius: 8, padding: 4,
+          width: 84, height: 84, flexShrink: 0,
+          background: "white", borderRadius: 14, padding: 6, border: "1px solid var(--hairline)",
           display: "flex", alignItems: "center", justifyContent: "center",
         }}
       >
         {loading ? (
-          <div style={{ width: 16, height: 16, border: "2px solid #e5e7eb", borderTopColor: "#3b82f6", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+          <div style={{ width: 16, height: 16, border: "2px solid #e5e7eb", borderTopColor: "var(--brand)", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
         ) : src ? (
           <img src={src} alt="QR code" style={{ width: "100%", height: "100%", imageRendering: "pixelated" }} />
         ) : (
@@ -128,20 +113,8 @@ function QRSection({
       {/* Label */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-          <p style={{ fontSize: 11, fontWeight: 500, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.8px", margin: 0 }}>
-            QR Label
-          </p>
-          <span
-            style={{
-              fontSize: 10,
-              fontWeight: 500,
-              color: "var(--text-tertiary)",
-              background: "var(--bg-surface)",
-              border: "1px solid var(--border)",
-              borderRadius: 4,
-              padding: "1px 6px",
-            }}
-          >
+          <p className="card-title" style={{ margin: 0 }}>QR label</p>
+          <span className={`badge ${qrPrinted ? "badge-green" : "badge-gray"}`}>
             {qrPrinted ? "Printed" : "Not printed"}
           </span>
         </div>
@@ -150,8 +123,8 @@ function QRSection({
         </p>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           <button
-            className="btn btn-outline"
-            style={{ padding: "6px 12px", fontSize: 12, gap: 5 }}
+            className="btn btn-soft"
+            style={{ minHeight: 36, padding: "6px 12px", fontSize: 13, gap: 5 }}
             onClick={handlePrint}
             disabled={printing || loading}
           >
@@ -160,7 +133,7 @@ function QRSection({
           {canEdit && (
             <button
               className="btn btn-outline"
-              style={{ padding: "6px 12px", fontSize: 12 }}
+              style={{ minHeight: 36, padding: "6px 12px", fontSize: 13 }}
               onClick={handleTogglePrinted}
               disabled={toggling}
             >
@@ -291,86 +264,111 @@ export function ItemDetail() {
 
   return (
     <div className="animate-in">
-      {/* Header */}
+      {/* Header band */}
       <div className="page-header">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-          <button className="back-btn" onClick={() => navigate(-1)}>
-            <BackIcon /> Back
-          </button>
+        <div className="band-row" style={{ marginBottom: 18 }}>
+          <BandBack label="Back" />
           {isManager && (
-            <button
-              className="btn btn-outline"
-              style={{ padding: "7px 12px", fontSize: 12, gap: 5 }}
-              onClick={() => setShowEdit(true)}
-            >
+            <button className="btn btn-primary" style={{ padding: "0 16px" }} onClick={() => setShowEdit(true)}>
               <EditIcon /> Edit
             </button>
           )}
         </div>
-        <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-          <div
-            style={{
-              width: 56, height: 56, borderRadius: 8,
-              background: "var(--bg-surface)", flexShrink: 0,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 28, overflow: "hidden",
-            }}
-          >
+        <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+          <div className="item-hero-tile">
             {displayPhotoUrl(item.photo_url) ? (
-              <img src={displayPhotoUrl(item.photo_url)} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              <img src={displayPhotoUrl(item.photo_url)} alt="" />
             ) : (
-              getCategoryEmoji(item.category)
+              <span aria-hidden style={{ fontSize: 38 }}>{getCategoryEmoji(item.category)}</span>
             )}
           </div>
-          <div style={{ minWidth: 0 }}>
-            <h1 style={{ fontSize: 18, fontWeight: 600, letterSpacing: "-0.2px" }}>{item.name}</h1>
-            <p
-              style={{
-                fontFamily: "var(--font-mono)", fontSize: 12,
-                color: "var(--text-tertiary)", marginTop: 3,
-              }}
-            >
-              {item.sku}
-            </p>
-            <div style={{ display: "flex", gap: 6, marginTop: 7, flexWrap: "wrap" }}>
-              <span className={statusBadgeClass(item.status, item.condition)}>
-                {statusLabel(item.status, item.condition)}
-              </span>
-              {item.condition === "fair" && (
-                <span className="badge badge-amber">Fair condition</span>
-              )}
+          <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+            <h1 className="page-title" style={{ fontSize: 26, overflowWrap: "anywhere" }}>{item.name}</h1>
+            <span className="sku" style={{ fontSize: 13, color: "var(--on-band-secondary)" }}>{item.sku}</span>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              <ItemStatusPill status={item.status} condition={item.condition} />
+              {item.condition !== "damaged" && <ConditionPill condition={item.condition} />}
             </div>
           </div>
         </div>
       </div>
 
       <div className="page-body">
-        {/* Info grid */}
-        <div
-          className="card"
-          style={{
-            display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14,
-          }}
-        >
-          <InfoCell label="Category" value={item.category} />
-          <InfoCell label="Set" value={item.set?.name ?? "None"} />
-          <InfoCell label="Cost" value={formatCurrency(item.purchase_cost)} />
-          <InfoCell label="Purchased" value={formatCalendarDay(item.purchase_date)} />
+        <div className="detail-grid">
+        <div className="detail-main">
+        {canAssignToJob && (
+          <button
+            type="button"
+            className="assign-tile"
+            disabled={activeJobs.length === 0}
+            onClick={() => {
+              setAssignJobId(activeJobs[0]?.id ?? "");
+              setShowAssignJob(true);
+            }}
+          >
+            <Icon.Briefcase />
+            <span style={{ flex: 1, display: "flex", flexDirection: "column", textAlign: "left" }}>
+              <span style={{ fontSize: 15, fontWeight: 700 }}>
+                {activeJobs.length === 0 ? "No planning or active jobs" : "Assign to a job"}
+              </span>
+              <span style={{ fontSize: 13, color: "#EAD9FB" }}>It's marked staged once assigned</span>
+            </span>
+            <Icon.Chevron style={{ width: 16, height: 16 }} />
+          </button>
+        )}
+
+        {/* Current job card */}
+        {item.current_job && (
+          <button
+            type="button"
+            className="list-card list-row"
+            style={{ width: "100%", padding: "14px 16px", font: "inherit", textAlign: "left", border: "1px solid var(--hairline)" }}
+            onClick={() => navigate(`/jobs/${item.current_job!.id}`)}
+          >
+            <span className="date-tile" aria-hidden style={{ padding: 0, height: 46, justifyContent: "center", background: "var(--teal-dim)", color: "var(--teal-text)" }}>
+              <Icon.Home style={{ width: 22, height: 22 }} />
+            </span>
+            <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+              <span className="fact-label">Staged at</span>
+              <span style={{ fontSize: 15, fontWeight: 700 }}>{item.current_job.address}</span>
+              <span style={{ fontSize: 13, color: "var(--ink-secondary)" }}>
+                {item.current_job.city}, {item.current_job.state} · {item.current_job.client_name}
+              </span>
+            </span>
+            <Icon.Chevron className="chevron" />
+          </button>
+        )}
+
+        {/* Facts */}
+        <section className="fact-grid" aria-label="Details">
+          <div><span className="fact-label">Category</span><span className="fact-value">{item.category || "—"}</span></div>
+          <div>
+            <span className="fact-label">Set</span>
+            {item.set ? (
+              <button type="button" className="fact-value fact-link" onClick={() => navigate(`/sets/${item.set!.id}`)}>{item.set.name}</button>
+            ) : (
+              <span className="fact-value">None</span>
+            )}
+          </div>
+          <div><span className="fact-label">Purchase cost</span><span className="fact-value">{formatCurrency(item.purchase_cost)}</span></div>
+          <div><span className="fact-label">Purchased</span><span className="fact-value">{formatCalendarDay(item.purchase_date)}</span></div>
           {formatDimensions(item.width_in, item.depth_in, item.height_in) && (
             <div style={{ gridColumn: "1 / -1" }}>
-              <InfoCell label="Dimensions" value={formatDimensions(item.width_in, item.depth_in, item.height_in)!} />
+              <span className="fact-label">Dimensions</span>
+              <span className="fact-value">{formatDimensions(item.width_in, item.depth_in, item.height_in)}</span>
             </div>
           )}
           {item.notes && (
             <div style={{ gridColumn: "1 / -1" }}>
-              <InfoCell label="Notes" value={item.notes} />
+              <span className="fact-label">Notes</span>
+              <span className="fact-value" style={{ fontWeight: 500, whiteSpace: "pre-wrap" }}>{item.notes}</span>
             </div>
           )}
-        </div>
+        </section>
 
         {/* Unlabeled blank sticker */}
         {item.is_unlabeled && (
-          <div className="card" style={{ borderColor: "rgba(245,158,11,0.35)", marginBottom: 12 }}>
+          <div className="card" style={{ borderColor: "#F2D9AE", marginBottom: 12 }}>
             <p style={{ fontSize: 12.5, color: "var(--text-secondary)", marginBottom: 10 }}>
               This QR label has no furniture details yet. Claim it to fill in the name, category, and photo.
             </p>
@@ -382,7 +380,7 @@ export function ItemDetail() {
 
         {/* Missing item resolution */}
         {isManager && item.status === "missing" && (
-          <div className="card" style={{ borderColor: "rgba(239,68,68,0.3)", marginBottom: 12 }}>
+          <div className="card" style={{ borderColor: "#F0C4BE", marginBottom: 12 }}>
             <p style={{ fontSize: 12.5, color: "var(--text-secondary)", marginBottom: 10 }}>
               This item was marked missing when a job was force-completed with it unreturned. If it's turned up, mark it found to put it back in unstaged inventory.
             </p>
@@ -410,105 +408,35 @@ export function ItemDetail() {
         {/* QR code */}
         <QRSection itemId={item.id} qrPrinted={item.qr_printed} canEdit={isManager} />
 
-        {/* Current job card */}
-        {item.current_job && (
-          <div
-            className="card"
-            style={{
-              borderColor: "rgba(59,130,246,0.3)",
-              cursor: "pointer",
-            }}
-            onClick={() => navigate(`/jobs/${item.current_job!.id}`)}
-          >
-            <p
-              style={{
-                fontSize: 11, fontWeight: 500, color: "var(--text-tertiary)",
-                textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 6,
-              }}
-            >
-              Currently staged at
-            </p>
-            <div
-              style={{
-                display: "flex", alignItems: "center",
-                justifyContent: "space-between",
-              }}
-            >
-              <div>
-                <p style={{ fontSize: 14, fontWeight: 500, color: "#60a5fa" }}>
-                  {item.current_job.address}
-                </p>
-                <p style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 2 }}>
-                  {item.current_job.city}, {item.current_job.state} · {item.current_job.client_name}
-                </p>
-              </div>
-              <span style={{ color: "var(--text-tertiary)" }}>
-                <ChevronRightIcon />
-              </span>
-            </div>
-          </div>
-        )}
-
-        {canAssignToJob && (
-          <div className="card" style={{ marginBottom: 12, marginTop: 12 }}>
-            <p style={{ fontSize: 11, fontWeight: 500, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 8 }}>
-              Staging job
-            </p>
-            <p style={{ fontSize: 12.5, color: "var(--text-secondary)", marginBottom: 10 }}>
-              Assign this item to a planning or active job. It will be marked staged.
-            </p>
-            <button
-              className="btn btn-primary"
-              style={{ width: "100%" }}
-              disabled={activeJobs.length === 0}
-              onClick={() => {
-                setAssignJobId(activeJobs[0]?.id ?? "");
-                setShowAssignJob(true);
-              }}
-            >
-              {activeJobs.length === 0 ? "No active jobs" : "Assign to job…"}
-            </button>
-          </div>
-        )}
-
         {showEdit && item && (
           <EditItemModal item={item} onClose={() => setShowEdit(false)} />
         )}
 
-        {/* Movement history */}
-        <div
-          style={{
-            display: "flex", justifyContent: "space-between",
-            alignItems: "center", marginBottom: 10, marginTop: 4,
-          }}
-        >
-          <span className="section-title">Movement history</span>
         </div>
-
-        {movements.length === 0 ? (
-          <div
-            style={{
-              background: "var(--bg-card)", border: "1px solid var(--border)",
-              borderRadius: "var(--radius-lg)", padding: "24px 16px", textAlign: "center",
-            }}
-          >
-            <p style={{ fontSize: 13, color: "var(--text-tertiary)" }}>
-              No movements recorded yet
-            </p>
-          </div>
-        ) : (
-          <div style={{ paddingLeft: 4, marginBottom: 24 }}>
-            {movements.map((m, i) => (
+        <div className="detail-side">
+        {/* Movement history */}
+        <section className="card" aria-labelledby="history-title" style={{ paddingBottom: 6 }}>
+          <h2 id="history-title" className="card-title" style={{ marginBottom: 10 }}>History</h2>
+          {movements.length === 0 ? (
+            <div style={{ display: "flex", gap: 12, paddingBottom: 8 }}>
+              <span style={{ width: 10, height: 10, marginTop: 5, borderRadius: "50%", background: "#D8C8EA", flexShrink: 0 }} />
+              <div>
+                <p style={{ fontSize: 14, fontWeight: 600, color: "var(--ink-secondary)" }}>No moves yet</p>
+                <p style={{ fontSize: 13, color: "var(--ink-secondary)" }}>Moves to and from jobs show here</p>
+              </div>
+            </div>
+          ) : (
+            movements.map((m, i) => (
               <MovementRow key={m.id} movement={m} isLast={i === movements.length - 1} />
-            ))}
-          </div>
-        )}
+            ))
+          )}
+        </section>
 
         {/* Manager: duplicate + status override */}
         {isManager && !item.is_unlabeled && (
           <div className="card" style={{ marginBottom: 12 }}>
-            <p style={{ fontSize: 11, fontWeight: 500, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 8 }}>
-              Shortcuts
+            <p className="card-title" style={{ marginBottom: 8 }}>
+              Manage
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <button className="btn btn-outline" style={{ width: "100%" }} disabled={duplicateItem.isPending} onClick={handleDuplicate}>
@@ -526,8 +454,8 @@ export function ItemDetail() {
 
         {/* Manager: remove / delete */}
         {isManager && item.status !== "disposed" && (
-          <div className="card" style={{ marginTop: 8, marginBottom: 28, borderColor: "rgba(239,68,68,0.25)" }}>
-            <p style={{ fontSize: 11, fontWeight: 500, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 8 }}>
+          <div className="card" style={{ marginTop: 8, marginBottom: 28, borderColor: "#F0C4BE" }}>
+            <p className="card-title" style={{ marginBottom: 8 }}>
               Remove item
             </p>
             <p style={{ fontSize: 12.5, color: "var(--text-secondary)", marginBottom: 12 }}>
@@ -538,7 +466,7 @@ export function ItemDetail() {
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <button
                 className="btn btn-outline"
-                style={{ width: "100%", color: "var(--amber-text)", borderColor: "rgba(245,158,11,0.35)" }}
+                style={{ width: "100%", color: "var(--amber-text)", borderColor: "#F2D9AE" }}
                 disabled={item.status === "staged" || disposeItem.isPending}
                 onClick={() => setConfirmAction("dispose")}
               >
@@ -546,7 +474,7 @@ export function ItemDetail() {
               </button>
               <button
                 className="btn btn-outline"
-                style={{ width: "100%", color: "var(--red-text)", borderColor: "rgba(239,68,68,0.35)" }}
+                style={{ width: "100%", color: "var(--red-text)", borderColor: "#F0C4BE" }}
                 disabled={item.status === "staged" || deleteItem.isPending}
                 onClick={() => setConfirmAction("delete")}
               >
@@ -555,6 +483,9 @@ export function ItemDetail() {
             </div>
           </div>
         )}
+
+        </div>
+        </div>
 
         {confirmAction && (
           <ModalOverlay onClose={() => setConfirmAction(null)}>
@@ -707,23 +638,7 @@ export function ItemDetail() {
   );
 }
 
-function InfoCell({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p
-        style={{
-          fontSize: 11, fontWeight: 500, color: "var(--text-tertiary)",
-          textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 4,
-        }}
-      >
-        {label}
-      </p>
-      <p style={{ fontSize: 13.5, fontWeight: 500 }}>{value}</p>
-    </div>
-  );
-}
-
-const SelectArrow = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2394a3b8'%3E%3Cpath d='M6 8L1 3h10z'/%3E%3C/svg%3E")`;
+const SelectArrow = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%236B5A80'%3E%3Cpath d='M6 8L1 3h10z'/%3E%3C/svg%3E")`;
 const selectStyle = { backgroundImage: SelectArrow, backgroundRepeat: "no-repeat", backgroundPosition: "right 12px center", paddingRight: 32, appearance: "none" as const };
 
 function EditItemModal({ item, onClose }: { item: ItemDetailType; onClose: () => void }) {
@@ -1050,38 +965,27 @@ function EditItemModal({ item, onClose }: { item: ItemDetailType; onClose: () =>
   );
 }
 
+function movementWord(status: string): string {
+  return statusLabel(status);
+}
+
 function MovementRow({ movement: m, isLast }: { movement: Movement; isLast: boolean }) {
   return (
-    <div style={{ display: "flex", gap: 12, padding: "8px 0", position: "relative" }}>
+    <div style={{ display: "flex", gap: 12 }}>
       <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center" }}>
-        <div
-          style={{
-            width: 10, height: 10, borderRadius: "50%",
-            background: movementDotColor(m.to_status),
-            marginTop: 4,
-          }}
-        />
-        {!isLast && (
-          <div
-            style={{
-              width: 2, flex: 1, background: "var(--border)",
-              marginTop: 4, minHeight: 20,
-            }}
-          />
-        )}
+        <span style={{ width: 10, height: 10, marginTop: 5, borderRadius: "50%", background: movementDotColor(m.to_status) }} />
+        {!isLast && <span style={{ width: 2, flex: 1, background: "var(--hairline)", marginTop: 4, minHeight: 16 }} />}
       </div>
-      <div style={{ paddingBottom: 4, minWidth: 0 }}>
-        <p style={{ fontSize: 13, fontWeight: 500 }}>
-          {m.from_status} → {m.to_status}
+      <div style={{ paddingBottom: 14, minWidth: 0 }}>
+        <p style={{ fontSize: 14, fontWeight: 600 }}>
+          {movementWord(m.from_status)} → {movementWord(m.to_status)}
         </p>
-        <p style={{ fontSize: 11.5, color: "var(--text-tertiary)", marginTop: 1 }}>
-          {formatDate(m.created_at)} · by {m.performer.name}
+        <p style={{ fontSize: 13, color: "var(--ink-secondary)", marginTop: 1 }}>
+          {formatDate(m.created_at)} · {m.performer.name}
           {m.job && ` · ${m.job.address}`}
         </p>
         {m.notes && (
-          <p style={{ fontSize: 11.5, color: "var(--text-secondary)", marginTop: 2 }}>
-            {m.notes}
-          </p>
+          <p style={{ fontSize: 13, color: "var(--ink)", marginTop: 2 }}>{m.notes}</p>
         )}
       </div>
     </div>

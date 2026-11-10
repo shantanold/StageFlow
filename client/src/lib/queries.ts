@@ -273,7 +273,8 @@ export interface DemandReport {
 }
 
 export interface ActivityReport {
-  heatmap: { date: string; staged: number; destaged: number; revenue: number }[];
+  /** Daily buckets. staged/destaged/revenue count jobs (homes); pieces_* count items. */
+  heatmap: { date: string; staged: number; destaged: number; revenue: number; pieces_out?: number; pieces_in?: number }[];
   max_activity: number;
   by_weekday: { weekday: number; staged: number; destaged: number }[];
   monthly: { month: string; staged: number; destaged: number; revenue: number }[];
@@ -282,6 +283,13 @@ export interface ActivityReport {
   destaged_count: number;
   range_start: string;
   range_end: string;
+  /** Piece-level velocity from movements (absent on older servers). */
+  pieces?: {
+    on_site: number;
+    days_on_site_recent: { avg_days: number | null; count: number };
+    days_on_site_prior: { avg_days: number | null; count: number };
+    open_avg_days: number | null;
+  };
 }
 
 export interface InventoryValueReport {

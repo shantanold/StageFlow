@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useJobs } from "../lib/queries";
-import { formatCalendarDay, jobStatusBadgeClass } from "../lib/utils";
+import { formatCalendarDay } from "../lib/utils";
 import { useAuth } from "../contexts/AuthContext";
 import type { Job } from "../types";
+import { JobStatusPill } from "../components/b2";
 
 type Tab = "active" | "completed";
 
@@ -86,9 +87,7 @@ export function Jobs() {
                       {job.city}, {job.state} · {job.client_name}
                     </div>
                   </div>
-                  <span className={jobStatusBadgeClass(job.status)} style={{ flexShrink: 0, textTransform: "capitalize" }}>
-                    {job.status}
-                  </span>
+                  <JobStatusPill status={job.status} />
                 </div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 10, fontSize: 12, color: "var(--text-secondary)" }}>
                   <span>{job.item_count} items</span>
