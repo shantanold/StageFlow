@@ -112,7 +112,7 @@ export function AssignItemsModal({ jobId, onClose }: AssignItemsModalProps) {
                       className="card"
                       style={{
                         cursor: "pointer",
-                        borderColor: someSel ? "rgba(59,130,246,0.4)" : undefined,
+                        borderColor: someSel ? "#DCC8F2" : undefined,
                       }}
                       onClick={() => toggleSet(set.id)}
                     >
@@ -201,7 +201,7 @@ export function AssignItemsModal({ jobId, onClose }: AssignItemsModalProps) {
                       className="card"
                       style={{
                         cursor: "pointer",
-                        borderColor: someSel ? "rgba(59,130,246,0.4)" : undefined,
+                        borderColor: someSel ? "#DCC8F2" : undefined,
                       }}
                       onClick={() => {
                         setSelected((prev) => {

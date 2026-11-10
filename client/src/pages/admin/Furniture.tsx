@@ -8,7 +8,8 @@ import { ModalOverlay } from "../../components/ModalOverlay";
 import type { AdminItem } from "../../types";
 import { useDebounce } from "../../hooks/useDebounce";
 import { displayPhotoUrl } from "../../lib/cloudinary";
-import { formatCurrency, getCategoryEmoji, statusBadgeClass, statusLabel } from "../../lib/utils";
+import { formatCurrency, getCategoryEmoji, statusLabel } from "../../lib/utils";
+import { ItemStatusPill } from "../../components/b2";
 
 function SearchIcon() {
   return (
@@ -96,7 +97,7 @@ function ItemSheet({ item, onClose }: { item: AdminItem; onClose: () => void }) 
             <button
               key={label}
               className="btn btn-outline"
-              style={{ fontSize: 12.5, padding: "8px 14px", ...(danger && { borderColor: "rgba(239,68,68,0.4)", color: "var(--red-text)" }) }}
+              style={{ fontSize: 12.5, padding: "8px 14px", ...(danger && { borderColor: "#F0C4BE", color: "var(--red-text)" }) }}
               disabled={act.isPending}
               onClick={() => run(action, `${item.name}: ${label.toLowerCase()}`)}
             >
@@ -240,7 +241,7 @@ export function AdminFurniture() {
                   </p>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
-                  <span className={statusBadgeClass(item.status, item.condition)}>{statusLabel(item.status, item.condition)}</span>
+                  <ItemStatusPill status={item.status} condition={item.condition} />
                   <span style={{ fontSize: 11.5, color: "var(--text-tertiary)" }}>{formatCurrency(item.purchase_cost)}</span>
                 </div>
               </div>

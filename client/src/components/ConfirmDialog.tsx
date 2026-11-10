@@ -25,16 +25,16 @@ export function ConfirmDialog({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-handle" />
-        <p style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>{title}</p>
-        <p style={{ fontSize: 13.5, color: "var(--text-secondary)", marginBottom: 24, lineHeight: 1.5 }}>
+        <p className="modal-title" style={{ fontSize: 20, marginBottom: 8 }}>{title}</p>
+        <p style={{ fontSize: 14, color: "var(--text-secondary)", marginBottom: 24, lineHeight: 1.5 }}>
           {message}
         </p>
         <div style={{ display: "flex", gap: 10 }}>
-          <button className="btn btn-outline" style={{ flex: 1 }} onClick={onCancel}>
+          <button className="btn btn-outline btn-lg" style={{ flex: 1 }} onClick={onCancel}>
             Cancel
           </button>
           <button
-            className="btn btn-primary"
+            className="btn btn-primary btn-lg"
             style={{
               flex: 1,
               background: confirmDanger ? "var(--red)" : undefined,

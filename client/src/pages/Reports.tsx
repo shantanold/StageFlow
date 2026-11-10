@@ -9,7 +9,8 @@ import {
   useDemandReport,
   useActivityReport,
 } from "../lib/queries";
-import { getCategoryEmoji, statusBadgeClass, statusLabel } from "../lib/utils";
+import { getCategoryEmoji } from "../lib/utils";
+import { ItemStatusPill } from "../components/b2";
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 
@@ -142,7 +143,7 @@ function VerticalBars({
 
 const CAT_COLORS = [
   "var(--accent)",
-  "#0d9488",
+  "var(--teal)",
   "#d97706",
   "#7c3aed",
   "#db2777",
@@ -359,7 +360,7 @@ function DemandTab() {
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
                   <span className="badge badge-blue">{item.job_count} job{item.job_count !== 1 ? "s" : ""}</span>
-                  <span className={statusBadgeClass(item.status)} style={{ fontSize: 10 }}>{statusLabel(item.status)}</span>
+                  <ItemStatusPill status={item.status} style={{ fontSize: 10 }} />
                 </div>
               </div>
             ))}
@@ -378,7 +379,7 @@ function DemandTab() {
                   <p style={{ fontSize: 13, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.name}</p>
                   <p style={{ fontSize: 11.5, color: "var(--text-tertiary)" }}>{item.job_count} past jobs · {item.category}</p>
                 </div>
-                <span className={statusBadgeClass(item.status)}>{statusLabel(item.status)}</span>
+                <ItemStatusPill status={item.status} />
               </div>
             ))}
           </div>
@@ -512,7 +513,7 @@ function ActivityTab() {
                   <span style={{ fontSize: 10, color: "var(--text-tertiary)", fontWeight: 600 }}>{total || ""}</span>
                   <div style={{ width: "100%", height: 56, display: "flex", flexDirection: "column-reverse", borderRadius: "3px 3px 0 0", overflow: "hidden", background: "var(--bg-surface)" }}>
                     <div style={{ height: `${(d.staged / maxWeekday) * 56}px`, background: "var(--accent)", opacity: 0.9 }} title={`Staged: ${d.staged}`} />
-                    <div style={{ height: `${(d.destaged / maxWeekday) * 56}px`, background: "#0d9488", opacity: 0.85 }} title={`Destaged: ${d.destaged}`} />
+                    <div style={{ height: `${(d.destaged / maxWeekday) * 56}px`, background: "var(--teal)", opacity: 0.85 }} title={`Destaged: ${d.destaged}`} />
                   </div>
                   <span style={{ fontSize: 10, color: "var(--text-tertiary)" }}>{weekdayLabel(d.weekday)}</span>
                 </div>
@@ -524,7 +525,7 @@ function ActivityTab() {
               <span style={{ width: 8, height: 8, borderRadius: 2, background: "var(--accent)", display: "inline-block" }} /> Staged on
             </span>
             <span style={{ fontSize: 11, color: "var(--text-tertiary)", display: "flex", alignItems: "center", gap: 4 }}>
-              <span style={{ width: 8, height: 8, borderRadius: 2, background: "#0d9488", display: "inline-block" }} /> Destaged
+              <span style={{ width: 8, height: 8, borderRadius: 2, background: "var(--teal)", display: "inline-block" }} /> Destaged
             </span>
           </div>
         </div>
@@ -551,7 +552,7 @@ function ActivityTab() {
                     style={{
                       flex: 1,
                       borderRadius: "3px 3px 0 0",
-                      background: "#0d9488",
+                      background: "var(--teal)",
                       opacity: 0.85,
                       height: `${Math.max(m.destaged > 0 ? 4 : 0, (m.destaged / maxMonthly) * 68)}px`,
                     }}
@@ -578,7 +579,7 @@ function ActivityTab() {
                     {d.revenue > 0 ? ` · ${fmt$Full(d.revenue)}` : ""}
                   </p>
                 </div>
-                <span className="badge badge-blue">{d.staged + d.destaged}</span>
+                <span className="badge badge-teal">{d.staged + d.destaged}</span>
               </div>
             ))}
           </div>
@@ -812,7 +813,7 @@ function InventoryValueTab() {
       </div>
 
       {data.disposed_count > 0 && (
-        <div className="card" style={{ padding: 14, borderColor: "rgba(239,68,68,0.2)" }}>
+        <div className="card" style={{ padding: 14, borderColor: "#F0C4BE" }}>
           <p style={{ fontSize: 11, color: "var(--text-tertiary)", marginBottom: 4 }}>Written off (disposed)</p>
           <p style={{ fontSize: 20, fontWeight: 700, color: "var(--red-text)", letterSpacing: "-0.5px" }}>{fmt$Full(data.disposed_value)}</p>
           <p style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 2 }}>{data.disposed_count} item{data.disposed_count !== 1 ? "s" : ""}</p>

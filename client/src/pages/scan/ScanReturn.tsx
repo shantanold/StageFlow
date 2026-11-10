@@ -213,21 +213,21 @@ export function ScanReturn() {
             <div style={{ display: "flex", gap: 8 }}>
               <button
                 className="btn btn-outline"
-                style={{ flex: 1, fontSize: 13, borderColor: "rgba(34,197,94,0.4)", color: "var(--green-text)" }}
+                style={{ flex: 1, fontSize: 13, borderColor: "#C3E6D0", color: "var(--green-text)" }}
                 onClick={() => processReturn("good")}
               >
                 Good
               </button>
               <button
                 className="btn btn-outline"
-                style={{ flex: 1, fontSize: 13, borderColor: "rgba(251,191,36,0.4)", color: "var(--amber-text)" }}
+                style={{ flex: 1, fontSize: 13, borderColor: "#F2D9AE", color: "var(--amber-text)" }}
                 onClick={() => processReturn("damaged")}
               >
                 Damaged
               </button>
               <button
                 className="btn btn-outline"
-                style={{ flex: 1, fontSize: 13, borderColor: "rgba(239,68,68,0.4)", color: "var(--red-text)" }}
+                style={{ flex: 1, fontSize: 13, borderColor: "#F0C4BE", color: "var(--red-text)" }}
                 onClick={() => processReturn("dispose")}
               >
                 Dispose
@@ -266,8 +266,8 @@ export function ScanReturn() {
           <div
             style={{
               marginTop: 10,
-              background: "rgba(239,68,68,0.1)",
-              border: "1px solid rgba(239,68,68,0.3)",
+              background: "var(--red-dim)",
+              border: "1px solid #F0C4BE",
               borderRadius: "var(--radius-lg)",
               padding: "10px 14px",
               fontSize: 12.5,

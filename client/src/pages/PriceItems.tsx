@@ -5,17 +5,9 @@ import { useToast } from "../contexts/ToastContext";
 import { ApiError } from "../lib/api";
 import { displayPhotoUrl } from "../lib/cloudinary";
 import { useItems, useSetPurchaseCost } from "../lib/queries";
-import {
-  formatCurrency,
-  formatDimensions,
-  getCategoryEmoji,
-  parsePriceInput,
-  roundMoney,
-  statusBadgeClass,
-  statusLabel,
-  unpricedItems,
-} from "../lib/utils";
+import { formatCurrency, formatDimensions, getCategoryEmoji, parsePriceInput, roundMoney, unpricedItems } from "../lib/utils";
 import type { Item } from "../types";
+import { ItemStatusPill } from "../components/b2";
 
 function wait(ms: number) {
   return new Promise<void>((resolve) => {
@@ -250,7 +242,7 @@ export function PriceItems() {
             <aside className="price-aside">
               <div
                 className="price-ring"
-                style={{ background: `conic-gradient(#fbbf24 ${pct}%, rgba(148,163,184,0.16) ${pct}%)` }}
+                style={{ background: `conic-gradient(var(--brand) ${pct}%, var(--hairline) ${pct}%)` }}
                 aria-hidden
               >
                 <span>{pct}%</span>
@@ -308,9 +300,7 @@ function ItemFace({
       </div>
       <div className="price-meta">
         <div className="price-badges">
-          <span className={statusBadgeClass(item.status, item.condition)}>
-            {statusLabel(item.status, item.condition)}
-          </span>
+          <ItemStatusPill status={item.status} condition={item.condition} />
           <span className="badge badge-gray">{item.category}</span>
           {item.set && <span className="badge badge-blue">{item.set.name}</span>}
         </div>

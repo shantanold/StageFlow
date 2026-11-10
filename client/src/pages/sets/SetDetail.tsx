@@ -3,13 +3,14 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSet, useSetItems, useUpdateSet } from "../../lib/queries";
 import { downloadLabels } from "../../lib/labels";
-import { getCategoryEmoji, statusBadgeClass, statusLabel } from "../../lib/utils";
+import { getCategoryEmoji } from "../../lib/utils";
 import { useToast } from "../../contexts/ToastContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { ApiError } from "../../lib/api";
 import { ModalOverlay } from "../../components/ModalOverlay";
 import { SetPhotoCollage } from "./Sets";
 import type { Item, ItemSet } from "../../types";
+import { ItemStatusPill } from "../../components/b2";
 
 function BackIcon() {
   return (
@@ -104,7 +105,7 @@ export function SetDetail() {
         <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
           <SetPhotoCollage urls={set.preview_photo_urls} size={64} />
           <div style={{ minWidth: 0 }}>
-            <h1 className="page-title" style={{ fontSize: 18 }}>{set.name}</h1>
+            <h1 className="page-title" style={{ fontSize: 26 }}>{set.name}</h1>
             {set.description && <p className="page-subtitle">{set.description}</p>}
           </div>
         </div>
@@ -122,7 +123,7 @@ export function SetDetail() {
             <span className="badge badge-green">{set.available_count} unstaged</span>
           )}
           {set.staged_count > 0 && (
-            <span className="badge badge-blue">{set.staged_count} staged</span>
+            <span className="badge badge-teal">{set.staged_count} staged</span>
           )}
         </div>
 
@@ -250,9 +251,7 @@ function SetItemRow({ item, onClick }: { item: Item; onClick: () => void }) {
           {" · "}{item.qr_printed ? "QR printed" : "QR not printed"}
         </p>
       </div>
-      <span className={statusBadgeClass(item.status, item.condition)}>
-        {statusLabel(item.status, item.condition)}
-      </span>
+      <ItemStatusPill status={item.status} condition={item.condition} />
     </div>
   );
 }

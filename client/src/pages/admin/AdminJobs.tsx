@@ -5,8 +5,9 @@ import { useToast } from "../../contexts/ToastContext";
 import { useAdminJobs, useAdminOrganizations } from "../../lib/queries";
 import { useDebounce } from "../../hooks/useDebounce";
 import { ApiError } from "../../lib/api";
-import { formatCalendarDayShort, jobStatusBadgeClass } from "../../lib/utils";
+import { formatCalendarDayShort } from "../../lib/utils";
 import type { AdminJob } from "../../types";
+import { JobStatusPill } from "../../components/b2";
 
 function SearchIcon() {
   return (
@@ -129,9 +130,7 @@ export function AdminJobs() {
                     {job.expected_end_date ? ` · ends ${formatCalendarDayShort(job.expected_end_date)}` : ""}
                   </p>
                 </div>
-                <span className={jobStatusBadgeClass(job.status)} style={{ textTransform: "capitalize", flexShrink: 0 }}>
-                  {opening === job.id ? "Opening…" : job.status}
-                </span>
+                <JobStatusPill status={job.status} />
               </div>
             ))}
           </div>

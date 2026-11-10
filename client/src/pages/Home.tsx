@@ -1,9 +1,11 @@
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useDashboard, useItems } from "../lib/queries";
 import { formatCalendarDayShort, unpricedItems } from "../lib/utils";
 import type { Job } from "../types";
 import { AdminHome } from "./admin/AdminHome";
+import { BandWatermark, Icon, StatusPill } from "../components/b2";
+import { dateTile, localDay, todayLine } from "../lib/b2";
 
 function greeting(): string {
   const h = new Date().getHours();
@@ -34,58 +36,54 @@ export function Home() {
       value:  stats?.available_count ?? "—",
       sub:    stats ? `of ${stats.total_items} total` : "",
       color:  "var(--green-text)",
-      onClick: () => navigate("/inventory?filter=available"),
+      to:     "/inventory?filter=available",
     },
     {
       label:  "Staged",
       value:  stats?.staged_count ?? "—",
       sub:    stats ? `across ${stats.active_jobs_count} house${stats.active_jobs_count !== 1 ? "s" : ""}` : "",
-      color:  "#60a5fa",
-      onClick: () => navigate("/inventory?filter=staged"),
+      color:  "var(--teal-text)",
+      to:     "/inventory?filter=staged",
     },
     {
       label:  "Active jobs",
       value:  stats?.active_jobs_count ?? "—",
       sub:    stats ? `${stats.upcoming_jobs.length} with dates` : "",
-      color:  "var(--text-primary)",
-      onClick: () => navigate("/jobs"),
+      color:  "var(--ink)",
+      to:     "/jobs",
     },
     {
       label:  "Needs attention",
       value:  stats?.needs_attention ?? "—",
       sub:    "damaged or missing",
-      color:  "var(--amber-text)",
-      onClick: () => navigate("/inventory?filter=flagged"),
+      color:  stats && stats.needs_attention > 0 ? "var(--red-text)" : "var(--ink)",
+      to:     "/inventory?filter=flagged",
     },
   ];
 
   return (
     <div className="animate-in">
-      <div className="page-header" style={{ paddingTop: "calc(20px + var(--safe-top))" }}>
-        <p style={{ fontSize: 13, color: "var(--text-tertiary)", marginBottom: 2 }}>{greeting()},</p>
-        <h1 className="page-title">{user?.name}</h1>
+      <div className="page-header">
+        <BandWatermark kind="logo" />
+        <p className="band-kicker">{todayLine()}</p>
+        <h1 className="page-title" style={{ marginTop: 6 }}>
+          {greeting()}, {firstName(user?.name)}
+        </h1>
+        {stats && (
+          <p className="page-subtitle">{Math.round(stats.utilization_pct)}% of inventory in use</p>
+        )}
       </div>
 
       <div className="page-body">
-        {/* Stat cards */}
         <div className="stat-grid">
           {statCards.map((card) => (
-            <div
-              key={card.label}
-              className="card"
-              style={{ cursor: "pointer", padding: 14 }}
-              onClick={card.onClick}
-            >
-              <p style={{ fontSize: 11, fontWeight: 500, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 6 }}>
-                {card.label}
-              </p>
-              <p style={{ fontSize: 28, fontWeight: 700, letterSpacing: "-0.5px", color: card.color, marginBottom: 2 }}>
-                {isLoading ? (
-                  <span style={{ display: "inline-block", width: 36, height: 28, background: "var(--bg-surface)", borderRadius: 4, verticalAlign: "middle" }} />
-                ) : card.value}
-              </p>
-              <p style={{ fontSize: 11, color: "var(--text-tertiary)" }}>{card.sub}</p>
-            </div>
+            <button key={card.label} type="button" className="card stat-card" onClick={() => navigate(card.to)}>
+              <span className="stat-label">{card.label}</span>
+              <span className="stat-value" style={{ color: card.color }}>
+                {isLoading ? <span className="skeleton" style={{ display: "inline-block", width: 40, height: 30 }} /> : card.value}
+              </span>
+              <span className="stat-sub">{card.sub}</span>
+            </button>
           ))}
         </div>
 
@@ -100,88 +98,65 @@ export function Home() {
                 {unpricedCount} item{unpricedCount === 1 ? "" : "s"} still at $0
               </span>
             </span>
-            <span className="price-prompt-go" aria-hidden>→</span>
+            <Icon.Chevron className="chevron" />
           </button>
         )}
 
-        {/* Major pieces */}
-        <div style={{ marginBottom: 20 }}>
-          <div style={{ marginBottom: 10 }}>
-            <span className="section-title">Major pieces</span>
-          </div>
-          {isLoading ? (
-            <div className="card" style={{ padding: 14 }}>
-              <div style={{ height: 14, width: "40%", background: "var(--bg-surface)", borderRadius: 4, marginBottom: 10 }} />
-              <div style={{ height: 14, width: "55%", background: "var(--bg-surface)", borderRadius: 4 }} />
+        <div className="home-columns">
+          {/* Upcoming returns */}
+          <section aria-labelledby="upcoming-returns" style={{ marginBottom: 20 }}>
+            <div className="section-head">
+              <h2 id="upcoming-returns" className="section-title">Upcoming returns</h2>
+              <Link to="/jobs">View all</Link>
             </div>
-          ) : (
-            <div className="list-card">
-              {(stats?.major_pieces ?? []).map((piece) => {
-                const low = piece.available < LOW_STOCK_THRESHOLD;
-                return (
-                  <div key={piece.key} className="list-row" style={{ cursor: "default" }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p
-                        style={{
-                          fontSize: 13.5,
-                          fontWeight: 500,
-                          color: low ? "var(--red-text)" : "var(--text-primary)",
-                        }}
-                      >
-                        {piece.label}
-                      </p>
-                      <p
-                        style={{
-                          fontSize: 11.5,
-                          marginTop: 2,
-                          color: low ? "var(--red-text)" : "var(--text-tertiary)",
-                        }}
-                      >
-                        {piece.available} unstaged · {piece.staged} staged
-                        {low ? " · low stock" : ""}
-                      </p>
+            {isLoading ? (
+              <div className="list-card"><UpcomingReturnsSkeleton /></div>
+            ) : !stats || stats.upcoming_jobs.length === 0 ? (
+              <div className="card empty-state">No active jobs</div>
+            ) : (
+              <div className="list-card">
+                {stats.upcoming_jobs.map((job) => (
+                  <UpcomingJobRow key={job.id} job={job} />
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* Major pieces */}
+          <section aria-labelledby="major-pieces" style={{ marginBottom: 20 }}>
+            <div className="section-head">
+              <h2 id="major-pieces" className="section-title">Major pieces</h2>
+              <Link to="/inventory">Inventory</Link>
+            </div>
+            {isLoading ? (
+              <div className="list-card"><UpcomingReturnsSkeleton /></div>
+            ) : (
+              <div className="list-card">
+                {(stats?.major_pieces ?? []).map((piece) => {
+                  const low = piece.available < LOW_STOCK_THRESHOLD;
+                  return (
+                    <div key={piece.key} className="list-row" style={{ cursor: "default" }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: 15, fontWeight: 600 }}>{piece.label}</p>
+                        <p style={{ fontSize: 13, marginTop: 1, color: "var(--ink-secondary)" }}>
+                          {piece.available} unstaged · {piece.staged} staged
+                        </p>
+                      </div>
+                      {low && <StatusPill tone="red" glyph="alert">Low stock</StatusPill>}
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                  );
+                })}
+              </div>
+            )}
+          </section>
         </div>
-
-        {/* Upcoming returns */}
-        <div
-          style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}
-        >
-          <span className="section-title">Upcoming returns</span>
-          <button className="back-btn" style={{ marginBottom: 0 }} onClick={() => navigate("/jobs")}>
-            View all
-          </button>
-        </div>
-
-        {isLoading ? (
-          <UpcomingReturnsSkeleton />
-        ) : !stats || stats.upcoming_jobs.length === 0 ? (
-          <div
-            style={{
-              background: "var(--bg-card)",
-              border: "1px solid var(--border)",
-              borderRadius: "var(--radius-lg)",
-              padding: "28px 16px",
-              textAlign: "center",
-            }}
-          >
-            <p style={{ fontSize: 13, color: "var(--text-tertiary)" }}>No active jobs</p>
-          </div>
-        ) : (
-          <div className="list-card" style={{ marginBottom: 24 }}>
-            {stats.upcoming_jobs.map((job) => (
-              <UpcomingJobRow key={job.id} job={job} onClick={() => navigate(`/jobs/${job.id}`)} />
-            ))}
-          </div>
-        )}
       </div>
     </div>
   );
+}
+
+function firstName(name: string | undefined): string {
+  return name?.trim().split(/\s+/)[0] ?? "";
 }
 
 function DollarIcon() {
@@ -193,38 +168,37 @@ function DollarIcon() {
   );
 }
 
-function UpcomingJobRow({ job, onClick }: { job: Job; onClick: () => void }) {
-  const closeDate    = new Date(job.expected_end_date);
-  const sevenDaysOut = new Date(Date.now() + 7 * 86_400_000);
-  const urgent       = closeDate <= sevenDaysOut;
-
+function UpcomingJobRow({ job }: { job: Job }) {
+  const tile = dateTile(localDay(job.expected_end_date));
   return (
-    <div className="list-row" style={{ cursor: "pointer" }} onClick={onClick}>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ fontSize: 13.5, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-          {job.address}
-        </p>
-        <p style={{ fontSize: 11.5, color: "var(--text-tertiary)", marginTop: 2 }}>
-          {job.item_count} item{job.item_count !== 1 ? "s" : ""} · {job.client_name}
-        </p>
-      </div>
-      <span className={`badge ${urgent ? "badge-amber" : "badge-blue"}`}>
-        {formatCalendarDayShort(job.expected_end_date)}
+    <Link to={`/jobs/${job.id}`} className="list-row" style={{ gap: 14 }}>
+      <span className={`date-tile${tile.isToday ? " is-today" : ""}`} aria-hidden>
+        <span className="date-tile-top">{tile.top}</span>
+        <span className="date-tile-day">{tile.number}</span>
       </span>
-    </div>
+      <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+        <span style={{ fontSize: 15, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          {job.address}
+        </span>
+        <span style={{ fontSize: 13, color: "var(--ink-secondary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          {formatCalendarDayShort(job.expected_end_date)} · {job.item_count} item{job.item_count !== 1 ? "s" : ""} · {job.client_name}
+        </span>
+      </span>
+      <Icon.Chevron className="chevron" />
+    </Link>
   );
 }
 
 function UpcomingReturnsSkeleton() {
   return (
-    <div className="list-card">
+    <div aria-hidden>
       {[...Array(3)].map((_, i) => (
-        <div key={i} className="list-row" style={{ pointerEvents: "none" }}>
+        <div key={i} className="list-row" style={{ pointerEvents: "none", gap: 14 }}>
+          <div className="skeleton" style={{ width: 46, height: 46, borderRadius: 12 }} />
           <div style={{ flex: 1 }}>
-            <div style={{ height: 13, width: "60%", background: "var(--bg-surface)", borderRadius: 4, marginBottom: 6 }} />
-            <div style={{ height: 10, width: "35%", background: "var(--bg-surface)", borderRadius: 3 }} />
+            <div className="skeleton" style={{ height: 13, width: "60%", marginBottom: 8 }} />
+            <div className="skeleton" style={{ height: 10, width: "35%" }} />
           </div>
-          <div style={{ width: 48, height: 20, background: "var(--bg-surface)", borderRadius: 10 }} />
         </div>
       ))}
     </div>

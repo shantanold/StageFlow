@@ -178,8 +178,8 @@ export function ImportCSVModal({ onClose }: Props) {
                   key={i}
                   style={{
                     padding: "8px 10px", borderRadius: "var(--radius-md)",
-                    background: row._error ? "rgba(239,68,68,0.08)" : "var(--bg-surface)",
-                    border: `1px solid ${row._error ? "rgba(239,68,68,0.3)" : "var(--border)"}`,
+                    background: row._error ? "var(--red-dim)" : "var(--bg-surface)",
+                    border: `1px solid ${row._error ? "#F0C4BE" : "var(--border)"}`,
                     fontSize: 12,
                   }}
                 >

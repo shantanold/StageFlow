@@ -69,27 +69,27 @@ function ToastItem({ toast }: { toast: Toast }) {
     toast.type === "error"   ? "var(--red-dim)"   :
     "var(--accent-dim)";
   const border =
-    toast.type === "success" ? "rgba(52,211,153,0.25)" :
-    toast.type === "error"   ? "rgba(248,113,113,0.25)" :
-    "rgba(59,130,246,0.25)";
+    toast.type === "success" ? "#C3E6D0" :
+    toast.type === "error"   ? "#F3C9C4" :
+    "var(--hairline)";
   const color =
     toast.type === "success" ? "var(--green-text)" :
     toast.type === "error"   ? "var(--red-text)"   :
-    "#93c5fd";
+    "var(--plum)";
 
   return (
     <div
       style={{
         background: bg,
         border: `1px solid ${border}`,
-        borderRadius: "var(--radius-md)",
+        borderRadius: 16,
         padding: "12px 16px",
-        fontSize: 13.5,
-        fontWeight: 500,
+        fontSize: 14,
+        fontWeight: 600,
         color,
         backdropFilter: "blur(12px)",
         WebkitBackdropFilter: "blur(12px)",
-        boxShadow: "0 4px 20px rgba(0,0,0,0.4)",
+        boxShadow: "0 10px 24px rgba(36,18,58,0.16)",
         animation: "toastIn 0.2s ease",
       }}
     >

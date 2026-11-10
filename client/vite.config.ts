@@ -8,13 +8,13 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["icon.svg", "icon-192.png", "icon-512.png", "apple-touch-icon.png"],
+      includeAssets: ["icon-192.png", "icon-512.png", "apple-touch-icon.png", "logo-app.png", "logo-mark-white.png"],
       manifest: {
         name: "Stagemigo",
         short_name: "Stagemigo",
         description: "Home staging inventory management",
-        theme_color: "#0a0f1a",
-        background_color: "#0a0f1a",
+        theme_color: "#5E2391",
+        background_color: "#701EB8",
         display: "standalone",
         orientation: "portrait",
         scope: "/",

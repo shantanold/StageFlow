@@ -184,7 +184,7 @@ export function ClaimItem() {
                       width: "100%",
                       textAlign: "left",
                       border: "none",
-                      background: selected ? "rgba(59,130,246,0.12)" : "transparent",
+                      background: selected ? "var(--lilac)" : "transparent",
                       cursor: "pointer",
                       fontFamily: "inherit",
                       color: "inherit",

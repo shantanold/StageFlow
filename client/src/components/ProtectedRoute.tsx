@@ -20,7 +20,7 @@ export function ProtectedRoute() {
             style={{
               width: 36,
               height: 36,
-              border: "3px solid rgba(59,130,246,0.2)",
+              border: "3px solid #DCC8F2",
               borderTopColor: "var(--accent)",
               borderRadius: "50%",
               animation: "spin 0.8s linear infinite",
