@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import {
   useUtilizationReport,
   useJobPerformanceReport,
@@ -10,7 +9,8 @@ import {
   useActivityReport,
 } from "../lib/queries";
 import { getCategoryEmoji } from "../lib/utils";
-import { ItemStatusPill } from "../components/b2";
+import { BandBack, BandWatermark, ItemStatusPill } from "../components/b2";
+import { Momentum } from "./reports/Momentum";
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 
@@ -54,46 +54,41 @@ function formatHeatDate(iso: string) {
 }
 
 // Simple horizontal bar
-function Bar({ pct, color = "var(--accent)" }: { pct: number; color?: string }) {
+function Bar({ pct, color = "var(--brand)" }: { pct: number; color?: string }) {
   return (
-    <div style={{ height: 6, borderRadius: 3, background: "var(--bg-surface)", overflow: "hidden" }}>
-      <div
-        style={{
-          height: "100%",
-          borderRadius: 3,
-          background: color,
-          width: `${Math.min(100, Math.max(0, pct))}%`,
-          transition: "width 0.4s ease",
-        }}
-      />
+    <div className="report-bar">
+      <span style={{ background: color, width: `${Math.min(100, Math.max(0, pct))}%` }} />
     </div>
   );
 }
 
 function Skel({ w = "100%", h = 13 }: { w?: string | number; h?: number }) {
-  return (
-    <div style={{ height: h, borderRadius: 4, background: "var(--bg-surface)", width: w }} />
-  );
+  return <div className="skeleton" style={{ height: h, width: w, borderRadius: h > 30 ? 20 : 8 }} />;
 }
 
-function StatCard({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: boolean }) {
+function StatCard({ label, value, sub, accent, tone }: {
+  label: string;
+  value: string;
+  sub?: string;
+  accent?: boolean;
+  tone?: "green" | "teal" | "amber" | "red";
+}) {
+  const color = tone ? `var(--${tone}-text)` : accent ? "var(--brand)" : "var(--ink)";
   return (
-    <div className="card" style={{ padding: 14 }}>
-      <p style={{ fontSize: 11, color: "var(--text-tertiary)", marginBottom: 4 }}>{label}</p>
-      <p style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.5px", color: accent ? "var(--accent)" : undefined, marginBottom: sub ? 2 : 0 }}>
-        {value}
-      </p>
-      {sub && <p style={{ fontSize: 11, color: "var(--text-tertiary)" }}>{sub}</p>}
+    <div className={`card report-stat${accent ? " is-accent" : ""}`}>
+      <p className="stat-label">{label}</p>
+      <p className="report-stat-value" style={{ color }}>{value}</p>
+      {sub && <p className="stat-sub">{sub}</p>}
     </div>
   );
 }
 
 function SectionHeader({ title }: { title: string }) {
-  return (
-    <p style={{ fontSize: 11, fontWeight: 500, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.7px", marginBottom: 8 }}>
-      {title}
-    </p>
-  );
+  return <h2 className="report-section-title">{title}</h2>;
+}
+
+function Rank({ n }: { n: number }) {
+  return <span className={`report-rank${n === 1 ? " is-first" : ""}`}>{n}</span>;
 }
 
 function VerticalBars({
@@ -108,32 +103,20 @@ function VerticalBars({
   const max = Math.max(...items.map((m) => Number(m[valueKey]) || 0), 1);
   const allZero = items.every((m) => !(Number(m[valueKey]) > 0));
   if (allZero) {
-    return (
-      <p style={{ fontSize: 13, color: "var(--text-tertiary)", textAlign: "center", padding: "8px 0" }}>
-        {emptyLabel}
-      </p>
-    );
+    return <p className="report-empty">{emptyLabel}</p>;
   }
+  const money = valueKey === "revenue" || valueKey === "extensions";
   return (
-    <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 96 }}>
+    <div className="vbars">
       {items.map((m) => {
         const v = Number(m[valueKey]) || 0;
         return (
-          <div key={m.month} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, minWidth: 0 }}>
-            <span style={{ fontSize: 9, color: "var(--text-tertiary)", fontWeight: 600, whiteSpace: "nowrap" }}>
-              {v > 0 ? (valueKey === "revenue" || valueKey === "extensions" ? fmt$(v) : v) : ""}
-            </span>
-            <div
-              style={{
-                width: "100%",
-                borderRadius: "3px 3px 0 0",
-                background: "var(--accent)",
-                opacity: 0.85,
-                height: `${Math.max(4, (v / max) * 64)}px`,
-                transition: "height 0.4s ease",
-              }}
-            />
-            <span style={{ fontSize: 10, color: "var(--text-tertiary)" }}>{monthLabel(String(m.month))}</span>
+          <div key={m.month} className="vbar-col" title={`${monthLabel(String(m.month))}: ${money ? fmt$Full(v) : v}`}>
+            <span className="vbar-value">{v > 0 ? (money ? fmt$(v) : v) : ""}</span>
+            <div className="vbar-track">
+              <div className={`vbar${v === max ? " is-max" : ""}`} style={{ height: `${v > 0 ? Math.max(4, (v / max) * 100) : 0}%` }} />
+            </div>
+            <span className="vbar-label">{monthLabel(String(m.month))}</span>
           </div>
         );
       })}
@@ -142,11 +125,11 @@ function VerticalBars({
 }
 
 const CAT_COLORS = [
-  "var(--accent)",
+  "var(--brand)",
   "var(--teal)",
-  "#d97706",
-  "#7c3aed",
-  "#db2777",
+  "var(--amber)",
+  "#C2549B",
+  "var(--gray)",
 ];
 
 // ─── Tab: Revenue ─────────────────────────────────────────────────────────────
@@ -157,7 +140,7 @@ function RevenueTab() {
   if (isLoading) {
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        <div className="report-stats">
           <Skel h={80} /><Skel h={80} /><Skel h={80} /><Skel h={80} />
         </div>
         <Skel h={120} />
@@ -170,15 +153,15 @@ function RevenueTab() {
   const maxClient = Math.max(...data.top_clients.map((c) => c.revenue), 1);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+    <div className="report-tab">
+      <div className="report-stats">
         <StatCard label="Collected revenue" value={fmt$Full(data.collected_revenue)} sub="completed jobs" accent />
         <StatCard label="Pipeline" value={fmt$Full(data.pipeline_revenue)} sub="active + planning" />
         <StatCard label="Avg staging amount" value={data.avg_amount > 0 ? fmt$Full(data.avg_amount) : "—"} sub={data.avg_monthly_rate > 0 ? `${fmt$(data.avg_monthly_rate)}/mo avg` : undefined} />
         <StatCard label="Extensions" value={fmt$Full(data.extension_revenue)} sub="extension fees" />
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+      <div className="report-stats">
         <StatCard
           label="Market value staged"
           value={data.market_value_staged > 0 ? fmt$(data.market_value_staged) : "—"}
@@ -193,7 +176,7 @@ function RevenueTab() {
 
       <div>
         <SectionHeader title="Revenue — last 12 months" />
-        <div className="card" style={{ padding: "14px 14px 8px" }}>
+        <div className="card report-chart">
           <VerticalBars items={data.monthly} valueKey="revenue" emptyLabel="No revenue recorded yet — add Amount / Total paid on jobs" />
         </div>
       </div>
@@ -201,7 +184,7 @@ function RevenueTab() {
       {data.monthly.some((m) => m.extensions > 0) && (
         <div>
           <SectionHeader title="Extension fees by month" />
-          <div className="card" style={{ padding: "14px 14px 8px" }}>
+          <div className="card report-chart">
             <VerticalBars items={data.monthly} valueKey="extensions" emptyLabel="No extensions yet" />
           </div>
         </div>
@@ -210,20 +193,20 @@ function RevenueTab() {
       {data.top_clients.length > 0 && (
         <div>
           <SectionHeader title="Top clients by revenue" />
-          <div className="card" style={{ padding: "4px 0" }}>
+          <div className="card report-list">
             {data.top_clients.map((c, i) => (
-              <div key={c.client_name} style={{ padding: "10px 14px", borderBottom: i < data.top_clients.length - 1 ? "1px solid var(--border)" : undefined }}>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5, gap: 8 }}>
-                  <span style={{ fontSize: 13, fontWeight: 500, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              <div key={c.client_name} style={{ padding: "12px 16px", borderBottom: i < data.top_clients.length - 1 ? "1px solid var(--row-divider)" : undefined }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                  <span style={{ fontSize: 14, fontWeight: 600, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {c.client_name}
                   </span>
-                  <span style={{ fontSize: 12, color: "var(--text-tertiary)", flexShrink: 0 }}>
+                  <span style={{ fontSize: 13, color: "var(--ink-secondary)", fontWeight: 600, flexShrink: 0 }}>
                     {fmt$Full(c.revenue)} · {c.job_count} job{c.job_count !== 1 ? "s" : ""}
                   </span>
                 </div>
                 <Bar pct={(c.revenue / maxClient) * 100} />
                 {c.market_value > 0 && (
-                  <p style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 4 }}>
+                  <p style={{ fontSize: 12, color: "var(--ink-secondary)", marginTop: 6 }}>
                     Homes MV {fmt$(c.market_value)}
                   </p>
                 )}
@@ -234,8 +217,8 @@ function RevenueTab() {
       )}
 
       {data.jobs_with_amount === 0 && (
-        <div className="card" style={{ padding: 16, textAlign: "center" }}>
-          <p style={{ fontSize: 13, color: "var(--text-tertiary)" }}>
+        <div className="card report-wide">
+          <p className="report-empty">
             Add Amount, Monthly rate, and Total paid on jobs to unlock revenue charts.
           </p>
         </div>
@@ -266,25 +249,25 @@ function DemandTab() {
   );
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+    <div className="report-tab">
       <div>
         <SectionHeader title="Category demand" />
-        <div className="card" style={{ padding: "4px 0" }}>
+        <div className="card report-list">
           {data.by_category.length === 0 ? (
-            <p style={{ fontSize: 13, color: "var(--text-tertiary)", padding: 16, textAlign: "center" }}>No inventory yet</p>
+            <p className="report-empty">No inventory yet</p>
           ) : (
             data.by_category.slice(0, 10).map((row, i) => (
-              <div key={row.category} style={{ padding: "10px 14px", borderBottom: i < Math.min(10, data.by_category.length) - 1 ? "1px solid var(--border)" : undefined }}>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
-                  <span style={{ fontSize: 13, fontWeight: 500 }}>
-                    {getCategoryEmoji(row.category)} {row.category}
+              <div key={row.category} style={{ padding: "12px 16px", borderBottom: i < Math.min(10, data.by_category.length) - 1 ? "1px solid var(--row-divider)" : undefined }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                  <span style={{ fontSize: 14, fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>
+                    <span className="report-cat-emoji" aria-hidden>{getCategoryEmoji(row.category)}</span>{row.category}
                   </span>
-                  <span style={{ fontSize: 12, color: "var(--text-tertiary)" }}>
+                  <span style={{ fontSize: 13, color: "var(--ink-secondary)", fontWeight: 600 }}>
                     {row.assignments} assign · {row.avg_jobs_per_item}/item
                   </span>
                 </div>
                 <Bar pct={(row.assignments / maxAssign) * 100} />
-                <p style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 4 }}>
+                <p style={{ fontSize: 12, color: "var(--ink-secondary)", marginTop: 6 }}>
                   {row.staged} staged · {row.available} available · {fmtPct(row.utilization_pct)} util
                 </p>
               </div>
@@ -296,8 +279,8 @@ function DemandTab() {
       {data.top_category_names.length > 0 && (
         <div>
           <SectionHeader title="Assignments — last 6 months" />
-          <div className="card" style={{ padding: "14px 12px 10px" }}>
-            <div style={{ display: "flex", alignItems: "flex-end", gap: 8, height: 110, marginBottom: 10 }}>
+          <div className="card report-chart">
+            <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height: 190, marginBottom: 12 }}>
               {data.monthly_by_category.map((m) => {
                 const total = data.top_category_names.reduce((s, c) => s + (m.counts[c] ?? 0), 0);
                 return (
@@ -305,12 +288,12 @@ function DemandTab() {
                     <div
                       style={{
                         width: "100%",
-                        height: 80,
+                        height: 150,
                         display: "flex",
                         flexDirection: "column-reverse",
-                        borderRadius: "3px 3px 0 0",
+                        borderRadius: 8,
                         overflow: "hidden",
-                        background: "var(--bg-surface)",
+                        background: "#F4EFFA",
                       }}
                     >
                       {data.top_category_names.map((cat, idx) => {
@@ -320,25 +303,24 @@ function DemandTab() {
                           <div
                             key={cat}
                             style={{
-                              height: `${(v / maxTrend) * 80}px`,
+                              height: `${(v / maxTrend) * 150}px`,
                               background: CAT_COLORS[idx % CAT_COLORS.length],
-                              opacity: 0.9,
                             }}
                             title={`${cat}: ${v}`}
                           />
                         );
                       })}
                     </div>
-                    <span style={{ fontSize: 10, color: "var(--text-tertiary)" }}>{monthLabel(m.month)}</span>
-                    <span style={{ fontSize: 9, color: "var(--text-tertiary)" }}>{total || ""}</span>
+                    <span style={{ fontSize: 12, color: "var(--ink-secondary)" }}>{monthLabel(m.month)}</span>
+                    <span style={{ fontSize: 11, color: "var(--ink-secondary)" }}>{total || ""}</span>
                   </div>
                 );
               })}
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
               {data.top_category_names.map((cat, idx) => (
-                <span key={cat} style={{ fontSize: 11, color: "var(--text-tertiary)", display: "flex", alignItems: "center", gap: 4 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: 2, background: CAT_COLORS[idx % CAT_COLORS.length], display: "inline-block" }} />
+                <span key={cat} style={{ fontSize: 13, color: "var(--ink-secondary)", display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ width: 10, height: 10, borderRadius: 3, background: CAT_COLORS[idx % CAT_COLORS.length], display: "inline-block" }} />
                   {cat}
                 </span>
               ))}
@@ -353,13 +335,13 @@ function DemandTab() {
           <div className="list-card">
             {data.top_items.map((item, i) => (
               <div key={item.id} className="list-row">
-                <span style={{ fontSize: 13, color: "var(--text-tertiary)", width: 18, flexShrink: 0 }}>#{i + 1}</span>
+                <Rank n={i + 1} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 13, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.name}</p>
-                  <p style={{ fontSize: 11.5, color: "var(--text-tertiary)" }}>{item.category} · {item.sku}</p>
+                  <p style={{ fontSize: 14, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.name}</p>
+                  <p style={{ fontSize: 13, color: "var(--ink-secondary)" }}>{item.category} · {item.sku}</p>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
-                  <span className="badge badge-blue">{item.job_count} job{item.job_count !== 1 ? "s" : ""}</span>
+                  <span className="badge badge-brand">{item.job_count} job{item.job_count !== 1 ? "s" : ""}</span>
                   <ItemStatusPill status={item.status} style={{ fontSize: 10 }} />
                 </div>
               </div>
@@ -374,10 +356,10 @@ function DemandTab() {
           <div className="list-card">
             {data.tight_supply.map((item) => (
               <div key={item.id} className="list-row">
-                <span style={{ fontSize: 18 }}>{getCategoryEmoji(item.category)}</span>
+                <span className="thumb" aria-hidden>{getCategoryEmoji(item.category)}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 13, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.name}</p>
-                  <p style={{ fontSize: 11.5, color: "var(--text-tertiary)" }}>{item.job_count} past jobs · {item.category}</p>
+                  <p style={{ fontSize: 14, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.name}</p>
+                  <p style={{ fontSize: 13, color: "var(--ink-secondary)" }}>{item.job_count} past jobs · {item.category}</p>
                 </div>
                 <ItemStatusPill status={item.status} />
               </div>
@@ -393,11 +375,11 @@ function DemandTab() {
 
 function heatColor(level: number): string {
   // 0 empty → 4 hot, using accent-tinted greens that work on light/dark surfaces
-  if (level <= 0) return "var(--bg-surface)";
-  if (level === 1) return "rgba(13, 148, 136, 0.25)";
-  if (level === 2) return "rgba(13, 148, 136, 0.45)";
-  if (level === 3) return "rgba(13, 148, 136, 0.7)";
-  return "rgba(13, 148, 136, 0.95)";
+  if (level <= 0) return "#F1EBF8";
+  if (level === 1) return "#DCC8F2";
+  if (level === 2) return "#B68AE3";
+  if (level === 3) return "#8E4BD0";
+  return "var(--brand)";
 }
 
 function ActivityTab() {
@@ -416,7 +398,7 @@ function ActivityTab() {
   if (isLoading) {
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        <div className="report-stats">
           <Skel h={80} /><Skel h={80} />
         </div>
         <Skel h={140} />
@@ -440,20 +422,20 @@ function ActivityTab() {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        <StatCard label="Currently staged" value={String(data.currently_staged)} sub="active / planning jobs" accent />
-        <StatCard label="Destaged (tracked)" value={String(data.destaged_count)} sub="completed or destaged_at set" />
+    <div className="report-tab">
+      <div className="report-stats">
+        <StatCard label="Currently staged" value={String(data.currently_staged)} sub="active / planning jobs" tone="teal" />
+        <StatCard tone="green" label="Destaged (tracked)" value={String(data.destaged_count)} sub="completed or destaged_at set" />
       </div>
 
       <div>
         <SectionHeader title="Staging activity heatmap" />
-        <div className="card" style={{ padding: 12, overflowX: "auto" }}>
-          <div style={{ display: "flex", gap: 3, minWidth: weeks.length * 12 }}>
+        <div className="card report-chart" style={{ overflowX: "auto" }}>
+          <div style={{ display: "flex", gap: 3, justifyContent: "space-between", minWidth: weeks.length * 16 }}>
             {/* Weekday labels */}
             <div style={{ display: "flex", flexDirection: "column", gap: 3, marginRight: 4, paddingTop: 0 }}>
               {["", "Mon", "", "Wed", "", "Fri", ""].map((label, i) => (
-                <div key={i} style={{ height: 11, fontSize: 9, color: "var(--text-tertiary)", lineHeight: "11px", width: 22 }}>
+                <div key={i} style={{ height: 13, fontSize: 12, color: "var(--ink-secondary)", lineHeight: "13px", width: 24 }}>
                   {label}
                 </div>
               ))}
@@ -472,11 +454,11 @@ function ActivityTab() {
                       onBlur={() => setHover(null)}
                       tabIndex={0}
                       style={{
-                        width: 11,
-                        height: 11,
-                        borderRadius: 2,
+                        width: 13,
+                        height: 13,
+                        borderRadius: 3,
                         background: heatColor(lvl),
-                        outline: hover?.date === day.date ? "1px solid var(--text-secondary)" : undefined,
+                        outline: hover?.date === day.date ? "2px solid var(--ink)" : undefined,
                         cursor: "default",
                       }}
                     />
@@ -486,17 +468,17 @@ function ActivityTab() {
             ))}
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10, gap: 8 }}>
-            <p style={{ fontSize: 11, color: "var(--text-tertiary)", minHeight: 16 }}>
+            <p style={{ fontSize: 13, color: "var(--ink-secondary)", minHeight: 18 }}>
               {hover
                 ? `${formatHeatDate(hover.date)} · ${hover.staged} staged · ${hover.destaged} destaged${hover.revenue > 0 ? ` · ${fmt$Full(hover.revenue)}` : ""}`
                 : "Staged-on + destaged activity over the past year"}
             </p>
             <div style={{ display: "flex", alignItems: "center", gap: 3, flexShrink: 0 }}>
-              <span style={{ fontSize: 10, color: "var(--text-tertiary)" }}>Less</span>
+              <span style={{ fontSize: 12, color: "var(--ink-secondary)" }}>Less</span>
               {[0, 1, 2, 3, 4].map((l) => (
-                <span key={l} style={{ width: 11, height: 11, borderRadius: 2, background: heatColor(l), display: "inline-block" }} />
+                <span key={l} style={{ width: 12, height: 12, borderRadius: 3, background: heatColor(l), display: "inline-block" }} />
               ))}
-              <span style={{ fontSize: 10, color: "var(--text-tertiary)" }}>More</span>
+              <span style={{ fontSize: 12, color: "var(--ink-secondary)" }}>More</span>
             </div>
           </div>
         </div>
@@ -504,28 +486,28 @@ function ActivityTab() {
 
       <div>
         <SectionHeader title="By day of week" />
-        <div className="card" style={{ padding: "14px 14px 10px" }}>
-          <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 90 }}>
+        <div className="card report-chart">
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 8, height: 170 }}>
             {data.by_weekday.map((d) => {
               const total = d.staged + d.destaged;
               return (
                 <div key={d.weekday} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-                  <span style={{ fontSize: 10, color: "var(--text-tertiary)", fontWeight: 600 }}>{total || ""}</span>
-                  <div style={{ width: "100%", height: 56, display: "flex", flexDirection: "column-reverse", borderRadius: "3px 3px 0 0", overflow: "hidden", background: "var(--bg-surface)" }}>
-                    <div style={{ height: `${(d.staged / maxWeekday) * 56}px`, background: "var(--accent)", opacity: 0.9 }} title={`Staged: ${d.staged}`} />
-                    <div style={{ height: `${(d.destaged / maxWeekday) * 56}px`, background: "var(--teal)", opacity: 0.85 }} title={`Destaged: ${d.destaged}`} />
+                  <span style={{ fontSize: 12, color: "var(--ink-secondary)", fontWeight: 600 }}>{total || ""}</span>
+                  <div style={{ width: "100%", height: 130, display: "flex", flexDirection: "column-reverse", borderRadius: 8, overflow: "hidden", background: "#F4EFFA" }}>
+                    <div style={{ height: `${(d.staged / maxWeekday) * 130}px`, background: "var(--teal)" }} title={`Staged: ${d.staged}`} />
+                    <div style={{ height: `${(d.destaged / maxWeekday) * 130}px`, background: "var(--green)" }} title={`Destaged: ${d.destaged}`} />
                   </div>
-                  <span style={{ fontSize: 10, color: "var(--text-tertiary)" }}>{weekdayLabel(d.weekday)}</span>
+                  <span style={{ fontSize: 12, color: "var(--ink-secondary)" }}>{weekdayLabel(d.weekday)}</span>
                 </div>
               );
             })}
           </div>
           <div style={{ display: "flex", gap: 14, marginTop: 8 }}>
-            <span style={{ fontSize: 11, color: "var(--text-tertiary)", display: "flex", alignItems: "center", gap: 4 }}>
-              <span style={{ width: 8, height: 8, borderRadius: 2, background: "var(--accent)", display: "inline-block" }} /> Staged on
+            <span style={{ fontSize: 13, color: "var(--ink-secondary)", display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ width: 10, height: 10, borderRadius: 3, background: "var(--teal)", display: "inline-block" }} /> Staged on
             </span>
-            <span style={{ fontSize: 11, color: "var(--text-tertiary)", display: "flex", alignItems: "center", gap: 4 }}>
-              <span style={{ width: 8, height: 8, borderRadius: 2, background: "var(--teal)", display: "inline-block" }} /> Destaged
+            <span style={{ fontSize: 13, color: "var(--ink-secondary)", display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ width: 10, height: 10, borderRadius: 3, background: "var(--green)", display: "inline-block" }} /> Destaged
             </span>
           </div>
         </div>
@@ -533,33 +515,31 @@ function ActivityTab() {
 
       <div>
         <SectionHeader title="Monthly staged vs destaged" />
-        <div className="card" style={{ padding: "14px 14px 8px" }}>
-          <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 100 }}>
+        <div className="card report-chart">
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 8, height: 170 }}>
             {data.monthly.map((m) => (
               <div key={m.month} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, minWidth: 0 }}>
-                <div style={{ display: "flex", alignItems: "flex-end", gap: 2, width: "100%", height: 72 }}>
+                <div style={{ display: "flex", alignItems: "flex-end", gap: 3, width: "100%", height: 140 }}>
                   <div
                     style={{
                       flex: 1,
-                      borderRadius: "3px 3px 0 0",
-                      background: "var(--accent)",
-                      opacity: 0.85,
-                      height: `${Math.max(m.staged > 0 ? 4 : 0, (m.staged / maxMonthly) * 68)}px`,
+                      borderRadius: "6px 6px 2px 2px",
+                      background: "var(--teal)",
+                      height: `${Math.max(m.staged > 0 ? 4 : 0, (m.staged / maxMonthly) * 136)}px`,
                     }}
                     title={`Staged: ${m.staged}`}
                   />
                   <div
                     style={{
                       flex: 1,
-                      borderRadius: "3px 3px 0 0",
-                      background: "var(--teal)",
-                      opacity: 0.85,
-                      height: `${Math.max(m.destaged > 0 ? 4 : 0, (m.destaged / maxMonthly) * 68)}px`,
+                      borderRadius: "6px 6px 2px 2px",
+                      background: "var(--green)",
+                      height: `${Math.max(m.destaged > 0 ? 4 : 0, (m.destaged / maxMonthly) * 136)}px`,
                     }}
                     title={`Destaged: ${m.destaged}`}
                   />
                 </div>
-                <span style={{ fontSize: 10, color: "var(--text-tertiary)" }}>{monthLabel(m.month)}</span>
+                <span style={{ fontSize: 12, color: "var(--ink-secondary)" }}>{monthLabel(m.month)}</span>
               </div>
             ))}
           </div>
@@ -573,8 +553,8 @@ function ActivityTab() {
             {data.busiest_days.map((d) => (
               <div key={d.date} className="list-row">
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 13, fontWeight: 500 }}>{formatHeatDate(d.date)}</p>
-                  <p style={{ fontSize: 11.5, color: "var(--text-tertiary)" }}>
+                  <p style={{ fontSize: 14, fontWeight: 600 }}>{formatHeatDate(d.date)}</p>
+                  <p style={{ fontSize: 13, color: "var(--ink-secondary)" }}>
                     {d.staged} staged · {d.destaged} destaged
                     {d.revenue > 0 ? ` · ${fmt$Full(d.revenue)}` : ""}
                   </p>
@@ -597,7 +577,7 @@ function UtilizationTab() {
   if (isLoading) {
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        <div className="report-stats">
           <Skel h={80} /><Skel h={80} />
         </div>
         {[...Array(4)].map((_, i) => <Skel key={i} h={48} />)}
@@ -608,25 +588,25 @@ function UtilizationTab() {
   if (!data) return null;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+    <div className="report-tab">
+      <div className="report-stats">
         <StatCard label="Overall utilization" value={fmtPct(data.overall_pct)} accent />
-        <StatCard label="Dead stock" value={String(data.dead_stock.length)} sub="never staged" />
+        <StatCard label="Dead stock" tone={data.dead_stock.length > 0 ? "amber" : undefined} value={String(data.dead_stock.length)} sub="never staged" />
       </div>
 
       <div>
         <SectionHeader title="By category" />
-        <div className="card" style={{ padding: "4px 0" }}>
+        <div className="card report-list">
           {data.by_category.length === 0 ? (
-            <p style={{ fontSize: 13, color: "var(--text-tertiary)", padding: "16px", textAlign: "center" }}>No data yet</p>
+            <p className="report-empty">No data yet</p>
           ) : (
             data.by_category.map((row) => (
-              <div key={row.category} style={{ padding: "10px 14px", borderBottom: "1px solid var(--border)" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
-                  <span style={{ fontSize: 13, fontWeight: 500 }}>
-                    {getCategoryEmoji(row.category)} {row.category}
+              <div key={row.category} style={{ padding: "12px 16px", borderBottom: "1px solid var(--row-divider)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                  <span style={{ fontSize: 14, fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>
+                    <span className="report-cat-emoji" aria-hidden>{getCategoryEmoji(row.category)}</span>{row.category}
                   </span>
-                  <span style={{ fontSize: 12, color: "var(--text-tertiary)" }}>
+                  <span style={{ fontSize: 13, color: "var(--ink-secondary)", fontWeight: 600 }}>
                     {row.staged}/{row.total} · {fmtPct(row.utilization_pct)}
                   </span>
                 </div>
@@ -643,12 +623,12 @@ function UtilizationTab() {
           <div className="list-card">
             {data.top_items.map((item, i) => (
               <div key={item.id} className="list-row">
-                <span style={{ fontSize: 13, color: "var(--text-tertiary)", width: 18, flexShrink: 0 }}>#{i + 1}</span>
+                <Rank n={i + 1} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 13, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.name}</p>
-                  <p style={{ fontSize: 11.5, color: "var(--text-tertiary)" }}>{item.category}</p>
+                  <p style={{ fontSize: 14, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.name}</p>
+                  <p style={{ fontSize: 13, color: "var(--ink-secondary)" }}>{item.category}</p>
                 </div>
-                <span className="badge badge-blue">{item.job_count} job{item.job_count !== 1 ? "s" : ""}</span>
+                <span className="badge badge-brand">{item.job_count} job{item.job_count !== 1 ? "s" : ""}</span>
               </div>
             ))}
           </div>
@@ -661,15 +641,15 @@ function UtilizationTab() {
           <div className="list-card">
             {data.dead_stock.slice(0, 8).map((item) => (
               <div key={item.id} className="list-row">
-                <span style={{ fontSize: 18 }}>{getCategoryEmoji(item.category)}</span>
+                <span className="thumb" aria-hidden>{getCategoryEmoji(item.category)}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 13, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.name}</p>
-                  <p style={{ fontSize: 11, fontFamily: "var(--font-mono)", color: "var(--text-tertiary)" }}>{item.sku}</p>
+                  <p style={{ fontSize: 14, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.name}</p>
+                  <p className="sku">{item.sku}</p>
                 </div>
               </div>
             ))}
             {data.dead_stock.length > 8 && (
-              <div style={{ padding: "10px 14px", fontSize: 12, color: "var(--text-tertiary)", textAlign: "center" }}>
+              <div style={{ padding: "10px 14px", fontSize: 13, color: "var(--ink-secondary)", fontWeight: 600, textAlign: "center" }}>
                 +{data.dead_stock.length - 8} more
               </div>
             )}
@@ -688,7 +668,7 @@ function JobPerformanceTab() {
   if (isLoading) {
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        <div className="report-stats">
           <Skel h={80} /><Skel h={80} />
         </div>
         <Skel h={80} />
@@ -702,8 +682,8 @@ function JobPerformanceTab() {
   const maxMonth = Math.max(...data.monthly_completions.map((m) => m.count), 1);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+    <div className="report-tab">
+      <div className="report-stats">
         <StatCard label="Jobs completed" value={String(data.total_completed)} />
         <StatCard label="Avg duration" value={data.avg_duration_days > 0 ? `${data.avg_duration_days}d` : "—"} sub="start to close" />
         <StatCard label="On-time rate" value={data.total_completed > 0 ? fmtPct(data.on_time_rate_pct) : "—"} accent />
@@ -711,7 +691,7 @@ function JobPerformanceTab() {
       </div>
 
       {(data.total_revenue > 0 || data.total_market_value > 0) && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        <div className="report-stats">
           <StatCard label="Completed revenue" value={fmt$Full(data.total_revenue)} sub={data.avg_amount > 0 ? `avg ${fmt$Full(data.avg_amount)}` : undefined} />
           <StatCard label="Completed MV" value={data.total_market_value > 0 ? fmt$(data.total_market_value) : "—"} sub="home market value" />
         </div>
@@ -719,25 +699,24 @@ function JobPerformanceTab() {
 
       <div>
         <SectionHeader title="Completions — last 6 months" />
-        <div className="card" style={{ padding: "14px 14px 8px" }}>
+        <div className="card report-chart">
           {data.monthly_completions.every((m) => m.count === 0) ? (
-            <p style={{ fontSize: 13, color: "var(--text-tertiary)", textAlign: "center", padding: "8px 0" }}>No completed jobs yet</p>
+            <p className="report-empty">No completed jobs yet</p>
           ) : (
-            <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 80 }}>
+            <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height: 170 }}>
               {data.monthly_completions.map((m) => (
                 <div key={m.month} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-                  <span style={{ fontSize: 10, color: "var(--text-tertiary)", fontWeight: 600 }}>{m.count || ""}</span>
+                  <span style={{ fontSize: 12, color: "var(--ink-secondary)", fontWeight: 600 }}>{m.count || ""}</span>
                   <div
                     style={{
                       width: "100%",
-                      borderRadius: "3px 3px 0 0",
-                      background: "var(--accent)",
-                      opacity: 0.85,
-                      height: `${Math.max(4, (m.count / maxMonth) * 56)}px`,
+                      borderRadius: "6px 6px 2px 2px",
+                      background: "var(--brand)",
+                      height: `${Math.max(4, (m.count / maxMonth) * 130)}px`,
                       transition: "height 0.4s ease",
                     }}
                   />
-                  <span style={{ fontSize: 10, color: "var(--text-tertiary)" }}>{monthLabel(m.month)}</span>
+                  <span style={{ fontSize: 12, color: "var(--ink-secondary)" }}>{monthLabel(m.month)}</span>
                 </div>
               ))}
             </div>
@@ -748,14 +727,14 @@ function JobPerformanceTab() {
       {data.top_clients.length > 0 && (
         <div>
           <SectionHeader title="Top clients" />
-          <div className="card" style={{ padding: "4px 0" }}>
+          <div className="card report-list">
             {data.top_clients.map((c, i) => {
               const maxJobs = data.top_clients[0].job_count;
               return (
-                <div key={c.client_name} style={{ padding: "10px 14px", borderBottom: i < data.top_clients.length - 1 ? "1px solid var(--border)" : undefined }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
-                    <span style={{ fontSize: 13, fontWeight: 500 }}>{c.client_name}</span>
-                    <span style={{ fontSize: 12, color: "var(--text-tertiary)" }}>{c.job_count} job{c.job_count !== 1 ? "s" : ""}</span>
+                <div key={c.client_name} style={{ padding: "12px 16px", borderBottom: i < data.top_clients.length - 1 ? "1px solid var(--row-divider)" : undefined }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                    <span style={{ fontSize: 14, fontWeight: 600 }}>{c.client_name}</span>
+                    <span style={{ fontSize: 13, color: "var(--ink-secondary)", fontWeight: 600 }}>{c.job_count} job{c.job_count !== 1 ? "s" : ""}</span>
                   </div>
                   <Bar pct={(c.job_count / maxJobs) * 100} />
                 </div>
@@ -788,51 +767,51 @@ function InventoryValueTab() {
   const maxCatValue = Math.max(...data.by_category.map((c) => c.value), 1);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <div className="card" style={{ padding: 16 }}>
-        <p style={{ fontSize: 11, color: "var(--text-tertiary)", marginBottom: 4 }}>Total inventory value</p>
-        <p style={{ fontSize: 32, fontWeight: 700, letterSpacing: "-1px", marginBottom: 8 }}>{fmt$Full(data.total_value)}</p>
-        <div style={{ height: 8, borderRadius: 4, background: "var(--bg-surface)", overflow: "hidden", display: "flex", marginBottom: 8 }}>
+    <div className="report-tab">
+      <div className="card report-wide report-hero">
+        <p className="stat-label">Total inventory value</p>
+        <p className="report-hero-value">{fmt$Full(data.total_value)}</p>
+        <div style={{ height: 12, borderRadius: 999, background: "#F1EBF8", overflow: "hidden", display: "flex", gap: 2, margin: "12px 0 10px" }}>
           {data.total_value > 0 && (
             <>
               <div style={{ width: `${(data.available_value / data.total_value) * 100}%`, background: "var(--green)", transition: "width 0.4s" }} />
-              <div style={{ width: `${(data.staged_value / data.total_value) * 100}%`, background: "var(--accent)", transition: "width 0.4s" }} />
+              <div style={{ width: `${(data.staged_value / data.total_value) * 100}%`, background: "var(--teal)", transition: "width 0.4s" }} />
             </>
           )}
         </div>
         <div style={{ display: "flex", gap: 14 }}>
-          <span style={{ fontSize: 11, color: "var(--text-tertiary)", display: "flex", alignItems: "center", gap: 4 }}>
-            <span style={{ width: 8, height: 8, borderRadius: 2, background: "var(--green)", display: "inline-block" }} />
+          <span style={{ fontSize: 13, color: "var(--ink-secondary)", display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ width: 10, height: 10, borderRadius: 3, background: "var(--green)", display: "inline-block" }} />
             Unstaged {fmt$Full(data.available_value)}
           </span>
-          <span style={{ fontSize: 11, color: "var(--text-tertiary)", display: "flex", alignItems: "center", gap: 4 }}>
-            <span style={{ width: 8, height: 8, borderRadius: 2, background: "var(--accent)", display: "inline-block" }} />
+          <span style={{ fontSize: 13, color: "var(--ink-secondary)", display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ width: 10, height: 10, borderRadius: 3, background: "var(--teal)", display: "inline-block" }} />
             Staged {fmt$Full(data.staged_value)}
           </span>
         </div>
       </div>
 
       {data.disposed_count > 0 && (
-        <div className="card" style={{ padding: 14, borderColor: "#F0C4BE" }}>
-          <p style={{ fontSize: 11, color: "var(--text-tertiary)", marginBottom: 4 }}>Written off (disposed)</p>
-          <p style={{ fontSize: 20, fontWeight: 700, color: "var(--red-text)", letterSpacing: "-0.5px" }}>{fmt$Full(data.disposed_value)}</p>
-          <p style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 2 }}>{data.disposed_count} item{data.disposed_count !== 1 ? "s" : ""}</p>
+        <div className="card report-stat">
+          <p className="stat-label">Written off (disposed)</p>
+          <p className="report-stat-value" style={{ color: "var(--red-text)" }}>{fmt$Full(data.disposed_value)}</p>
+          <p className="stat-sub">{data.disposed_count} item{data.disposed_count !== 1 ? "s" : ""}</p>
         </div>
       )}
 
       <div>
         <SectionHeader title="Value by category" />
-        <div className="card" style={{ padding: "4px 0" }}>
+        <div className="card report-list">
           {data.by_category.length === 0 ? (
-            <p style={{ fontSize: 13, color: "var(--text-tertiary)", padding: 16, textAlign: "center" }}>No data yet</p>
+            <p className="report-empty">No data yet</p>
           ) : (
             data.by_category.map((row, i) => (
-              <div key={row.category} style={{ padding: "10px 14px", borderBottom: i < data.by_category.length - 1 ? "1px solid var(--border)" : undefined }}>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
-                  <span style={{ fontSize: 13, fontWeight: 500 }}>
-                    {getCategoryEmoji(row.category)} {row.category}
+              <div key={row.category} style={{ padding: "12px 16px", borderBottom: i < data.by_category.length - 1 ? "1px solid var(--row-divider)" : undefined }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                  <span style={{ fontSize: 14, fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>
+                    <span className="report-cat-emoji" aria-hidden>{getCategoryEmoji(row.category)}</span>{row.category}
                   </span>
-                  <span style={{ fontSize: 12, color: "var(--text-tertiary)" }}>
+                  <span style={{ fontSize: 13, color: "var(--ink-secondary)", fontWeight: 600 }}>
                     {fmt$Full(row.value)} · {row.count} item{row.count !== 1 ? "s" : ""}
                   </span>
                 </div>
@@ -849,8 +828,8 @@ function InventoryValueTab() {
 // ─── Tab: Damage & Loss ───────────────────────────────────────────────────────
 
 const conditionColors: Record<string, string> = {
-  damaged: "badge-amber",
-  dispose: "badge-red",
+  damaged: "badge-red",
+  dispose: "badge-gray",
 };
 
 function DamageLossTab() {
@@ -859,7 +838,7 @@ function DamageLossTab() {
   if (isLoading) {
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        <div className="report-stats">
           <Skel h={80} /><Skel h={80} />
         </div>
         {[...Array(4)].map((_, i) => <Skel key={i} h={48} />)}
@@ -870,9 +849,9 @@ function DamageLossTab() {
   if (!data) return null;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        <StatCard label="Damage events" value={String(data.total_damage_events)} sub="across all jobs" />
+    <div className="report-tab">
+      <div className="report-stats">
+        <StatCard label="Damage events" tone={data.total_damage_events > 0 ? "red" : undefined} value={String(data.total_damage_events)} sub="across all jobs" />
         <StatCard label="Items disposed" value={String(data.total_disposed_count)} sub={data.total_disposed_value > 0 ? fmt$Full(data.total_disposed_value) + " lost" : undefined} />
       </div>
 
@@ -882,10 +861,10 @@ function DamageLossTab() {
           <div className="list-card">
             {data.top_damaged_items.map((item, i) => (
               <div key={item.id} className="list-row">
-                <span style={{ fontSize: 13, color: "var(--text-tertiary)", width: 18, flexShrink: 0 }}>#{i + 1}</span>
+                <Rank n={i + 1} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 13, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.name}</p>
-                  <p style={{ fontSize: 11.5, color: "var(--text-tertiary)" }}>{item.category} · {item.sku}</p>
+                  <p style={{ fontSize: 14, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.name}</p>
+                  <p style={{ fontSize: 13, color: "var(--ink-secondary)" }}>{item.category} · {item.sku}</p>
                 </div>
                 <span className="badge badge-red">{item.damage_count}×</span>
               </div>
@@ -899,15 +878,15 @@ function DamageLossTab() {
           <SectionHeader title="Recent damage events" />
           <div className="list-card">
             {data.recent_events.map((ev, i) => (
-              <div key={i} style={{ padding: "10px 14px", borderBottom: i < data.recent_events.length - 1 ? "1px solid var(--border)" : undefined }}>
+              <div key={i} style={{ padding: "12px 16px", borderBottom: i < data.recent_events.length - 1 ? "1px solid var(--row-divider)" : undefined }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: 13, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{ev.item_name}</p>
-                    <p style={{ fontSize: 11.5, color: "var(--text-tertiary)", marginTop: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    <p style={{ fontSize: 14, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{ev.item_name}</p>
+                    <p style={{ fontSize: 13, color: "var(--ink-secondary)", marginTop: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                       {ev.job_address} · {ev.job_client}
                     </p>
                     {ev.notes && (
-                      <p style={{ fontSize: 11.5, color: "var(--text-tertiary)", marginTop: 2, fontStyle: "italic" }}>{ev.notes}</p>
+                      <p style={{ fontSize: 13, color: "var(--ink-secondary)", marginTop: 2, fontStyle: "italic" }}>{ev.notes}</p>
                     )}
                   </div>
                   <span className={`badge ${conditionColors[ev.condition ?? "damaged"] ?? "badge-amber"}`} style={{ flexShrink: 0 }}>
@@ -919,8 +898,8 @@ function DamageLossTab() {
           </div>
         </div>
       ) : (
-        <div className="card" style={{ padding: "32px 16px", textAlign: "center" }}>
-          <p style={{ fontSize: 13, color: "var(--text-tertiary)" }}>No damage events recorded yet.</p>
+        <div className="card report-wide">
+          <p className="report-empty">No damage events recorded yet.</p>
         </div>
       )}
     </div>
@@ -941,42 +920,47 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "damage",      label: "Damage" },
 ];
 
-function BackIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="15 18 9 12 15 6" />
-    </svg>
-  );
-}
+const TAB_BLURB: Record<Tab, string> = {
+  revenue: "What jobs have earned and what's in the pipeline",
+  demand: "Which pieces and categories get booked most",
+  activity: "When furniture goes out and comes back",
+  utilization: "How much of the inventory is working",
+  performance: "How jobs run from install to pickup",
+  value: "What the inventory is worth, and where it is",
+  damage: "Damage and write-offs from returns",
+};
 
 export function Reports() {
-  const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>("revenue");
 
   return (
     <div className="animate-in">
       <div className="page-header">
-        <button className="back-btn" onClick={() => navigate("/more")} style={{ marginBottom: 8 }}>
-          <BackIcon /> More
-        </button>
+        <BandWatermark kind="chart" />
+        <div className="reports-back"><BandBack to="/more" label="More" /></div>
         <h1 className="page-title">Reports</h1>
-        <p className="page-subtitle">Business & inventory analytics</p>
+        <p className="page-subtitle">Where the business is heading, and how fast</p>
       </div>
 
       <div className="page-body">
-        <div className="chip-row" style={{ marginBottom: 16 }}>
+        <Momentum />
+
+        <div className="report-tabs" role="tablist" aria-label="Report">
           {TABS.map((t) => (
             <button
               key={t.key}
-              className={`chip${tab === t.key ? " active" : ""}`}
+              role="tab"
+              aria-selected={tab === t.key}
+              className={`report-tab-btn${tab === t.key ? " active" : ""}`}
               onClick={() => setTab(t.key)}
             >
               {t.label}
             </button>
           ))}
         </div>
+        <p className="report-blurb">{TAB_BLURB[tab]}</p>
 
-        <div style={{ paddingBottom: 32 }}>
+        <div key={tab} className="animate-in" style={{ paddingBottom: 32 }}>
           {tab === "revenue"     && <RevenueTab />}
           {tab === "demand"      && <DemandTab />}
           {tab === "activity"    && <ActivityTab />}
